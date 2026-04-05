@@ -1,7 +1,7 @@
 """DARWIN account creation — PQ account policy + EVM binding.
 
-v1 uses simulated PQ keys (Ed25519 stand-in). Production will use ML-DSA-65.
-The account model is real: policy-hash addresses committing to capabilities.
+Uses real ML-DSA-65 (Dilithium3) for PQ signatures.
+The account model uses policy-hash addresses committing to capabilities.
 """
 
 from __future__ import annotations
@@ -10,6 +10,8 @@ import hashlib
 import os
 import secrets
 from dataclasses import dataclass, field
+
+from darwin_sim.sdk.pq_crypto import pq_keygen
 
 
 @dataclass(slots=True)
@@ -48,13 +50,11 @@ def _hash_domain(domain: str, *parts: bytes) -> bytes:
     return h.digest()
 
 
-def _gen_keypair() -> tuple[bytes, bytes]:
-    """Generate a simulated PQ keypair (32-byte Ed25519 stand-in).
-    Production: ML-DSA-65 (FIPS 204).
+def _gen_pq_keypair() -> tuple[bytes, bytes]:
+    """Generate a real ML-DSA-65 (Dilithium3) keypair.
+    pk=1952 bytes, sk=4000 bytes per FIPS 204.
     """
-    sk = secrets.token_bytes(32)
-    pk = hashlib.sha256(b"DARWIN/PK/" + sk).digest()
-    return pk, sk
+    return pq_keygen()
 
 
 def _gen_evm_addr() -> tuple[str, bytes]:
@@ -73,8 +73,8 @@ def create_account(
 
     acct_id = H_{DARWIN/AcctPolicy/v1}(pk_hot, pk_cold, evm_addr, capabilities, limit, delay)
     """
-    hot_pk, hot_sk = _gen_keypair()
-    cold_pk, cold_sk = _gen_keypair()
+    hot_pk, hot_sk = _gen_pq_keypair()
+    cold_pk, cold_sk = _gen_pq_keypair()
     evm_addr, evm_pk = _gen_evm_addr()
 
     # Account policy hash (v0.4 spec)

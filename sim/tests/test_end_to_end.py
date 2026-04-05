@@ -29,8 +29,8 @@ class TestEndToEnd(unittest.TestCase):
         acct = create_account()
         self.assertEqual(len(acct.acct_id), 32)
         self.assertTrue(acct.evm_addr.startswith("0x"))
-        self.assertEqual(len(acct.pq_hot_pk), 32)
-        self.assertEqual(len(acct.pq_cold_pk), 32)
+        self.assertEqual(len(acct.pq_hot_pk), 1952)  # ML-DSA-65 (Dilithium3) public key
+        self.assertEqual(len(acct.pq_cold_pk), 1952)
         print(f"  Account: {acct.acct_id[:16]}... EVM: {acct.evm_addr[:10]}...")
 
     def test_02_dual_envelope_signing(self):

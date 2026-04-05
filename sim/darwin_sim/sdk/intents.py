@@ -1,6 +1,7 @@
 """Dual-envelope intent creation and signing.
 
-v1: PQ signature (simulated ML-DSA-65) + EVM signature (simulated ECDSA).
+PQ signature: real ML-DSA-65 (Dilithium3) via dilithium-py.
+EVM signature: simulated ECDSA (HMAC stand-in — production uses secp256k1).
 Both signatures are cryptographically bound through h_pq inclusion in h_evm.
 """
 
@@ -11,6 +12,7 @@ import hmac
 from dataclasses import dataclass
 
 from darwin_sim.sdk.accounts import DarwinAccount, _hash_domain
+from darwin_sim.sdk.pq_crypto import pq_sign, pq_verify
 from darwin_sim.core.types import Side, to_x18
 
 
@@ -66,10 +68,10 @@ class DualEnvelopeIntent:
 
 
 def _sign_pq(sk: bytes, message: bytes) -> bytes:
-    """Simulated ML-DSA-65 signature (HMAC-SHA256 stand-in).
-    Production: FIPS 204 ML-DSA-65.Sign(sk, msg).
+    """Real ML-DSA-65 (Dilithium3) signature.
+    FIPS 204 compliant. Signature is 3293 bytes.
     """
-    return hmac.new(sk, message, hashlib.sha256).digest()
+    return pq_sign(sk, message)
 
 
 def _sign_evm(pk: bytes, message: bytes) -> bytes:
@@ -154,10 +156,10 @@ def create_intent(
 
 
 def verify_pq_sig(account: DarwinAccount, intent: DualEnvelopeIntent) -> bool:
-    """Verify the PQ leg signature."""
+    """Verify the PQ leg signature using real ML-DSA-65."""
     h_pq = bytes.fromhex(intent.pq_hash)
-    expected = _sign_pq(account.pq_hot_sk, h_pq)
-    return hmac.compare_digest(expected.hex(), intent.pq_sig)
+    sig = bytes.fromhex(intent.pq_sig)
+    return pq_verify(account.pq_hot_pk, h_pq, sig)
 
 
 def verify_evm_sig(account: DarwinAccount, intent: DualEnvelopeIntent) -> bool:
