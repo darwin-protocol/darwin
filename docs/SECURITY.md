@@ -2,11 +2,10 @@
 
 ## Reporting Vulnerabilities
 
-If you discover a security vulnerability in DARWIN, please report it privately.
+If you discover a security vulnerability in DARWIN, please report it privately. Do not open a public GitHub issue.
 
-**Email:** security@darwin-protocol.org (placeholder — update before public release)
-
-Do NOT open a public GitHub issue for security vulnerabilities.
+**Current status:** a dedicated security mailbox is not configured yet.
+Before canary, replace this section with a monitored security contact or private reporting workflow.
 
 ## Scope
 
@@ -25,27 +24,51 @@ A bug bounty program will be established before mainnet launch. Details will be 
 
 | Component | Status |
 |---|---|
-| Contracts | Written, tested (37/37), NOT audited |
-| Overlay services | Alpha, NOT production-hardened |
-| SDK crypto | Simulated (HMAC stand-in, not real ML-DSA/ECDSA) |
-| Key management | Development only — no HSM integration |
+| Contracts | Written, tested (`60` unit tests + `18` fuzz targets + `9` invariants), NOT audited |
+| Overlay services | Alpha, local/devnet proven, with watcher auto-sync, finalizer auto-poll, and persisted router/sentinel/finalizer state snapshots; NOT production-hardened |
+| Base Sepolia deployment | Live alpha artifact exists at `ops/deployments/base-sepolia.json`; current public deploy uses external Base Sepolia `WETH9`, and `./ops/run_base_sepolia_canary.sh` pins the overlay stack to that artifact while verifying on-chain contract code plus governance/operator wiring across settlement, bond, challenge, species, and score contracts |
+| SDK crypto | Real ML-DSA-65 + real secp256k1 signatures |
+| Gateway verification | Verifies both signature legs and payload binding off-chain; can pin admission to a deployment artifact |
+| Watcher verification | Archive artifacts can be mirrored and replayed with hash checks before scoring verification; deployment-aware `darwinctl status-check` emits machine-readable readiness reports with on-chain auth checks, `./ops/run_external_watcher.sh` provides a dedicated outside-operator bootstrap path, `ops/export_external_watcher_bundle.py` packages a handoff packet for outside watchers, `ops/intake_external_watcher_report.py` verifies returned watcher evidence against the pinned deployment, and `ops/export_audit_bundle.py` packages the evidence plus `docs/AUDIT_READINESS.md` and `docs/THREAT_MODEL.md` for external review |
+| Key management | Development only — encrypted local wallet files exist for trader identities via `darwinctl wallet-init`, but there is still no HSM or production custody integration |
+| External review prep | `ops/prepare_external_packets.py` emits sendable operator/reviewer tarballs, checksums, request templates, and `docs/EXTERNAL_CANARY_CHECKLIST.md` so outside evidence intake follows a fixed path |
 
 ## Known Limitations
 
 1. **v1 is an overlay, not a sovereign chain.** Settlement trust depends on the underlying EVM L2.
-2. **PQ signatures are simulated in the current SDK.** Production will use FIPS 204 ML-DSA-65.
-3. **The gateway does not yet verify signatures against real cryptographic libraries.**
+2. **v1 is PQ-hardened, not fully post-quantum.** The settlement chain and on-chain verification remain classical.
+3. **The EVM envelope is verified off-chain in v1.** Gateway/operator flows can pin to a deployment artifact, but settlement verification is still classical and off-chain for the PQ leg.
 4. **No formal audit has been conducted.**
-5. **Safe mode is triggered manually by an admin multisig in v1.**
+5. **Meaningful Foundry fuzz and stateful invariant coverage exists, but deeper cross-contract and long-run adversarial testing are still pending.**
+6. **Safe mode is triggered manually by an admin multisig in v1.**
+7. **The current public Base Sepolia deployment is still alpha.** It uses an external testnet WETH asset, but has not yet been canary-operated by outside watchers or audited.
 
 ## Security Invariants
 
 These invariants are tested in the contract test suite:
 
 1. No intent settles above its remaining quantity (no overfill)
-2. No batch replays with the same batchId
+2. No batch submission or net settlement replay with the same batchId
 3. Slashing is restricted to ChallengeEscrow role only
-4. Safe mode blocks new experimental flow but preserves withdrawals
+4. Safe mode blocks both new batch submission and net settlement, while preserving bond withdrawals
 5. Epoch finalization requires challenge window expiry + all roots present
 6. Bond withdrawal requires 7-day cooldown
 7. Only governance can exit safe mode
+8. Duplicate challenge IDs are rejected before funds move
+9. Existing pair IDs cannot be recreated or overwritten
+10. Fully slashed bonds are marked inactive instead of remaining logically live
+11. BondVault token balances always match the sum of outstanding bonds under stateful action sequences
+12. SharedPairVault token balances and LP share supply remain internally consistent under stateful action sequences
+13. Epoch IDs cannot be reopened or overwritten after creation
+14. Invalid epoch configs are rejected before lifecycle state is mutated
+15. SettlementHub batch count always matches the set of submitted tracked batches under stateful action sequences
+16. SettlementHub net settlement conserves tracked ERC-20 balances across randomized batch/safe-mode flows
+17. Only governance-authorized batch operators can submit batches or cancel intents
+18. Only the original batch submitter or governance can execute net settlement for a submitted batch
+19. Missing species cannot be mutated or slashed into existence through governance/operator paths
+20. Tracked species slots remain internally consistent under randomized propose/state/slash sequences
+21. Epoch roots must be non-zero and can only be posted once the epoch is closed
+22. Deployment-pinned readiness checks verify live governance/operator/bond wiring, not just bytecode presence
+23. Zero-value LP actions and ghost pair weight updates are rejected before they can create meaningless vault state
+24. Malformed batch headers and malformed net transfers are rejected before settlement state mutates
+25. Score roots are single-use and zero-root publication is rejected before score state is written

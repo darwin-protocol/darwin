@@ -47,6 +47,7 @@ contract ChallengeEscrow {
     // --- Errors ---
 
     error Unauthorized();
+    error ChallengeExists();
     error InsufficientBond();
     error ChallengeNotOpen();
     error AlreadyResolved();
@@ -72,6 +73,7 @@ contract ChallengeEscrow {
         Severity severity,
         uint256 bondAmount
     ) external {
+        if (challenges[challengeId].openedAt != 0) revert ChallengeExists();
         if (bondAmount < minBond[severity]) revert InsufficientBond();
         if (!bondAsset.transferFrom(msg.sender, address(this), bondAmount)) revert TransferFailed();
 
@@ -97,6 +99,7 @@ contract ChallengeEscrow {
         if (msg.sender != governance) revert Unauthorized();
 
         Challenge storage c = challenges[challengeId];
+        if (c.openedAt == 0) revert ChallengeNotOpen();
         if (c.state != ChallengeState.OPEN && c.state != ChallengeState.RESPONDED) revert AlreadyResolved();
 
         if (upheld) {

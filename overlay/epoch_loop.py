@@ -195,7 +195,7 @@ def run_epoch_loop(
 
         # 8. Archive + watcher via services (if available)
         _post("http://localhost:9447/v1/ingest", {"epoch_id": str(epoch_id), "source_dir": str(epoch_dir)})
-        replay = _post("http://localhost:9446/v1/replay/local", {"artifact_dir": str(epoch_dir)})
+        replay = _post("http://localhost:9446/v1/replay/archive", {"epoch_id": str(epoch_id)})
         watcher_ok = replay.get("passed", False)
 
         # 9. Update weights (replicator dynamics)

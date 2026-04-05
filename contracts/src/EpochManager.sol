@@ -44,9 +44,11 @@ contract EpochManager {
     // --- Errors ---
 
     error Unauthorized();
+    error EpochAlreadyExists();
     error EpochNotOpen();
     error EpochNotClosed();
     error ChallengeWindowActive();
+    error InvalidEpochConfig();
     error RootsMissing();
 
     // --- Constructor ---
@@ -61,6 +63,8 @@ contract EpochManager {
 
     function openEpoch(EpochConfig calldata config) external {
         if (msg.sender != epochOperator && msg.sender != governance) revert Unauthorized();
+        if (config.epochId == 0 || config.endsAt <= config.startsAt) revert InvalidEpochConfig();
+        if (epochs[config.epochId].config.epochId != 0) revert EpochAlreadyExists();
 
         epochs[config.epochId].config = config;
         epochs[config.epochId].state = EpochState.OPEN;
@@ -74,6 +78,7 @@ contract EpochManager {
     function closeEpoch(uint64 epochId, bytes32 manifestRoot) external {
         if (msg.sender != epochOperator && msg.sender != governance) revert Unauthorized();
         if (epochs[epochId].state != EpochState.OPEN) revert EpochNotOpen();
+        if (manifestRoot == bytes32(0)) revert RootsMissing();
 
         epochs[epochId].state = EpochState.CLOSED;
         epochs[epochId].manifestRoot = manifestRoot;
@@ -86,16 +91,22 @@ contract EpochManager {
 
     function postScoreRoot(uint64 epochId, bytes32 scoreRoot) external {
         if (msg.sender != epochOperator) revert Unauthorized();
+        if (epochs[epochId].state != EpochState.CLOSED) revert EpochNotClosed();
+        if (scoreRoot == bytes32(0)) revert RootsMissing();
         epochs[epochId].scoreRoot = scoreRoot;
     }
 
     function postWeightRoot(uint64 epochId, bytes32 nextWeightRoot) external {
         if (msg.sender != epochOperator) revert Unauthorized();
+        if (epochs[epochId].state != EpochState.CLOSED) revert EpochNotClosed();
+        if (nextWeightRoot == bytes32(0)) revert RootsMissing();
         epochs[epochId].nextWeightRoot = nextWeightRoot;
     }
 
     function postRebalanceRoot(uint64 epochId, bytes32 rebalanceRoot) external {
         if (msg.sender != epochOperator) revert Unauthorized();
+        if (epochs[epochId].state != EpochState.CLOSED) revert EpochNotClosed();
+        if (rebalanceRoot == bytes32(0)) revert RootsMissing();
         epochs[epochId].rebalanceRoot = rebalanceRoot;
     }
 
@@ -105,7 +116,10 @@ contract EpochManager {
         Epoch storage e = epochs[epochId];
         if (e.state != EpochState.CLOSED) revert EpochNotClosed();
         if (block.timestamp < e.closedAt + challengeWindowSec) revert ChallengeWindowActive();
-        if (e.scoreRoot == bytes32(0) || e.nextWeightRoot == bytes32(0)) revert RootsMissing();
+        if (
+            e.manifestRoot == bytes32(0) || e.scoreRoot == bytes32(0) || e.nextWeightRoot == bytes32(0)
+                || e.rebalanceRoot == bytes32(0)
+        ) revert RootsMissing();
 
         e.state = EpochState.FINALIZED;
         e.finalizedAt = uint64(block.timestamp);

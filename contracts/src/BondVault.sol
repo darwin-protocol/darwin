@@ -75,6 +75,7 @@ contract BondVault {
         Bond storage b = bonds[account][subjectType][subjectId];
         uint256 slashAmt = amount > b.amount ? b.amount : amount;
         b.amount -= slashAmt;
+        if (b.amount == 0) b.active = false;
 
         // Slashed funds go to pair insurance (governance-controlled)
         if (!bondAsset.transfer(governance, slashAmt)) revert TransferFailed();

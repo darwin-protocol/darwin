@@ -117,10 +117,46 @@ contract SharedPairVaultTest is Test {
         assertEq(v.speciesWeightRoot, bytes32("weights"));
     }
 
+    function test_zero_value_lp_actions_rejected() public {
+        vm.prank(alice);
+        vm.expectRevert(SharedPairVault.InvalidAmount.selector);
+        vault.deposit(pairId, 0, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(SharedPairVault.InvalidAmount.selector);
+        vault.withdraw(pairId, 0);
+    }
+
+    function test_weight_update_requires_existing_enabled_pair() public {
+        vm.prank(hub);
+        vm.expectRevert(SharedPairVault.PairNotEnabled.selector);
+        vault.updateSpeciesWeights(bytes32("FAKE"), bytes32("weights"));
+    }
+
     function test_only_governance_creates_pairs() public {
         vm.prank(alice);
         vm.expectRevert(SharedPairVault.Unauthorized.selector);
         vault.createPair(bytes32("BTC_USDC"), address(base), address(quote));
+    }
+
+    function test_cannot_recreate_pair() public {
+        vm.prank(governance);
+        vm.expectRevert(SharedPairVault.PairExists.selector);
+        vault.createPair(pairId, address(base), address(quote));
+    }
+
+    function test_invalid_pair_config_rejected() public {
+        vm.prank(governance);
+        vm.expectRevert(SharedPairVault.InvalidPairConfig.selector);
+        vault.createPair(bytes32(0), address(base), address(quote));
+
+        vm.prank(governance);
+        vm.expectRevert(SharedPairVault.InvalidPairConfig.selector);
+        vault.createPair(bytes32("BAD1"), address(0), address(quote));
+
+        vm.prank(governance);
+        vm.expectRevert(SharedPairVault.InvalidPairConfig.selector);
+        vault.createPair(bytes32("BAD2"), address(base), address(base));
     }
 
     function test_disabled_pair_blocks_deposit() public {

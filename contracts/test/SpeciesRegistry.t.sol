@@ -59,6 +59,12 @@ contract SpeciesRegistryTest is Test {
         reg.setSpeciesState(bytes32("S1"), SpeciesRegistry.SpeciesState.ACTIVE);
     }
 
+    function test_set_state_requires_existing_species() public {
+        vm.prank(operator);
+        vm.expectRevert(SpeciesRegistry.SpeciesNotFound.selector);
+        reg.setSpeciesState(bytes32("missing"), SpeciesRegistry.SpeciesState.ACTIVE);
+    }
+
     function test_slash_only_escrow() public {
         vm.prank(alice);
         reg.proposeSpecies(bytes32("S1"), bytes32("g1"), bytes32("m1"));
@@ -69,6 +75,12 @@ contract SpeciesRegistryTest is Test {
 
         vm.prank(escrow);
         reg.slashSpecies(bytes32("S1"), 1 ether, bytes32("bad"));
+    }
+
+    function test_slash_requires_existing_species() public {
+        vm.prank(escrow);
+        vm.expectRevert(SpeciesRegistry.SpeciesNotFound.selector);
+        reg.slashSpecies(bytes32("missing"), 1 ether, bytes32("bad"));
     }
 
     function test_retire_requires_valid_state() public {

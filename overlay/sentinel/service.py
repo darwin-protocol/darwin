@@ -8,24 +8,98 @@ Port: 9449
 from __future__ import annotations
 
 import json
+import os
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from pathlib import Path
 from threading import Lock
 
 
 class SentinelState:
-    def __init__(self, oracle_divergence_bps: int = 100, liveness_timeout_sec: int = 120):
+    def __init__(
+        self,
+        oracle_divergence_bps: int = 100,
+        liveness_timeout_sec: int = 120,
+        state_file: str = "",
+    ):
         self.oracle_divergence_bps = oracle_divergence_bps
         self.liveness_timeout_sec = liveness_timeout_sec
         self.lock = Lock()
+        self.started_at = time.time()
         self.safe_mode = False
         self.safe_mode_reason = ""
+        self.safe_mode_triggered_at = 0.0
         self.alerts: list[dict] = []
         self.last_heartbeat: dict[str, float] = {}
+        self.last_alert_ts = 0.0
+        self.state_file = Path(state_file) if state_file else None
+        if self.state_file:
+            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self.recovered_from_disk = False
+        self._load_state()
+
+    def _snapshot_unlocked(self) -> dict:
+        return {
+            "oracle_divergence_bps": self.oracle_divergence_bps,
+            "liveness_timeout_sec": self.liveness_timeout_sec,
+            "safe_mode": self.safe_mode,
+            "safe_mode_reason": self.safe_mode_reason,
+            "safe_mode_triggered_at": self.safe_mode_triggered_at,
+            "alerts": self.alerts[-200:],
+            "last_heartbeat": self.last_heartbeat,
+            "last_alert_ts": self.last_alert_ts,
+            "started_at": self.started_at,
+        }
+
+    def _persist_snapshot(self, snapshot: dict) -> None:
+        if not self.state_file:
+            return
+        tmp_path = self.state_file.with_name(self.state_file.name + ".tmp")
+        tmp_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True))
+        tmp_path.replace(self.state_file)
+
+    def _load_state(self) -> None:
+        if not self.state_file or not self.state_file.exists():
+            return
+        try:
+            snapshot = json.loads(self.state_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            return
+
+        with self.lock:
+            self.safe_mode = bool(snapshot.get("safe_mode", False))
+            self.safe_mode_reason = str(snapshot.get("safe_mode_reason", ""))
+            self.safe_mode_triggered_at = float(snapshot.get("safe_mode_triggered_at", 0.0))
+            self.alerts = list(snapshot.get("alerts", []))
+            self.last_heartbeat = {str(k): float(v) for k, v in snapshot.get("last_heartbeat", {}).items()}
+            self.last_alert_ts = float(snapshot.get("last_alert_ts", 0.0))
+            self.started_at = float(snapshot.get("started_at", self.started_at))
+            self.recovered_from_disk = True
+
+    def status(self) -> dict:
+        liveness = self.check_liveness()
+        with self.lock:
+            return {
+                "status": "ok",
+                "role": "sentinel",
+                "safe_mode": self.safe_mode,
+                "safe_mode_reason": self.safe_mode_reason,
+                "safe_mode_triggered_at": self.safe_mode_triggered_at,
+                "stale_services": liveness["stale_services"],
+                "alert_count": len(self.alerts),
+                "last_alert_ts": self.last_alert_ts,
+                "heartbeats": {k: round(time.time() - v, 1) for k, v in self.last_heartbeat.items()},
+                "oracle_divergence_bps": self.oracle_divergence_bps,
+                "liveness_timeout_sec": self.liveness_timeout_sec,
+                "state_file": str(self.state_file) if self.state_file else "",
+                "recovered_from_disk": self.recovered_from_disk,
+            }
 
     def report_heartbeat(self, service: str) -> None:
         with self.lock:
             self.last_heartbeat[service] = time.time()
+            snapshot = self._snapshot_unlocked()
+        self._persist_snapshot(snapshot)
 
     def report_oracle_divergence(self, pair_id: str, divergence_bps: float) -> dict:
         with self.lock:
@@ -39,11 +113,15 @@ class SentinelState:
             if divergence_bps > self.oracle_divergence_bps:
                 alert["action"] = "SAFE_MODE_TRIGGERED"
                 self.safe_mode = True
+                self.safe_mode_triggered_at = time.time()
                 self.safe_mode_reason = f"Oracle divergence {divergence_bps}bps > {self.oracle_divergence_bps}bps on {pair_id}"
             else:
                 alert["action"] = "MONITORED"
             self.alerts.append(alert)
-            return alert
+            self.last_alert_ts = alert["ts"]
+            snapshot = self._snapshot_unlocked()
+        self._persist_snapshot(snapshot)
+        return alert
 
     def report_hard_reset(self, species_id: str, pair_id: str) -> dict:
         with self.lock:
@@ -55,9 +133,13 @@ class SentinelState:
                 "ts": time.time(),
             }
             self.safe_mode = True
+            self.safe_mode_triggered_at = alert["ts"]
             self.safe_mode_reason = f"Hard reset on {species_id} for {pair_id}"
             self.alerts.append(alert)
-            return alert
+            self.last_alert_ts = alert["ts"]
+            snapshot = self._snapshot_unlocked()
+        self._persist_snapshot(snapshot)
+        return alert
 
     def check_liveness(self) -> dict:
         with self.lock:
@@ -72,7 +154,10 @@ class SentinelState:
         with self.lock:
             self.safe_mode = False
             self.safe_mode_reason = ""
-            return {"safe_mode": False}
+            self.safe_mode_triggered_at = 0.0
+            snapshot = self._snapshot_unlocked()
+        self._persist_snapshot(snapshot)
+        return {"safe_mode": False}
 
 
 STATE: SentinelState | None = None
@@ -83,15 +168,7 @@ class SentinelHandler(BaseHTTPRequestHandler):
         if self.path == "/healthz":
             self._json(200, {"status": "ok", "role": "sentinel", "safe_mode": STATE.safe_mode})
         elif self.path == "/v1/status":
-            liveness = STATE.check_liveness()
-            with STATE.lock:
-                self._json(200, {
-                    "safe_mode": STATE.safe_mode,
-                    "safe_mode_reason": STATE.safe_mode_reason,
-                    "stale_services": liveness["stale_services"],
-                    "alert_count": len(STATE.alerts),
-                    "heartbeats": {k: round(time.time() - v, 1) for k, v in STATE.last_heartbeat.items()},
-                })
+            self._json(200, STATE.status())
         elif self.path == "/v1/alerts":
             with STATE.lock:
                 self._json(200, {"alerts": STATE.alerts[-50:]})
@@ -133,11 +210,14 @@ class SentinelHandler(BaseHTTPRequestHandler):
 def main():
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9449
+    state_file = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("DARWIN_SENTINEL_STATE_FILE", "")
 
     global STATE
-    STATE = SentinelState()
+    STATE = SentinelState(state_file=state_file)
     print(f"[darwin-sentineld] Listening on :{port}")
     print(f"[darwin-sentineld] Oracle divergence threshold: {STATE.oracle_divergence_bps}bps")
+    if state_file:
+        print(f"[darwin-sentineld] State file: {state_file}")
     print(f"[darwin-sentineld] Endpoints:")
     print(f"  GET  /healthz                — health + safe mode status")
     print(f"  GET  /v1/status              — full status")

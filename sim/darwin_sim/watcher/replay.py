@@ -8,6 +8,7 @@ If this fails, the network is not operator-ready.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -24,6 +25,16 @@ def load_fills_ndjson(path: Path) -> list[dict]:
             if line:
                 fills.append(json.loads(line))
     return fills
+
+
+def artifact_hashes(artifact_dir: str | Path) -> dict[str, str]:
+    artifact_dir = Path(artifact_dir)
+    hashes: dict[str, str] = {}
+    for filename in ["e2_report.json", "fills_control_s0.ndjson", "fills_treatment_s1.ndjson", "rebalance.ndjson"]:
+        path = artifact_dir / filename
+        if path.exists():
+            hashes[filename] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashes
 
 
 def _dict_to_fill(d: dict) -> FillResult:
@@ -153,6 +164,14 @@ def replay_and_verify(artifact_dir: str | Path, tolerance_bps: float = 0.5) -> d
     }
 
 
+def write_replay_report(artifact_dir: str | Path, result: dict, filename: str = "watcher_replay.json") -> Path:
+    artifact_dir = Path(artifact_dir)
+    report_path = artifact_dir / filename
+    with report_path.open("w") as f:
+        json.dump(result, f, indent=2)
+    return report_path
+
+
 def main():
     import sys
     artifact_dir = sys.argv[1] if len(sys.argv) > 1 else "outputs/e2"
@@ -170,9 +189,7 @@ def main():
             print(f"  {m['metric']}: published={m.get('published')} recomputed={m.get('recomputed')}")
 
     # Write verification report
-    report_path = Path(artifact_dir) / "watcher_replay.json"
-    with report_path.open("w") as f:
-        json.dump(result, f, indent=2)
+    report_path = write_replay_report(artifact_dir, result)
     print(f"  Report: {report_path}")
 
 

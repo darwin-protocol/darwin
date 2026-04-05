@@ -94,8 +94,9 @@ contract BondVaultTest is Test {
         vm.prank(escrow);
         vault.slashBond(alice, BondVault.SubjectType.SPECIES, bytes32("s1"), 100 ether, bytes32("big"));
 
-        (uint256 amt,) = vault.getBond(alice, BondVault.SubjectType.SPECIES, bytes32("s1"));
+        (uint256 amt, bool active) = vault.getBond(alice, BondVault.SubjectType.SPECIES, bytes32("s1"));
         assertEq(amt, 0);
+        assertFalse(active);
         assertEq(weth.balanceOf(governance), 5 ether);
     }
 }

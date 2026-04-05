@@ -41,6 +41,19 @@ contract ChallengeEscrowTest is Test {
         );
     }
 
+    function test_duplicate_challenge_id_rejected() public {
+        vm.prank(watcher);
+        escrow.openChallenge(
+            bytes32("dup"), 1, bytes32("target"), ChallengeEscrow.Severity.MATERIAL, 0.25 ether
+        );
+
+        vm.prank(watcher);
+        vm.expectRevert(ChallengeEscrow.ChallengeExists.selector);
+        escrow.openChallenge(
+            bytes32("dup"), 2, bytes32("target2"), ChallengeEscrow.Severity.MATERIAL, 0.25 ether
+        );
+    }
+
     function test_upheld_challenge_rewards_watcher() public {
         uint256 before = weth.balanceOf(watcher);
 
@@ -84,5 +97,11 @@ contract ChallengeEscrowTest is Test {
         vm.prank(watcher);
         vm.expectRevert(ChallengeEscrow.Unauthorized.selector);
         escrow.resolveChallenge(bytes32("ch5"), true, 1 ether);
+    }
+
+    function test_cannot_resolve_missing_challenge() public {
+        vm.prank(governance);
+        vm.expectRevert(ChallengeEscrow.ChallengeNotOpen.selector);
+        escrow.resolveChallenge(bytes32("missing"), true, 1 ether);
     }
 }

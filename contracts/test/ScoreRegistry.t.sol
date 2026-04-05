@@ -49,4 +49,42 @@ contract ScoreRegistryTest is Test {
         vm.expectRevert(ScoreRegistry.Unauthorized.selector);
         reg.postRebalanceRoot(1, bytes32("x"));
     }
+
+    function test_rejects_zero_epoch_or_zero_roots() public {
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.InvalidEpoch.selector);
+        reg.postScoreRoot(0, bytes32("score"), bytes32("manifest"));
+
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.InvalidRoot.selector);
+        reg.postScoreRoot(1, bytes32(0), bytes32("manifest"));
+
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.InvalidRoot.selector);
+        reg.postWeightRoot(1, bytes32(0));
+
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.InvalidRoot.selector);
+        reg.postRebalanceRoot(1, bytes32(0));
+    }
+
+    function test_roots_are_single_use() public {
+        vm.prank(operator);
+        reg.postScoreRoot(1, bytes32("score"), bytes32("manifest"));
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.RootAlreadyPosted.selector);
+        reg.postScoreRoot(1, bytes32("score2"), bytes32("manifest2"));
+
+        vm.prank(operator);
+        reg.postWeightRoot(1, bytes32("weights"));
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.RootAlreadyPosted.selector);
+        reg.postWeightRoot(1, bytes32("weights2"));
+
+        vm.prank(operator);
+        reg.postRebalanceRoot(1, bytes32("rebalance"));
+        vm.prank(operator);
+        vm.expectRevert(ScoreRegistry.RootAlreadyPosted.selector);
+        reg.postRebalanceRoot(1, bytes32("rebalance2"));
+    }
 }

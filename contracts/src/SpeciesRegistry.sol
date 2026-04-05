@@ -37,6 +37,7 @@ contract SpeciesRegistry {
 
     error Unauthorized();
     error SpeciesExists();
+    error SpeciesNotFound();
     error InvalidTransition();
 
     // --- Constructor ---
@@ -72,6 +73,7 @@ contract SpeciesRegistry {
         if (msg.sender != epochOperator && msg.sender != governance) revert Unauthorized();
 
         Species storage s = species[speciesId];
+        if (s.proposedAt == 0) revert SpeciesNotFound();
         SpeciesState old = s.state;
 
         // Validate transition
@@ -89,6 +91,7 @@ contract SpeciesRegistry {
         if (msg.sender != challengeEscrow) revert Unauthorized();
 
         Species storage s = species[speciesId];
+        if (s.proposedAt == 0) revert SpeciesNotFound();
         uint256 slashAmt = amount > s.sponsorBond ? s.sponsorBond : amount;
         s.sponsorBond -= slashAmt;
 

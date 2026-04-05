@@ -37,7 +37,10 @@ contract SharedPairVault {
     // --- Errors ---
 
     error Unauthorized();
+    error PairExists();
+    error InvalidPairConfig();
     error PairNotEnabled();
+    error InvalidAmount();
     error InsufficientShares();
     error TransferFailed();
 
@@ -50,6 +53,12 @@ contract SharedPairVault {
 
     function createPair(bytes32 pairId, address baseAsset, address quoteAsset) external {
         if (msg.sender != governance) revert Unauthorized();
+        if (pairId == bytes32(0) || baseAsset == address(0) || quoteAsset == address(0) || baseAsset == quoteAsset) {
+            revert InvalidPairConfig();
+        }
+        if (vaults[pairId].baseAsset != address(0) || vaults[pairId].quoteAsset != address(0) || vaults[pairId].enabled) {
+            revert PairExists();
+        }
         vaults[pairId] = PairVault({
             baseAsset: baseAsset,
             quoteAsset: quoteAsset,
@@ -68,6 +77,7 @@ contract SharedPairVault {
     function deposit(bytes32 pairId, uint256 baseAmount, uint256 quoteAmount) external {
         PairVault storage v = vaults[pairId];
         if (!v.enabled) revert PairNotEnabled();
+        if (baseAmount == 0 && quoteAmount == 0) revert InvalidAmount();
 
         if (baseAmount > 0) {
             if (!IERC20(v.baseAsset).transferFrom(msg.sender, address(this), baseAmount)) revert TransferFailed();
@@ -97,6 +107,7 @@ contract SharedPairVault {
 
     function withdraw(bytes32 pairId, uint256 shares) external {
         PairVault storage v = vaults[pairId];
+        if (shares == 0) revert InvalidAmount();
         if (lpShares[pairId][msg.sender] < shares) revert InsufficientShares();
 
         uint256 baseOut = v.baseBalance * shares / v.totalShares;
@@ -117,6 +128,7 @@ contract SharedPairVault {
 
     function updateSpeciesWeights(bytes32 pairId, bytes32 weightRoot) external {
         if (msg.sender != settlementHub && msg.sender != governance) revert Unauthorized();
+        if (!vaults[pairId].enabled) revert PairNotEnabled();
         vaults[pairId].speciesWeightRoot = weightRoot;
         emit WeightsUpdated(pairId, weightRoot);
     }

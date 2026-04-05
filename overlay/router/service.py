@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import time
 from collections import defaultdict
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -24,11 +25,23 @@ from darwin_sim.core.types import Side, to_x18, from_x18, BPS
 
 
 class RouterState:
-    def __init__(self, control_share_bps: int = 1500, beta: float = 2.0, epsilon: float = 0.08):
+    def __init__(
+        self,
+        control_share_bps: int = 1500,
+        beta: float = 2.0,
+        epsilon: float = 0.08,
+        state_file: str = "",
+    ):
         self.control_share_bps = control_share_bps
         self.beta = beta
         self.epsilon = epsilon
         self.lock = Lock()
+        self.started_at = time.time()
+        self.last_route_ts = 0.0
+        self.state_file = Path(state_file) if state_file else None
+        if self.state_file:
+            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self.recovered_from_disk = False
 
         # Species weights (x1e6)
         self.weights = {
@@ -43,6 +56,65 @@ class RouterState:
         # Stats
         self.routes: dict[str, int] = defaultdict(int)
         self.total_routed = 0
+        self._load_state()
+
+    def _snapshot_unlocked(self) -> dict:
+        return {
+            "control_share_bps": self.control_share_bps,
+            "beta": self.beta,
+            "epsilon": self.epsilon,
+            "weights": self.weights,
+            "fitness": self.fitness,
+            "canary_set": sorted(self.canary_set),
+            "canary_cap_x1e6": self.canary_cap_x1e6,
+            "routes": dict(self.routes),
+            "total_routed": self.total_routed,
+            "started_at": self.started_at,
+            "last_route_ts": self.last_route_ts,
+        }
+
+    def _persist_snapshot(self, snapshot: dict) -> None:
+        if not self.state_file:
+            return
+        tmp_path = self.state_file.with_name(self.state_file.name + ".tmp")
+        tmp_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True))
+        tmp_path.replace(self.state_file)
+
+    def _load_state(self) -> None:
+        if not self.state_file or not self.state_file.exists():
+            return
+        try:
+            snapshot = json.loads(self.state_file.read_text())
+        except (OSError, json.JSONDecodeError):
+            return
+
+        with self.lock:
+            self.weights = {str(k): int(v) for k, v in snapshot.get("weights", self.weights).items()}
+            self.fitness = {str(k): float(v) for k, v in snapshot.get("fitness", self.fitness).items()}
+            self.canary_set = set(snapshot.get("canary_set", list(self.canary_set)))
+            self.canary_cap_x1e6 = int(snapshot.get("canary_cap_x1e6", self.canary_cap_x1e6))
+            self.routes = defaultdict(int, {str(k): int(v) for k, v in snapshot.get("routes", {}).items()})
+            self.total_routed = int(snapshot.get("total_routed", self.total_routed))
+            self.started_at = float(snapshot.get("started_at", self.started_at))
+            self.last_route_ts = float(snapshot.get("last_route_ts", 0.0))
+            self.recovered_from_disk = True
+
+    def status(self) -> dict:
+        with self.lock:
+            return {
+                "status": "ok",
+                "role": "router",
+                "control_share_bps": self.control_share_bps,
+                "beta": self.beta,
+                "epsilon": self.epsilon,
+                "weights": self.weights,
+                "fitness": self.fitness,
+                "routes_by_species": dict(self.routes),
+                "total_routed": self.total_routed,
+                "last_route_ts": self.last_route_ts,
+                "state_file": str(self.state_file) if self.state_file else "",
+                "recovered_from_disk": self.recovered_from_disk,
+            }
 
     def route_intent(self, intent_data: dict) -> dict:
         """Route a single intent: control reservation → softmax species selection."""
@@ -90,22 +162,30 @@ class RouterState:
                         reason = "EXPLOIT"
 
             self.routes[species] += 1
+            routed_at = time.time()
+            self.last_route_ts = routed_at
+            snapshot = self._snapshot_unlocked()
 
+        self._persist_snapshot(snapshot)
         return {
             "intent_id": intent_id,
             "species_id": species,
             "reason": reason,
             "profile": profile,
-            "routed_at": time.time(),
+            "routed_at": routed_at,
         }
 
     def update_weights(self, new_weights: dict[str, int]) -> None:
         with self.lock:
             self.weights.update(new_weights)
+            snapshot = self._snapshot_unlocked()
+        self._persist_snapshot(snapshot)
 
     def update_fitness(self, new_fitness: dict[str, float]) -> None:
         with self.lock:
             self.fitness.update(new_fitness)
+            snapshot = self._snapshot_unlocked()
+        self._persist_snapshot(snapshot)
 
 
 STATE: RouterState | None = None
@@ -115,6 +195,8 @@ class RouterHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/healthz":
             self._json(200, {"status": "ok", "role": "router"})
+        elif self.path == "/v1/status":
+            self._json(200, STATE.status())
         elif self.path == "/v1/weights":
             with STATE.lock:
                 self._json(200, {"weights": STATE.weights, "fitness": STATE.fitness})
@@ -158,13 +240,17 @@ def main():
     import sys as _sys
     port = int(_sys.argv[1]) if len(_sys.argv) > 1 else 9444
     control = int(_sys.argv[2]) if len(_sys.argv) > 2 else 1500
+    state_file = _sys.argv[3] if len(_sys.argv) > 3 else os.environ.get("DARWIN_ROUTER_STATE_FILE", "")
 
     global STATE
-    STATE = RouterState(control_share_bps=control)
+    STATE = RouterState(control_share_bps=control, state_file=state_file)
     print(f"[darwin-routerd] Listening on :{port}")
     print(f"[darwin-routerd] Control share: {control/100:.1f}%")
+    if state_file:
+        print(f"[darwin-routerd] State file: {state_file}")
     print(f"[darwin-routerd] Endpoints:")
     print(f"  GET  /healthz       — health")
+    print(f"  GET  /v1/status     — router status")
     print(f"  GET  /v1/weights    — current species weights")
     print(f"  GET  /v1/stats      — routing stats")
     print(f"  POST /v1/route      — route an intent")

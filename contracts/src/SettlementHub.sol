@@ -37,8 +37,11 @@ contract SettlementHub {
     address public safeModeAuthority;
     bool    public safeMode;
     bytes32 public safeModeReason;
+    mapping(address => bool) public batchOperators;
 
+    mapping(bytes32 => bool) public submittedBatches;
     mapping(bytes32 => bool) public settledBatches;
+    mapping(bytes32 => address) public batchSubmitters;
     mapping(bytes32 => IntentState) public intentStates;
     mapping(bytes32 => uint256) public intentFilledQty;
 
@@ -49,30 +52,44 @@ contract SettlementHub {
     event BatchSubmitted(bytes32 indexed batchId, uint64 indexed epochId, bytes32 indexed pairId, bytes32 manifestRoot);
     event NetSettlementApplied(bytes32 indexed batchId, uint256 transferCount);
     event IntentCancelled(bytes32 indexed intentId, address indexed by);
+    event BatchOperatorUpdated(address indexed operator, bool allowed);
     event SafeModeChanged(bool enabled, bytes32 reason, address actor);
 
     // --- Errors ---
 
     error Unauthorized();
-    error BatchAlreadySettled();
+    error BatchAlreadySubmitted();
+    error BatchNotSubmitted();
+    error InvalidBatchHeader();
+    error InvalidNetTransfer();
+    error NetSettlementAlreadyApplied();
     error SafeModeActive();
     error IntentAlreadyTerminal();
     error TransferFailed();
 
     // --- Constructor ---
 
-    constructor(address _governance, address _safeModeAuthority) {
+    constructor(address _governance, address _safeModeAuthority, address _initialBatchOperator) {
         governance = _governance;
         safeModeAuthority = _safeModeAuthority;
+        batchOperators[_governance] = true;
+        if (_initialBatchOperator != address(0)) {
+            batchOperators[_initialBatchOperator] = true;
+            emit BatchOperatorUpdated(_initialBatchOperator, true);
+        }
     }
 
     // --- Batch submission ---
 
     function submitBatch(BatchHeader calldata header) external {
+        if (!batchOperators[msg.sender]) revert Unauthorized();
+        if (header.postedBy != msg.sender) revert Unauthorized();
         if (safeMode) revert SafeModeActive();
-        if (settledBatches[header.batchId]) revert BatchAlreadySettled();
+        if (!_validHeader(header)) revert InvalidBatchHeader();
+        if (submittedBatches[header.batchId]) revert BatchAlreadySubmitted();
 
-        settledBatches[header.batchId] = true;
+        submittedBatches[header.batchId] = true;
+        batchSubmitters[header.batchId] = msg.sender;
         batchCount++;
 
         emit BatchSubmitted(header.batchId, header.epochId, header.pairId, header.manifestRoot);
@@ -81,10 +98,19 @@ contract SettlementHub {
     // --- Net settlement ---
 
     function applyNetSettlement(bytes32 batchId, NetTransfer[] calldata transfers) external {
-        if (!settledBatches[batchId]) revert BatchAlreadySettled();
+        if (!submittedBatches[batchId]) revert BatchNotSubmitted();
+        address submitter = batchSubmitters[batchId];
+        if (msg.sender != governance && msg.sender != submitter) revert Unauthorized();
+        if (safeMode) revert SafeModeActive();
+        if (settledBatches[batchId]) revert NetSettlementAlreadyApplied();
+
+        settledBatches[batchId] = true;
 
         for (uint256 i = 0; i < transfers.length; i++) {
             NetTransfer calldata t = transfers[i];
+            if (t.asset == address(0) || t.from_ == address(0) || t.to_ == address(0) || t.from_ == t.to_ || t.amount == 0) {
+                revert InvalidNetTransfer();
+            }
             IERC20 token = IERC20(t.asset);
             if (!token.transferFrom(t.from_, t.to_, t.amount)) revert TransferFailed();
         }
@@ -95,6 +121,7 @@ contract SettlementHub {
     // --- Intent cancellation ---
 
     function cancelIntent(bytes32 intentId) external {
+        if (!batchOperators[msg.sender]) revert Unauthorized();
         IntentState s = intentStates[intentId];
         if (s == IntentState.FILLED || s == IntentState.CANCELLED) revert IntentAlreadyTerminal();
 
@@ -116,5 +143,24 @@ contract SettlementHub {
         safeMode = false;
         safeModeReason = bytes32(0);
         emit SafeModeChanged(false, bytes32(0), msg.sender);
+    }
+
+    function setBatchOperator(address operator, bool allowed) external {
+        if (msg.sender != governance) revert Unauthorized();
+        batchOperators[operator] = allowed;
+        emit BatchOperatorUpdated(operator, allowed);
+    }
+
+    function _validHeader(BatchHeader calldata header) internal pure returns (bool) {
+        return
+            header.batchId != bytes32(0) &&
+            header.epochId != 0 &&
+            header.pairId != bytes32(0) &&
+            header.intentRoot != bytes32(0) &&
+            header.fillRoot != bytes32(0) &&
+            header.oracleRoot != bytes32(0) &&
+            header.rebalanceRoot != bytes32(0) &&
+            header.manifestRoot != bytes32(0) &&
+            header.windowEndTs > header.windowStartTs;
     }
 }

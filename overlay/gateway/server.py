@@ -10,17 +10,31 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import sys
 import time
+from collections import defaultdict
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from collections import defaultdict
 from threading import Lock
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "sim"))
+
+from darwin_sim.sdk.accounts import ZERO_EVM_ADDRESS, normalize_evm_address
+from darwin_sim.sdk.deployments import load_deployment
+from darwin_sim.sdk.intents import verify_intent_payload
 
 
 class GatewayState:
     """In-memory gateway state."""
 
-    def __init__(self, archive_dir: str = "gateway_archive"):
+    def __init__(
+        self,
+        archive_dir: str = "gateway_archive",
+        deployment_file: str | None = None,
+        allowed_chain_id: int | None = None,
+        allowed_settlement_hub: str | None = None,
+    ):
         self.archive_dir = Path(archive_dir)
         self.archive_dir.mkdir(parents=True, exist_ok=True)
         self.intents: dict[str, dict] = {}
@@ -28,6 +42,27 @@ class GatewayState:
         self.rate_limits: dict[str, list[float]] = defaultdict(list)
         self.lock = Lock()
         self.stats = {"admitted": 0, "rejected": 0, "total": 0}
+
+        deployment = None
+        deployment_file = deployment_file or os.environ.get("DARWIN_DEPLOYMENT_FILE")
+        if deployment_file:
+            deployment = load_deployment(deployment_file=deployment_file)
+
+        self.allowed_chain_id = (
+            allowed_chain_id
+            if allowed_chain_id is not None
+            else (deployment.chain_id if deployment else None)
+        )
+        if self.allowed_chain_id is None and os.environ.get("DARWIN_ALLOWED_CHAIN_ID"):
+            self.allowed_chain_id = int(os.environ["DARWIN_ALLOWED_CHAIN_ID"])
+
+        self.allowed_settlement_hub = (
+            normalize_evm_address(allowed_settlement_hub)
+            if allowed_settlement_hub is not None
+            else (deployment.settlement_hub if deployment else None)
+        )
+        if self.allowed_settlement_hub is None and os.environ.get("DARWIN_ALLOWED_SETTLEMENT_HUB"):
+            self.allowed_settlement_hub = normalize_evm_address(os.environ["DARWIN_ALLOWED_SETTLEMENT_HUB"])
 
     def admit_intent(self, intent_data: dict) -> dict:
         """Validate and admit a dual-envelope intent."""
@@ -38,9 +73,19 @@ class GatewayState:
             intent = intent_data.get("intent", {})
             pq_leg = intent_data.get("pq_leg", {})
             evm_leg = intent_data.get("evm_leg", {})
+            account = intent_data.get("account", {})
 
             # 1. Schema validation
-            required_intent = ["pair_id", "side", "qty_base_x18", "profile", "nonce"]
+            required_intent = [
+                "pair_id",
+                "side",
+                "qty_base_x18",
+                "limit_price_x18",
+                "max_slippage_bps",
+                "profile",
+                "expiry_ts",
+                "nonce",
+            ]
             for field in required_intent:
                 if field not in intent:
                     return self._reject(f"missing intent field: {field}")
@@ -55,13 +100,40 @@ class GatewayState:
                 if field not in evm_leg:
                     return self._reject(f"missing evm_leg field: {field}")
 
-            # 2. Nonce check (replay protection)
+            required_account = [
+                "acct_id",
+                "pq_hot_pk",
+                "pq_cold_pk",
+                "evm_addr",
+                "chain_id",
+                "hot_capabilities",
+                "hot_value_limit_usd",
+                "recovery_delay_sec",
+            ]
+            for field in required_account:
+                if field not in account:
+                    return self._reject(f"missing account field: {field}")
+
+            # 2. Cryptographic validation
+            ok, reason = verify_intent_payload(intent_data)
+            if not ok:
+                return self._reject(reason)
+
+            # 3. Deployment policy checks (optional hard pinning to one live hub)
+            chain_id = int(evm_leg.get("chain_id", account["chain_id"]))
+            if self.allowed_chain_id is not None and chain_id != self.allowed_chain_id:
+                return self._reject("unsupported_chain_id")
+
+            settlement_hub = normalize_evm_address(evm_leg.get("settlement_hub", ZERO_EVM_ADDRESS))
+            if self.allowed_settlement_hub is not None and settlement_hub != self.allowed_settlement_hub:
+                return self._reject("unsupported_settlement_hub")
+
+            # 4. Nonce check (replay protection)
             nonce_key = f"{pq_leg['acct_id']}:{intent['nonce']}"
             if nonce_key in self.nonces:
                 return self._reject("nonce_replay")
-            self.nonces.add(nonce_key)
 
-            # 3. Rate limiting (60/min per acct_id)
+            # 5. Rate limiting (60/min per acct_id)
             acct_id = pq_leg["acct_id"]
             now = time.time()
             window = [t for t in self.rate_limits[acct_id] if t > now - 60]
@@ -69,35 +141,19 @@ class GatewayState:
                 return self._reject("rate_limited")
             window.append(now)
             self.rate_limits[acct_id] = window
+            self.nonces.add(nonce_key)
 
-            # 4. PQ signature validation (service-level in v1)
-            if not pq_leg["pq_sig"] or len(pq_leg["pq_sig"]) < 16:
-                return self._reject("invalid_pq_sig")
-
-            # 5. EVM signature validation (service-level in v1)
-            if not evm_leg["evm_sig"] or len(evm_leg["evm_sig"]) < 16:
-                return self._reject("invalid_evm_sig")
-
-            # 6. Binding check
-            intent_hash = intent_data.get("intent_hash", "")
-            h_pq = pq_leg.get("pq_hash", "")
-            h_evm = evm_leg.get("eip712_hash", "")
-            expected = hashlib.sha256(
-                bytes.fromhex(h_pq) + bytes.fromhex(h_evm)
-            ).hexdigest()[:32]
-            if expected != intent_hash:
-                return self._reject("binding_mismatch")
-
-            # 7. Assign bucket
+            # 6. Assign bucket
             profile = intent.get("profile", "BALANCED")
             bucket_id = profile
 
-            # 8. Generate intent_id
+            # 7. Generate intent_id
+            intent_hash = intent_data.get("intent_hash", "")
             intent_id = hashlib.sha256(
                 f"{acct_id}:{intent['nonce']}:{intent_hash}".encode()
             ).hexdigest()[:32]
 
-            # 9. Archive
+            # 8. Archive
             admission = {
                 "intent_id": intent_id,
                 "status": "ADMITTED",
@@ -162,6 +218,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
         elif self.path == "/v1/stats":
             self._respond(200, STATE.stats)
+
+        elif self.path == "/v1/config":
+            self._respond(200, {
+                "allowed_chain_id": STATE.allowed_chain_id,
+                "allowed_settlement_hub": STATE.allowed_settlement_hub,
+            })
 
         elif self.path.startswith("/v1/intents/"):
             intent_id = self.path.split("/")[-1]

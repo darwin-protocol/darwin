@@ -4,8 +4,11 @@ version = "0.4.0"
 description = "DARWIN evolutionary DEX simulator — proves or falsifies the market-evolution thesis before production."
 requires-python = ">=3.12"
 dependencies = [
+    "dilithium-py>=0.2.1",
+    "eth-keys>=0.7",
     "numpy>=1.26",
     "pandas>=2.2",
+    "pycryptodome>=3.20",
     "pyyaml>=6.0",
     "pyarrow>=15.0",
     "zstandard>=0.22",
@@ -16,6 +19,7 @@ dev = ["pytest>=8.0", "ruff>=0.4"]
 plots = ["matplotlib>=3.9"]
 
 [project.scripts]
+darwinctl = "darwin_sim.cli.darwinctl:main"
 darwin-sim = "darwin_sim.experiments.runner:main"
 
 [tool.ruff]
@@ -25,3 +29,6 @@ target-version = "py312"
 [build-system]
 requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["darwin_sim*"]

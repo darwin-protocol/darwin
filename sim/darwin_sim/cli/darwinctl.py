@@ -2,9 +2,16 @@
 
 Commands:
   keys gen          Generate PQ + EVM keypair
+  wallet init       Create an encrypted DARWIN wallet file
+  wallet show       Inspect a DARWIN wallet's public data
+  wallet export     Export public account material from a wallet file
+  deployment show   Inspect a deployment artifact
   config lint       Validate a node config against schema
   intent create     Create and sign a dual-envelope intent
   intent verify     Verify a dual-envelope intent's signatures
+  replay fetch      Mirror epoch artifacts from archive, then verify them
+  status check      Inspect all overlay services from one command
+  wallet check      Inspect deployer/testnet wallet balances
   replay verify     Watcher replay verification on published artifacts
   sim run-e2        Run E2 batch-lane uplift experiment
   sim run-suite     Run full E1-E7 experiment suite
@@ -15,14 +22,213 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
+from decimal import Decimal, getcontext
+from datetime import datetime, timezone
 from pathlib import Path
+from getpass import getpass
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+getcontext().prec = 40
+
+
+def _load_deployment_or_none(args):
+    deployment_file = getattr(args, "deployment_file", None)
+    network = getattr(args, "network", None)
+    if not deployment_file and not network and "DARWIN_DEPLOYMENT_FILE" not in os.environ and "DARWIN_NETWORK" not in os.environ:
+        return None
+
+    from darwin_sim.sdk.deployments import load_deployment
+    return load_deployment(deployment_file=deployment_file, network=network)
+
+
+def _http_get_json(url: str) -> dict:
+    req = Request(url, headers={"Accept": "application/json"})
+    with urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode())
+
+
+def _default_base_sepolia_rpc_url() -> str:
+    if os.environ.get("BASE_SEPOLIA_RPC_URL"):
+        return os.environ["BASE_SEPOLIA_RPC_URL"]
+    if os.environ.get("DARWIN_RPC_URL"):
+        return os.environ["DARWIN_RPC_URL"]
+    if os.environ.get("ALCHEMY_API_KEY"):
+        return f"https://base-sepolia.g.alchemy.com/v2/{os.environ['ALCHEMY_API_KEY']}"
+    return "https://sepolia.base.org"
+
+
+def _default_sepolia_rpc_url() -> str:
+    if os.environ.get("SEPOLIA_RPC_URL"):
+        return os.environ["SEPOLIA_RPC_URL"]
+    if os.environ.get("ALCHEMY_API_KEY"):
+        return f"https://eth-sepolia.g.alchemy.com/v2/{os.environ['ALCHEMY_API_KEY']}"
+    return "https://ethereum-sepolia-rpc.publicnode.com"
+
+
+def _http_post_json(url: str, payload: dict) -> dict:
+    req = Request(
+        url,
+        data=json.dumps(payload).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "darwinctl/0.1",
+        },
+        method="POST",
+    )
+    with urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read().decode())
+
+
+def _rpc_json(url: str, method: str, params: list) -> dict:
+    return _http_post_json(url, {"jsonrpc": "2.0", "id": 1, "method": method, "params": params})
+
+
+def _rpc_chain_id(url: str) -> int:
+    payload = _rpc_json(url, "eth_chainId", [])
+    return int(payload["result"], 16)
+
+
+def _rpc_balance(url: str, address: str) -> int:
+    payload = _rpc_json(url, "eth_getBalance", [address, "latest"])
+    return int(payload["result"], 16)
+
+
+def _rpc_code(url: str, address: str) -> str:
+    payload = _rpc_json(url, "eth_getCode", [address, "latest"])
+    return str(payload["result"])
+
+
+def _rpc_call(url: str, address: str, data: str) -> str:
+    payload = _rpc_json(url, "eth_call", [{"to": address, "data": data}, "latest"])
+    return str(payload["result"])
+
+
+def _abi_encode_address(address: str) -> str:
+    return address.lower().replace("0x", "").rjust(64, "0")
+
+
+def _decode_address(result: str) -> str:
+    from darwin_sim.sdk.accounts import normalize_evm_address
+
+    if not result.startswith("0x") or len(result) < 66:
+        raise ValueError(f"invalid eth_call address result: {result}")
+    return normalize_evm_address("0x" + result[-40:])
+
+
+def _decode_bool(result: str) -> bool:
+    if not result.startswith("0x"):
+        raise ValueError(f"invalid eth_call bool result: {result}")
+    return int(result, 16) != 0
+
+
+def _rpc_call_address(url: str, address: str, selector: str) -> str:
+    return _decode_address(_rpc_call(url, address, selector))
+
+
+def _rpc_call_bool(url: str, address: str, call_data: str) -> bool:
+    return _decode_bool(_rpc_call(url, address, call_data))
+
+
+def _wei_to_eth(wei: int) -> str:
+    return f"{(Decimal(wei) / Decimal(10**18)):.8f}"
+
+
+def _utc_timestamp(ts: float | None = None) -> str:
+    observed = ts if ts is not None else time.time()
+    return datetime.fromtimestamp(observed, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _write_report(path_value: str, content: str) -> None:
+    path = Path(path_value)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
+def _render_status_markdown(report: dict) -> str:
+    lines = [
+        "# DARWIN Status Report",
+        "",
+        f"- Generated at: `{report['generated_at']}`",
+        f"- Overall status: `{'READY' if report['ready'] else 'BLOCKED'}`",
+        f"- Cold watcher allowed: `{report['allow_cold_watcher']}`",
+    ]
+
+    deployment = report.get("deployment")
+    if deployment:
+        roles = deployment.get("roles", {})
+        lines.extend([
+            f"- Deployment: `{deployment['network']}` chain `{deployment['chain_id']}` mode `{deployment['bond_asset_mode']}`",
+            f"- Settlement hub: `{deployment['settlement_hub']}`",
+            f"- Bond asset: `{deployment['bond_asset']}`",
+            f"- Governance: `{roles.get('governance', '')}`",
+            f"- Epoch operator: `{roles.get('epoch_operator', '')}`",
+            f"- Batch operator: `{roles.get('batch_operator', roles.get('epoch_operator', ''))}`",
+            f"- Safe mode authority: `{roles.get('safe_mode_authority', '')}`",
+        ])
+
+    lines.extend([
+        "",
+        "## Services",
+        "",
+        "| Check | State | Detail |",
+        "|---|---|---|",
+    ])
+
+    for name, status in report["checks"].items():
+        detail = status.get("detail", "")
+        lines.append(f"| `{name}` | `{status['state']}` | `{detail}` |")
+
+    onchain_auth = report.get("onchain_auth")
+    if onchain_auth:
+        lines.extend(["", "## On-Chain Auth", ""])
+        for name, detail in onchain_auth.get("components", {}).items():
+            state = "OK" if detail.get("ok") else "FAIL"
+            lines.append(f"- `{name}`: `{state}` {detail.get('summary', '')}".rstrip())
+
+    blockers = report.get("blockers", [])
+    lines.extend(["", "## Blockers", ""])
+    if blockers:
+        lines.extend(f"- {blocker}" for blocker in blockers)
+    else:
+        lines.append("- none")
+
+    notes = report.get("notes", [])
+    lines.extend(["", "## Notes", ""])
+    if notes:
+        lines.extend(f"- {note}" for note in notes)
+    else:
+        lines.append("- none")
+
+    return "\n".join(lines) + "\n"
+
+
+def _resolve_wallet_passphrase(args, require: bool = True) -> str:
+    direct = getattr(args, "passphrase", "") or ""
+    if direct:
+        return direct
+
+    env_name = getattr(args, "passphrase_env", "") or "DARWIN_WALLET_PASSPHRASE"
+    if env_name and os.environ.get(env_name):
+        return os.environ[env_name]
+
+    if require and sys.stdin.isatty():
+        return getpass("DARWIN wallet passphrase: ")
+
+    if require:
+        raise ValueError("wallet passphrase is required (--passphrase or DARWIN_WALLET_PASSPHRASE)")
+    return ""
 
 
 def cmd_keys_gen(args):
     from darwin_sim.sdk.accounts import create_account
-    account = create_account()
+    deployment = _load_deployment_or_none(args)
+    chain_id = args.chain_id if args.chain_id is not None else (deployment.chain_id if deployment else 1)
+    account = create_account(chain_id=chain_id)
     out = Path(args.out) if args.out else Path("darwin_account.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w") as f:
@@ -30,9 +236,85 @@ def cmd_keys_gen(args):
     print(f"[darwinctl] Account created")
     print(f"  acct_id:  {account.acct_id}")
     print(f"  evm_addr: {account.evm_addr}")
+    print(f"  chain_id: {account.chain_id}")
     print(f"  PQ hot:   {account.pq_hot_pk.hex()[:16]}...")
     print(f"  PQ cold:  {account.pq_cold_pk.hex()[:16]}...")
     print(f"  Output:   {out}")
+    print("  Note:     public account material only; use wallet-init for a reusable signing wallet")
+
+
+def cmd_wallet_init(args):
+    from darwin_sim.sdk.wallets import create_wallet, save_wallet
+
+    deployment = _load_deployment_or_none(args)
+    chain_id = args.chain_id if args.chain_id is not None else (deployment.chain_id if deployment else 1)
+    passphrase = _resolve_wallet_passphrase(args)
+    wallet = create_wallet(
+        label=args.label,
+        chain_id=chain_id,
+        hot_capabilities=int(args.hot_capabilities, 0),
+        hot_value_limit_usd=args.hot_value_limit_usd,
+        recovery_delay_sec=args.recovery_delay_sec,
+    )
+    out = Path(args.out) if args.out else Path("darwin_wallet.json")
+    save_wallet(wallet, out, passphrase)
+    print("[darwinctl] Wallet created")
+    print(f"  label:      {wallet.label or '-'}")
+    print(f"  acct_id:    {wallet.account.acct_id}")
+    print(f"  evm_addr:   {wallet.account.evm_addr}")
+    print(f"  chain_id:   {wallet.account.chain_id}")
+    print(f"  created_at: {wallet.created_at}")
+    print(f"  output:     {out}")
+
+
+def cmd_wallet_show(args):
+    from darwin_sim.sdk.wallets import load_wallet_metadata
+
+    wallet = load_wallet_metadata(args.wallet_file)
+    public_account = wallet["public_account"]
+    print("[darwinctl] Wallet")
+    print(f"  label:       {wallet.get('label', '') or '-'}")
+    print(f"  created_at:  {wallet.get('created_at', '')}")
+    print(f"  acct_id:     {public_account.get('acct_id', '')}")
+    print(f"  evm_addr:    {public_account.get('evm_addr', '')}")
+    print(f"  chain_id:    {public_account.get('chain_id', '')}")
+    print(f"  capabilities:{public_account.get('hot_capabilities', '')}")
+    print(f"  value_limit: {public_account.get('hot_value_limit_usd', '')}")
+    print(f"  recovery:    {public_account.get('recovery_delay_sec', '')}")
+    print(f"  path:        {Path(args.wallet_file).resolve()}")
+
+
+def cmd_wallet_export_public(args):
+    from darwin_sim.sdk.wallets import load_wallet_metadata
+
+    wallet = load_wallet_metadata(args.wallet_file)
+    out = Path(args.out) if args.out else Path("darwin_account.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(wallet["public_account"], indent=2) + "\n")
+    print("[darwinctl] Wallet public account exported")
+    print(f"  acct_id:    {wallet['public_account'].get('acct_id', '')}")
+    print(f"  evm_addr:   {wallet['public_account'].get('evm_addr', '')}")
+    print(f"  output:     {out}")
+
+
+def cmd_deployment_show(args):
+    deployment = _load_deployment_or_none(args)
+    if deployment is None:
+        print("[darwinctl] deployment-show requires --deployment-file, --network, or DARWIN_DEPLOYMENT_FILE")
+        sys.exit(1)
+
+    print("[darwinctl] Deployment artifact")
+    print(f"  Path:             {deployment.path}")
+    print(f"  Network:          {deployment.network}")
+    print(f"  Chain ID:         {deployment.chain_id}")
+    print(f"  Bond asset mode:  {deployment.bond_asset_mode}")
+    print(f"  Bond asset:       {deployment.contracts.get('bond_asset', '')}")
+    print(f"  Settlement hub:   {deployment.settlement_hub}")
+    print(f"  Governance:       {deployment.roles['governance']}")
+    print(f"  Epoch operator:   {deployment.roles['epoch_operator']}")
+    if deployment.roles.get("batch_operator"):
+        print(f"  Batch operator:   {deployment.roles['batch_operator']}")
+    print(f"  Safe mode auth:   {deployment.roles['safe_mode_authority']}")
 
 
 def cmd_config_lint(args):
@@ -74,10 +356,23 @@ def cmd_config_lint(args):
 
 
 def cmd_intent_create(args):
-    from darwin_sim.sdk.accounts import create_account
     from darwin_sim.sdk.intents import create_intent, verify_pq_sig, verify_evm_sig, verify_binding
+    from darwin_sim.sdk.accounts import create_account
+    from darwin_sim.sdk.wallets import load_wallet
 
-    account = create_account()
+    deployment = _load_deployment_or_none(args)
+    chain_id = args.chain_id if args.chain_id is not None else (deployment.chain_id if deployment else 1)
+    settlement_hub = args.settlement_hub if args.settlement_hub is not None else (
+        deployment.settlement_hub if deployment else "0x0000000000000000000000000000000000000000"
+    )
+    if args.wallet_file:
+        passphrase = _resolve_wallet_passphrase(args)
+        wallet = load_wallet(args.wallet_file, passphrase)
+        account = wallet.account
+        if account.chain_id != chain_id:
+            raise ValueError(f"wallet chain_id {account.chain_id} does not match requested chain_id {chain_id}")
+    else:
+        account = create_account(chain_id=chain_id)
     intent = create_intent(
         account=account,
         pair_id=args.pair,
@@ -88,6 +383,8 @@ def cmd_intent_create(args):
         profile=args.profile.upper(),
         expiry_ts=int(time.time()) + 300,
         nonce=1,
+        chain_id=chain_id,
+        settlement_hub=settlement_hub,
     )
 
     # Verify
@@ -107,27 +404,661 @@ def cmd_intent_create(args):
     print(f"  qty:         {intent.qty_base}")
     print(f"  price:       {intent.limit_price}")
     print(f"  profile:     {intent.profile}")
+    print(f"  chain_id:    {intent.chain_id}")
+    print(f"  settle_hub:  {intent.settlement_hub}")
     print(f"  PQ sig OK:   {pq_ok}")
     print(f"  EVM sig OK:  {evm_ok}")
     print(f"  Binding OK:  {bind_ok}")
     print(f"  Output:      {out}")
+    if args.wallet_file:
+        print(f"  Wallet:      {Path(args.wallet_file).resolve()}")
+
+
+def cmd_intent_verify(args):
+    from darwin_sim.sdk.accounts import ZERO_EVM_ADDRESS, normalize_evm_address
+    from darwin_sim.sdk.intents import verify_intent_payload
+
+    payload = json.loads(Path(args.intent_file).read_text())
+    ok, reason = verify_intent_payload(payload)
+    if not ok:
+        print("[darwinctl] Intent verification: FAIL")
+        print(f"  Reason:      {reason}")
+        sys.exit(1)
+
+    deployment = _load_deployment_or_none(args)
+    deployment_status = "unbound"
+    if deployment is not None:
+        chain_id = int(payload["evm_leg"].get("chain_id", 0))
+        settlement_hub = normalize_evm_address(payload["evm_leg"].get("settlement_hub", ZERO_EVM_ADDRESS))
+        if chain_id != deployment.chain_id:
+            print("[darwinctl] Intent verification: FAIL")
+            print("  Reason:      deployment_chain_id_mismatch")
+            sys.exit(1)
+        if settlement_hub != deployment.settlement_hub:
+            print("[darwinctl] Intent verification: FAIL")
+            print("  Reason:      deployment_settlement_hub_mismatch")
+            sys.exit(1)
+        deployment_status = "matched"
+
+    print("[darwinctl] Intent verification: PASS")
+    print(f"  Intent hash: {payload.get('intent_hash', '')}")
+    print(f"  Account:     {payload.get('pq_leg', {}).get('acct_id', '')}")
+    print(f"  Chain ID:    {payload.get('evm_leg', {}).get('chain_id', '')}")
+    print(f"  Settle hub:  {payload.get('evm_leg', {}).get('settlement_hub', '')}")
+    print(f"  Deployment:  {deployment_status}")
 
 
 def cmd_replay_verify(args):
-    from darwin_sim.watcher.replay import replay_and_verify
+    from darwin_sim.watcher.replay import replay_and_verify, write_replay_report
     result = replay_and_verify(args.artifacts)
+    report_path = write_replay_report(args.artifacts, result)
     status = "PASS" if result["passed"] else "FAIL"
     print(f"[darwinctl] Replay verification: {status}")
     print(f"  Control fills:   {result['control_fills_loaded']}")
     print(f"  Treatment fills: {result['treatment_fills_loaded']}")
     print(f"  Recomputed:      {result['recomputed_uplift']}")
     print(f"  Published:       {result['published_uplift']}")
+    print(f"  Report:          {report_path}")
     if result["mismatches"]:
         print(f"  MISMATCHES ({len(result['mismatches'])}):")
         for m in result["mismatches"]:
             print(f"    {m}")
     if not result["passed"]:
         sys.exit(1)
+
+
+def cmd_replay_fetch(args):
+    from darwin_sim.watcher.archive import ArchiveSyncError, mirror_epoch_from_archive
+    from darwin_sim.watcher.replay import replay_and_verify, write_replay_report
+
+    try:
+        sync = mirror_epoch_from_archive(args.archive_url, args.out, epoch_id=args.epoch)
+    except ArchiveSyncError as exc:
+        print("[darwinctl] Archive replay: FAIL")
+        print(f"  Reason:          {exc}")
+        sys.exit(1)
+
+    result = replay_and_verify(sync["artifact_dir"])
+    report_path = write_replay_report(sync["artifact_dir"], result)
+    status = "PASS" if result["passed"] else "FAIL"
+
+    print(f"[darwinctl] Archive replay: {status}")
+    print(f"  Epoch:           {sync['epoch_id']}")
+    print(f"  Artifact dir:    {sync['artifact_dir']}")
+    print(f"  Files mirrored:  {sync['file_count']}")
+    print(f"  Control fills:   {result['control_fills_loaded']}")
+    print(f"  Treatment fills: {result['treatment_fills_loaded']}")
+    print(f"  Recomputed:      {result['recomputed_uplift']}")
+    print(f"  Published:       {result['published_uplift']}")
+    print(f"  Report:          {report_path}")
+    if result["mismatches"]:
+        print(f"  MISMATCHES ({len(result['mismatches'])}):")
+        for mismatch in result["mismatches"]:
+            print(f"    {mismatch}")
+    if not result["passed"]:
+        sys.exit(1)
+
+
+def cmd_status_check(args):
+    endpoints = [
+        ("archive", args.archive_url.rstrip("/") + "/healthz", True),
+        ("gateway", args.gateway_url.rstrip("/") + "/healthz", True),
+        ("router", args.router_url.rstrip("/") + "/healthz", True),
+        ("scorer", args.scorer_url.rstrip("/") + "/healthz", True),
+        ("watcher", args.watcher_url.rstrip("/") + "/healthz", True),
+        ("finalizer", args.finalizer_url.rstrip("/") + "/healthz", True),
+        ("sentinel", args.sentinel_url.rstrip("/") + "/healthz", True),
+        ("watcher_ready", args.watcher_url.rstrip("/") + "/readyz", False),
+        ("watcher_status", args.watcher_url.rstrip("/") + "/v1/status", False),
+        ("router_status", args.router_url.rstrip("/") + "/v1/status", False),
+        ("finalizer_status", args.finalizer_url.rstrip("/") + "/v1/status", False),
+        ("sentinel_status", args.sentinel_url.rstrip("/") + "/v1/status", False),
+        ("gateway_config", args.gateway_url.rstrip("/") + "/v1/config", False),
+    ]
+
+    results: dict[str, dict] = {}
+    failures: list[str] = []
+    deployment = _load_deployment_or_none(args)
+    report = {
+        "generated_at": _utc_timestamp(),
+        "allow_cold_watcher": bool(args.allow_cold_watcher),
+        "checks": {},
+        "failures": failures,
+        "notes": [],
+        "blockers": [],
+        "ready": False,
+    }
+
+    for name, url, required in endpoints:
+        try:
+            payload = _http_get_json(url)
+            results[name] = {"ok": True, "payload": payload}
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+            results[name] = {"ok": False, "error": str(exc)}
+            if required:
+                failures.append(name)
+
+    print("[darwinctl] Overlay status")
+    for service in ("archive", "gateway", "router", "scorer", "watcher", "finalizer", "sentinel"):
+        result = results[service]
+        status = "UP" if result["ok"] else "DOWN"
+        detail = result["payload"].get("status", "ok") if result["ok"] else result["error"]
+        print(f"  {service:12} {status:4} {detail}")
+        report["checks"][service] = {
+            "state": status,
+            "detail": detail,
+            "required": True,
+        }
+
+    watcher_ready = results["watcher_ready"]
+    watcher_ready_failed = False
+    if watcher_ready["ok"]:
+        payload = watcher_ready["payload"]
+        print(
+            f"  {'watcher_ready':12} {'YES' if payload.get('ready') else 'NO ':4} "
+            f"epochs={payload.get('epochs_replayed', 0)} mirrored={payload.get('last_mirrored_epoch', '')}"
+        )
+        watcher_ready_failed = not payload.get("ready")
+        report["checks"]["watcher_ready"] = {
+            "state": "YES" if payload.get("ready") else "NO",
+            "detail": (
+                f"epochs={payload.get('epochs_replayed', 0)} "
+                f"mirrored={payload.get('last_mirrored_epoch', '')}"
+            ).strip(),
+            "required": not args.allow_cold_watcher,
+        }
+    else:
+        if args.allow_cold_watcher and "HTTP Error 503" in watcher_ready["error"]:
+            print(f"  {'watcher_ready':12} COLD {watcher_ready['error']}")
+            report["checks"]["watcher_ready"] = {
+                "state": "COLD",
+                "detail": watcher_ready["error"],
+                "required": False,
+            }
+            report["notes"].append("watcher bootstrap is still cold; first archive replay remains pending")
+        else:
+            print(f"  {'watcher_ready':12} DOWN {watcher_ready['error']}")
+            watcher_ready_failed = True
+            report["checks"]["watcher_ready"] = {
+                "state": "DOWN",
+                "detail": watcher_ready["error"],
+                "required": not args.allow_cold_watcher,
+            }
+
+    if watcher_ready_failed and not args.allow_cold_watcher:
+        failures.append("watcher_ready")
+
+    watcher_status = results["watcher_status"]
+    if watcher_status["ok"]:
+        payload = watcher_status["payload"]
+        health = payload.get("health", {})
+        print(
+            f"  {'watcher_sync':12} {'ON ' if health.get('auto_sync') else 'OFF':4} "
+            f"poll={health.get('poll_interval_sec', 0)}s failures={health.get('consecutive_failures', 0)}"
+        )
+        report["checks"]["watcher_sync"] = {
+            "state": "ON" if health.get("auto_sync") else "OFF",
+            "detail": (
+                f"poll={health.get('poll_interval_sec', 0)}s "
+                f"failures={health.get('consecutive_failures', 0)}"
+            ),
+            "required": False,
+        }
+    else:
+        print(f"  {'watcher_sync':12} DOWN {watcher_status['error']}")
+        report["checks"]["watcher_sync"] = {
+            "state": "DOWN",
+            "detail": watcher_status["error"],
+            "required": False,
+        }
+
+    router_status = results["router_status"]
+    if router_status["ok"]:
+        payload = router_status["payload"]
+        print(
+            f"  {'router_flow':12} {'OK ':4} "
+            f"routed={payload.get('total_routed', 0)} control={payload.get('control_share_bps', 0)}bps"
+        )
+        report["checks"]["router_flow"] = {
+            "state": "OK",
+            "detail": (
+                f"routed={payload.get('total_routed', 0)} "
+                f"control={payload.get('control_share_bps', 0)}bps"
+            ),
+            "required": False,
+        }
+    else:
+        print(f"  {'router_flow':12} DOWN {router_status['error']}")
+        report["checks"]["router_flow"] = {
+            "state": "DOWN",
+            "detail": router_status["error"],
+            "required": False,
+        }
+
+    finalizer_status = results["finalizer_status"]
+    if finalizer_status["ok"]:
+        payload = finalizer_status["payload"]
+        print(
+            f"  {'finalizer':12} {'AUTO' if payload.get('auto_finalize') else 'MAN ':4} "
+            f"registered={payload.get('registered_epochs', 0)} finalized={payload.get('finalized_epochs', 0)}"
+        )
+        report["checks"]["finalizer_status"] = {
+            "state": "AUTO" if payload.get("auto_finalize") else "MAN",
+            "detail": (
+                f"registered={payload.get('registered_epochs', 0)} "
+                f"finalized={payload.get('finalized_epochs', 0)}"
+            ),
+            "required": False,
+        }
+    else:
+        print(f"  {'finalizer':12} DOWN {finalizer_status['error']}")
+        report["checks"]["finalizer_status"] = {
+            "state": "DOWN",
+            "detail": finalizer_status["error"],
+            "required": False,
+        }
+
+    sentinel_status = results["sentinel_status"]
+    if sentinel_status["ok"]:
+        payload = sentinel_status["payload"]
+        safe_mode = bool(payload.get("safe_mode"))
+        stale = payload.get("stale_services", {})
+        print(
+            f"  {'sentinel':12} {'SAFE' if safe_mode else 'OK ':4} "
+            f"alerts={payload.get('alert_count', 0)} stale={len(stale)}"
+        )
+        report["checks"]["sentinel_status"] = {
+            "state": "SAFE" if safe_mode else "OK",
+            "detail": f"alerts={payload.get('alert_count', 0)} stale={len(stale)}",
+            "required": False,
+        }
+        if safe_mode:
+            failures.append("sentinel_safe_mode")
+        if stale:
+            failures.append("sentinel_stale_services")
+    else:
+        print(f"  {'sentinel':12} DOWN {sentinel_status['error']}")
+        report["checks"]["sentinel_status"] = {
+            "state": "DOWN",
+            "detail": sentinel_status["error"],
+            "required": False,
+        }
+
+    gateway_config = results["gateway_config"]
+    if gateway_config["ok"]:
+        payload = gateway_config["payload"]
+        print(
+            f"  {'gateway_cfg':12} {'OK ':4} "
+            f"chain={payload.get('allowed_chain_id', '')} hub={payload.get('allowed_settlement_hub', '')}"
+        )
+        report["checks"]["gateway_cfg"] = {
+            "state": "OK",
+            "detail": (
+                f"chain={payload.get('allowed_chain_id', '')} "
+                f"hub={payload.get('allowed_settlement_hub', '')}"
+            ),
+            "required": False,
+        }
+    else:
+        print(f"  {'gateway_cfg':12} DOWN {gateway_config['error']}")
+        report["checks"]["gateway_cfg"] = {
+            "state": "DOWN",
+            "detail": gateway_config["error"],
+            "required": False,
+        }
+
+    if deployment is not None:
+        print(
+            f"  {'deployment':12} {'PIN':4} "
+            f"{deployment.network} chain={deployment.chain_id} mode={deployment.bond_asset_mode}"
+        )
+        report["deployment"] = {
+            "network": deployment.network,
+            "chain_id": deployment.chain_id,
+            "bond_asset_mode": deployment.bond_asset_mode,
+            "bond_asset": deployment.contracts.get("bond_asset", ""),
+            "settlement_hub": deployment.settlement_hub,
+            "deployer": deployment.deployer,
+            "artifact": str(deployment.path),
+            "roles": deployment.roles,
+        }
+        report["checks"]["deployment"] = {
+            "state": "PIN",
+            "detail": f"{deployment.network} chain={deployment.chain_id} mode={deployment.bond_asset_mode}",
+            "required": False,
+        }
+
+        if gateway_config["ok"]:
+            payload = gateway_config["payload"]
+            if payload.get("allowed_chain_id") != deployment.chain_id:
+                failures.append("gateway_chain_policy_mismatch")
+            if str(payload.get("allowed_settlement_hub", "")).lower() != deployment.settlement_hub:
+                failures.append("gateway_settlement_hub_mismatch")
+        else:
+            failures.append("gateway_config_unreachable")
+
+        base_rpc_url = args.base_rpc_url or _default_base_sepolia_rpc_url()
+        try:
+            rpc_chain_id = _rpc_chain_id(base_rpc_url)
+            if rpc_chain_id != deployment.chain_id:
+                failures.append("deployment_chain_id_mismatch")
+
+            deployed = 0
+            missing: list[str] = []
+            for name, address in deployment.contracts.items():
+                code = _rpc_code(base_rpc_url, address)
+                if code and code != "0x":
+                    deployed += 1
+                else:
+                    missing.append(name)
+
+            status = "OK " if not missing and rpc_chain_id == deployment.chain_id else "FAIL"
+            print(
+                f"  {'onchain':12} {status:4} "
+                f"rpc_chain={rpc_chain_id} contracts={deployed}/{len(deployment.contracts)}"
+            )
+            report["checks"]["onchain"] = {
+                "state": status.strip(),
+                "detail": f"rpc_chain={rpc_chain_id} contracts={deployed}/{len(deployment.contracts)}",
+                "required": False,
+            }
+            report["onchain"] = {
+                "ok": not missing and rpc_chain_id == deployment.chain_id,
+                "rpc_chain_id": rpc_chain_id,
+                "contracts_present": deployed,
+                "contracts_total": len(deployment.contracts),
+                "missing": missing,
+            }
+            if missing:
+                print(f"  {'missing_code':12} {', '.join(missing)}")
+                failures.append("deployment_code_missing")
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {'onchain':12} DOWN {exc}")
+            report["checks"]["onchain"] = {
+                "state": "DOWN",
+                "detail": str(exc),
+                "required": False,
+            }
+            report["onchain"] = {"ok": False, "error": str(exc)}
+            failures.append("deployment_rpc_unreachable")
+
+        try:
+            auth_failures: list[str] = []
+            auth_components: dict[str, dict] = {}
+            expected_governance = deployment.roles["governance"]
+            expected_safe_mode = deployment.roles["safe_mode_authority"]
+            expected_batch_operator = deployment.roles.get("batch_operator") or deployment.roles["epoch_operator"]
+            expected_epoch_operator = deployment.roles["epoch_operator"]
+            expected_bond_asset = deployment.contracts.get("bond_asset", "")
+            expected_challenge_escrow = deployment.contracts.get("challenge_escrow", "")
+
+            settlement_hub = deployment.contracts.get("settlement_hub", "")
+            if settlement_hub:
+                observed_governance = _rpc_call_address(base_rpc_url, settlement_hub, "0x5aa6e675")
+                observed_safe_mode = _rpc_call_address(base_rpc_url, settlement_hub, "0x6900b3a3")
+                observed_batch_operator = _rpc_call_bool(
+                    base_rpc_url,
+                    settlement_hub,
+                    "0xd220935c" + _abi_encode_address(expected_batch_operator),
+                )
+                settlement_ok = (
+                    observed_governance == expected_governance
+                    and observed_safe_mode == expected_safe_mode
+                    and observed_batch_operator
+                )
+                auth_components["settlement_hub"] = {
+                    "ok": settlement_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "safe_mode_authority": expected_safe_mode,
+                        "batch_operator": expected_batch_operator,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "safe_mode_authority": observed_safe_mode,
+                        "batch_operator_allowed": observed_batch_operator,
+                    },
+                    "summary": (
+                        f"governance={observed_governance} safe_mode={observed_safe_mode} "
+                        f"batch_operator={'yes' if observed_batch_operator else 'no'}"
+                    ),
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_settlement_governance_mismatch")
+                if observed_safe_mode != expected_safe_mode:
+                    auth_failures.append("deployment_safe_mode_authority_mismatch")
+                if not observed_batch_operator:
+                    auth_failures.append("deployment_batch_operator_mismatch")
+
+            challenge_escrow = deployment.contracts.get("challenge_escrow", "")
+            if challenge_escrow:
+                observed_governance = _rpc_call_address(base_rpc_url, challenge_escrow, "0x5aa6e675")
+                observed_bond_asset = _rpc_call_address(base_rpc_url, challenge_escrow, "0xbabef33e")
+                escrow_ok = observed_governance == expected_governance and observed_bond_asset == expected_bond_asset
+                auth_components["challenge_escrow"] = {
+                    "ok": escrow_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "bond_asset": expected_bond_asset,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "bond_asset": observed_bond_asset,
+                    },
+                    "summary": f"governance={observed_governance} bond_asset={observed_bond_asset}",
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_challenge_escrow_governance_mismatch")
+                if expected_bond_asset and observed_bond_asset != expected_bond_asset:
+                    auth_failures.append("deployment_challenge_escrow_bond_asset_mismatch")
+
+            bond_vault = deployment.contracts.get("bond_vault", "")
+            if bond_vault:
+                observed_governance = _rpc_call_address(base_rpc_url, bond_vault, "0x5aa6e675")
+                observed_challenge_escrow = _rpc_call_address(base_rpc_url, bond_vault, "0x92433067")
+                observed_bond_asset = _rpc_call_address(base_rpc_url, bond_vault, "0xbabef33e")
+                vault_ok = (
+                    observed_governance == expected_governance
+                    and observed_challenge_escrow == expected_challenge_escrow
+                    and observed_bond_asset == expected_bond_asset
+                )
+                auth_components["bond_vault"] = {
+                    "ok": vault_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "challenge_escrow": expected_challenge_escrow,
+                        "bond_asset": expected_bond_asset,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "challenge_escrow": observed_challenge_escrow,
+                        "bond_asset": observed_bond_asset,
+                    },
+                    "summary": (
+                        f"governance={observed_governance} escrow={observed_challenge_escrow} "
+                        f"bond_asset={observed_bond_asset}"
+                    ),
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_bond_vault_governance_mismatch")
+                if expected_challenge_escrow and observed_challenge_escrow != expected_challenge_escrow:
+                    auth_failures.append("deployment_bond_vault_challenge_escrow_mismatch")
+                if expected_bond_asset and observed_bond_asset != expected_bond_asset:
+                    auth_failures.append("deployment_bond_vault_bond_asset_mismatch")
+
+            species_registry = deployment.contracts.get("species_registry", "")
+            if species_registry:
+                observed_governance = _rpc_call_address(base_rpc_url, species_registry, "0x5aa6e675")
+                observed_epoch_operator = _rpc_call_address(base_rpc_url, species_registry, "0x1942c738")
+                observed_challenge_escrow = _rpc_call_address(base_rpc_url, species_registry, "0x92433067")
+                registry_ok = (
+                    observed_governance == expected_governance
+                    and observed_epoch_operator == expected_epoch_operator
+                    and observed_challenge_escrow == expected_challenge_escrow
+                )
+                auth_components["species_registry"] = {
+                    "ok": registry_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "epoch_operator": expected_epoch_operator,
+                        "challenge_escrow": expected_challenge_escrow,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "epoch_operator": observed_epoch_operator,
+                        "challenge_escrow": observed_challenge_escrow,
+                    },
+                    "summary": (
+                        f"governance={observed_governance} epoch_operator={observed_epoch_operator} "
+                        f"escrow={observed_challenge_escrow}"
+                    ),
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_species_registry_governance_mismatch")
+                if observed_epoch_operator != expected_epoch_operator:
+                    auth_failures.append("deployment_species_registry_epoch_operator_mismatch")
+                if expected_challenge_escrow and observed_challenge_escrow != expected_challenge_escrow:
+                    auth_failures.append("deployment_species_registry_challenge_escrow_mismatch")
+
+            score_registry = deployment.contracts.get("score_registry", "")
+            if score_registry:
+                observed_governance = _rpc_call_address(base_rpc_url, score_registry, "0x5aa6e675")
+                observed_epoch_operator = _rpc_call_address(base_rpc_url, score_registry, "0x1942c738")
+                score_ok = observed_governance == expected_governance and observed_epoch_operator == expected_epoch_operator
+                auth_components["score_registry"] = {
+                    "ok": score_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "epoch_operator": expected_epoch_operator,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "epoch_operator": observed_epoch_operator,
+                    },
+                    "summary": (
+                        f"governance={observed_governance} "
+                        f"epoch_operator={observed_epoch_operator}"
+                    ),
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_score_registry_governance_mismatch")
+                if observed_epoch_operator != expected_epoch_operator:
+                    auth_failures.append("deployment_score_registry_epoch_operator_mismatch")
+
+            auth_ok = not auth_failures
+            print(
+                f"  {'authz':12} {'OK ' if auth_ok else 'FAIL':4} "
+                f"components={len(auth_components)} batch_operator={expected_batch_operator}"
+            )
+            report["checks"]["onchain_auth"] = {
+                "state": "OK" if auth_ok else "FAIL",
+                "detail": f"components={len(auth_components)} batch_operator={expected_batch_operator}",
+                "required": False,
+            }
+            report["onchain_auth"] = {
+                "ok": auth_ok,
+                "components": auth_components,
+            }
+            failures.extend(auth_failures)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  {'authz':12} DOWN {exc}")
+            report["checks"]["onchain_auth"] = {
+                "state": "DOWN",
+                "detail": str(exc),
+                "required": False,
+            }
+            report["onchain_auth"] = {"ok": False, "error": str(exc)}
+            failures.append("deployment_auth_unverifiable")
+
+    blocker_messages = {
+        "watcher_ready": "watcher has not replayed an epoch yet",
+        "sentinel_safe_mode": "sentinel entered safe mode and settlement should be halted",
+        "sentinel_stale_services": "sentinel detected stale overlay service heartbeats",
+        "gateway_chain_policy_mismatch": "gateway chain policy does not match the pinned deployment",
+        "gateway_settlement_hub_mismatch": "gateway settlement hub policy does not match the pinned deployment",
+        "gateway_config_unreachable": "gateway config endpoint is unreachable; deployment pinning is unverified",
+        "deployment_chain_id_mismatch": "RPC chain id does not match the pinned deployment",
+        "deployment_code_missing": "one or more pinned contracts have no code on the target chain",
+        "deployment_rpc_unreachable": "Base Sepolia RPC is unreachable for pinned deployment verification",
+        "deployment_auth_unverifiable": "on-chain auth wiring could not be verified for the pinned deployment",
+        "deployment_settlement_governance_mismatch": "settlement hub governance does not match the pinned deployment",
+        "deployment_safe_mode_authority_mismatch": "settlement hub safe-mode authority does not match the pinned deployment",
+        "deployment_batch_operator_mismatch": "settlement hub batch operator is not authorized as pinned",
+        "deployment_challenge_escrow_governance_mismatch": "challenge escrow governance does not match the pinned deployment",
+        "deployment_challenge_escrow_bond_asset_mismatch": "challenge escrow bond asset does not match the pinned deployment",
+        "deployment_bond_vault_governance_mismatch": "bond vault governance does not match the pinned deployment",
+        "deployment_bond_vault_challenge_escrow_mismatch": "bond vault challenge escrow does not match the pinned deployment",
+        "deployment_bond_vault_bond_asset_mismatch": "bond vault bond asset does not match the pinned deployment",
+        "deployment_species_registry_governance_mismatch": "species registry governance does not match the pinned deployment",
+        "deployment_species_registry_epoch_operator_mismatch": "species registry epoch operator does not match the pinned deployment",
+        "deployment_species_registry_challenge_escrow_mismatch": "species registry challenge escrow does not match the pinned deployment",
+        "deployment_score_registry_governance_mismatch": "score registry governance does not match the pinned deployment",
+        "deployment_score_registry_epoch_operator_mismatch": "score registry epoch operator does not match the pinned deployment",
+    }
+    report["blockers"] = [blocker_messages.get(name, name) for name in failures]
+    watcher_state = report["checks"].get("watcher_ready", {}).get("state", "")
+    report["ready"] = (not failures) and watcher_state not in {"COLD", "NO", "DOWN"}
+    if watcher_state == "COLD":
+        report["blockers"].append("watcher bootstrap incomplete: first archive replay still pending")
+
+    if args.json_out:
+        _write_report(args.json_out, json.dumps(report, indent=2, sort_keys=True) + "\n")
+    if args.markdown_out:
+        _write_report(args.markdown_out, _render_status_markdown(report))
+
+    if failures:
+        sys.exit(1)
+
+
+def cmd_wallet_check(args):
+    address = args.address or os.environ.get("DARWIN_DEPLOYER_ADDRESS") or os.environ.get("DARWIN_EXPECTED_DEPLOYER")
+    if not address:
+        print("[darwinctl] wallet-check requires --address or DARWIN_DEPLOYER_ADDRESS")
+        sys.exit(1)
+
+    base_rpc_url = args.base_rpc_url or _default_base_sepolia_rpc_url()
+    sepolia_rpc_url = args.sepolia_rpc_url or _default_sepolia_rpc_url()
+    expected = args.expect_address.lower() if args.expect_address else ""
+    observed = address.lower()
+    failures: list[str] = []
+
+    try:
+        base_chain_id = _rpc_chain_id(base_rpc_url)
+        base_balance = _rpc_balance(base_rpc_url, address)
+    except Exception as exc:  # noqa: BLE001
+        print("[darwinctl] Wallet check: FAIL")
+        print(f"  Base RPC:     {base_rpc_url}")
+        print(f"  Reason:       {exc}")
+        sys.exit(1)
+
+    try:
+        sepolia_chain_id = _rpc_chain_id(sepolia_rpc_url)
+        sepolia_balance = _rpc_balance(sepolia_rpc_url, address)
+    except Exception:
+        sepolia_chain_id = 0
+        sepolia_balance = 0
+
+    if expected and observed != expected:
+        failures.append("address_mismatch")
+    if base_chain_id != 84532:
+        failures.append("unexpected_base_chain_id")
+
+    print("[darwinctl] Wallet check")
+    print(f"  Address:            {address}")
+    if expected:
+        print(f"  Expected address:   {args.expect_address}")
+        print(f"  Address match:      {observed == expected}")
+    print(f"  Base RPC:           {base_rpc_url}")
+    print(f"  Base chain id:      {base_chain_id}")
+    print(f"  Base balance ETH:   {_wei_to_eth(base_balance)}")
+    print(f"  Sepolia RPC:        {sepolia_rpc_url}")
+    print(f"  Sepolia chain id:   {sepolia_chain_id or 'unreachable'}")
+    print(f"  Sepolia balance:    {_wei_to_eth(sepolia_balance)}")
+
+    if failures:
+        print(f"  Status:             FAIL ({', '.join(failures)})")
+        sys.exit(1)
+    print("  Status:             OK")
 
 
 def cmd_sim_e2(args):
@@ -157,7 +1088,37 @@ def main():
 
     # keys gen
     p = sub.add_parser("keys-gen", help="Generate PQ + EVM keypair")
+    p.add_argument("--chain-id", type=int)
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
     p.add_argument("--out", default="darwin_account.json")
+
+    # wallet init
+    p = sub.add_parser("wallet-init", help="Create an encrypted DARWIN wallet")
+    p.add_argument("--chain-id", type=int)
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
+    p.add_argument("--label", default="")
+    p.add_argument("--hot-capabilities", default="0xff")
+    p.add_argument("--hot-value-limit-usd", type=int, default=50_000)
+    p.add_argument("--recovery-delay-sec", type=int, default=86400)
+    p.add_argument("--passphrase", default="")
+    p.add_argument("--passphrase-env", default="DARWIN_WALLET_PASSPHRASE")
+    p.add_argument("--out", default="darwin_wallet.json")
+
+    # wallet show
+    p = sub.add_parser("wallet-show", help="Show DARWIN wallet public metadata")
+    p.add_argument("wallet_file")
+
+    # wallet export
+    p = sub.add_parser("wallet-export-public", help="Export public account material from a wallet")
+    p.add_argument("wallet_file")
+    p.add_argument("--out", default="darwin_account.json")
+
+    # deployment show
+    p = sub.add_parser("deployment-show", help="Inspect a deployment artifact")
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
 
     # config lint
     p = sub.add_parser("config-lint", help="Validate config")
@@ -171,11 +1132,53 @@ def main():
     p.add_argument("--price", type=float, default=3500.0)
     p.add_argument("--slippage", type=int, default=50)
     p.add_argument("--profile", default="BALANCED")
+    p.add_argument("--chain-id", type=int)
+    p.add_argument("--settlement-hub")
+    p.add_argument("--wallet-file", default="")
+    p.add_argument("--passphrase", default="")
+    p.add_argument("--passphrase-env", default="DARWIN_WALLET_PASSPHRASE")
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
     p.add_argument("--out", default="intent.json")
+
+    # intent verify
+    p = sub.add_parser("intent-verify", help="Verify dual-envelope intent")
+    p.add_argument("intent_file")
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
 
     # replay verify
     p = sub.add_parser("replay-verify", help="Watcher replay verification")
     p.add_argument("artifacts", help="Path to artifact directory")
+
+    # replay fetch
+    p = sub.add_parser("replay-fetch", help="Mirror an archive epoch and verify it")
+    p.add_argument("--archive-url", required=True)
+    p.add_argument("--epoch", default="latest")
+    p.add_argument("--out", default="watcher_artifacts")
+
+    # status check
+    p = sub.add_parser("status-check", help="Check overlay/archive readiness")
+    p.add_argument("--archive-url", default="http://127.0.0.1:9447")
+    p.add_argument("--gateway-url", default="http://127.0.0.1:9443")
+    p.add_argument("--router-url", default="http://127.0.0.1:9444")
+    p.add_argument("--scorer-url", default="http://127.0.0.1:9445")
+    p.add_argument("--watcher-url", default="http://127.0.0.1:9446")
+    p.add_argument("--finalizer-url", default="http://127.0.0.1:9448")
+    p.add_argument("--sentinel-url", default="http://127.0.0.1:9449")
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
+    p.add_argument("--base-rpc-url", default="")
+    p.add_argument("--allow-cold-watcher", action="store_true")
+    p.add_argument("--json-out", default="")
+    p.add_argument("--markdown-out", default="")
+
+    # wallet check
+    p = sub.add_parser("wallet-check", help="Inspect deployer/testnet wallet balances")
+    p.add_argument("--address")
+    p.add_argument("--expect-address")
+    p.add_argument("--base-rpc-url", default="")
+    p.add_argument("--sepolia-rpc-url", default="")
 
     # sim run-e2
     p = sub.add_parser("sim-e2", help="Run E2 experiment")
@@ -201,12 +1204,28 @@ def main():
 
     if args.command == "keys-gen":
         cmd_keys_gen(args)
+    elif args.command == "wallet-init":
+        cmd_wallet_init(args)
+    elif args.command == "wallet-show":
+        cmd_wallet_show(args)
+    elif args.command == "wallet-export-public":
+        cmd_wallet_export_public(args)
+    elif args.command == "deployment-show":
+        cmd_deployment_show(args)
     elif args.command == "config-lint":
         cmd_config_lint(args)
     elif args.command == "intent-create":
         cmd_intent_create(args)
+    elif args.command == "intent-verify":
+        cmd_intent_verify(args)
     elif args.command == "replay-verify":
         cmd_replay_verify(args)
+    elif args.command == "replay-fetch":
+        cmd_replay_fetch(args)
+    elif args.command == "status-check":
+        cmd_status_check(args)
+    elif args.command == "wallet-check":
+        cmd_wallet_check(args)
     elif args.command == "sim-e2":
         cmd_sim_e2(args)
     elif args.command == "sim-suite":

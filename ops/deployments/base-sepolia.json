@@ -1,0 +1,23 @@
+{
+  "bond_asset_mode": "external",
+  "chain_id": 84532,
+  "contracts": {
+    "bond_asset": "0x4200000000000000000000000000000000000006",
+    "bond_vault": "0xa842Dc4BF4CA3e1f1CA07714867145038D5e0ab4",
+    "challenge_escrow": "0xd71e90F784f45FeC0b6b36454186CD88eaD126a7",
+    "epoch_manager": "0xE53A27DA8e3C2c69495a97C3AcD6E484AbD7892B",
+    "score_registry": "0x9135b4BDDa2739212a7c5c0dB0C45AdEc42b7346",
+    "settlement_hub": "0x556d75f4455cf3f0D7c5F9c6e7ea49447f66D8d2",
+    "shared_pair_vault": "0xbecDB8e518C9C1B57db0656297F5F1c1FE5c2851",
+    "species_registry": "0xcaC5E4C711b4FfD9C76354FF8FfD4E236b1798AB"
+  },
+  "deployed_at": 1775408946,
+  "deployer": "0xBFf27f141250C1323431eDB1BfCbB7D550a168f6",
+  "network": "base-sepolia",
+  "roles": {
+    "batch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+    "epoch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+    "safe_mode_authority": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d"
+  }
+}

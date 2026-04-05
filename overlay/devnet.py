@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 from urllib.request import Request, urlopen
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 ROOT = Path(__file__).resolve().parent.parent
 SIM = ROOT / "sim"
@@ -24,22 +24,28 @@ sys.path.insert(0, str(SIM))
 
 SERVICES = {
     "gateway":   {"port": 9443, "cmd": ["python", "overlay/gateway/server.py",   "9443", "/tmp/darwin_devnet_full/gateway"]},
-    "router":    {"port": 9444, "cmd": ["python", "overlay/router/service.py",    "9444"]},
+    "router":    {"port": 9444, "cmd": ["python", "overlay/router/service.py",    "9444", "1500", "/tmp/darwin_devnet_full/router/state.json"]},
     "scorer":    {"port": 9445, "cmd": ["python", "overlay/scorer/service.py",    "9445"]},
     "watcher":   {"port": 9446, "cmd": ["python", "overlay/watcher/service.py",   "9446", "/tmp/darwin_devnet_full/watcher", "http://localhost:9447"]},
     "archive":   {"port": 9447, "cmd": ["python", "overlay/archive/service.py",   "9447", "/tmp/darwin_devnet_full/archive"]},
-    "finalizer": {"port": 9448, "cmd": ["python", "overlay/finalizer/service.py", "9448", "3"]},
-    "sentinel":  {"port": 9449, "cmd": ["python", "overlay/sentinel/service.py",  "9449"]},
+    "finalizer": {"port": 9448, "cmd": ["python", "overlay/finalizer/service.py", "9448", "3", "/tmp/darwin_devnet_full/finalizer/state.json", "1"]},
+    "sentinel":  {"port": 9449, "cmd": ["python", "overlay/sentinel/service.py",  "9449", "/tmp/darwin_devnet_full/sentinel/state.json"]},
 }
 
 
 def _post(url: str, data: dict) -> dict:
     req = Request(url, data=json.dumps(data).encode(), headers={"Content-Type": "application/json"})
-    return json.loads(urlopen(req).read())
+    try:
+        return json.loads(urlopen(req).read())
+    except HTTPError as e:
+        return {"error": f"http_{e.code}", "body": e.read().decode()}
 
 
 def _get(url: str) -> dict:
-    return json.loads(urlopen(url).read())
+    try:
+        return json.loads(urlopen(url).read())
+    except HTTPError as e:
+        return {"error": f"http_{e.code}", "body": e.read().decode()}
 
 
 def _wait_healthy(port: int, timeout: int = 10) -> bool:
@@ -139,11 +145,14 @@ def main():
     gw_stats = _get("http://localhost:9443/v1/stats")
     print(f"  Gateway admitted: {gw_stats['admitted']}  Rejected: {gw_stats['rejected']}")
 
-    # Watcher replay
+    # Watcher replay through the archive path
     print("\n[7/8] Watcher replay verification...")
-    replay = _post("http://localhost:9446/v1/replay/local",
-                   {"artifact_dir": "/tmp/darwin_devnet_full/e2"})
+    archive_epochs = _get("http://localhost:9446/v1/archive/epochs")
+    replay = _post("http://localhost:9446/v1/replay/latest", {})
+    ready = _get("http://localhost:9446/readyz")
+    mirrored_epoch = replay.get("archive_epoch_id", "")
     print(f"  Passed: {replay['passed']}  Mismatches: {len(replay['mismatches'])}")
+    print(f"  Archive epochs: {len(archive_epochs.get('epochs', []))}  Mirrored epoch: {mirrored_epoch}  Ready: {ready.get('ready')}")
 
     # Finalize
     print("\n[8/8] Epoch finalization...")
@@ -154,8 +163,11 @@ def main():
         "weight_root": score.get("weight_root", ""),
     })
     time.sleep(4)
-    fin = _post("http://localhost:9448/v1/finalize/1", {})
-    print(f"  Status: {fin.get('status', fin.get('error'))}")
+    _post("http://localhost:9448/v1/poll-once", {})
+    fin_status = _get("http://localhost:9448/v1/status")
+    fin = _get("http://localhost:9448/v1/check/1")
+    epoch_status = "finalized" if fin_status.get("latest_finalized_epoch") == 1 else fin.get("reason", "pending")
+    print(f"  Status: {epoch_status}")
 
     # Final summary
     print("\n" + "=" * 60)
@@ -167,7 +179,7 @@ def main():
     print(f"  Intents:      {gw_stats['admitted']} admitted, {gw_stats['rejected']} rejected")
     print(f"  Routed:       {stats['total_routed']} ({dict(stats['routes_by_species'])})")
     print(f"  Watcher:      {'PASS' if replay['passed'] else 'FAIL'}")
-    print(f"  Epoch:        {fin.get('status', fin.get('error'))}")
+    print(f"  Epoch:        {epoch_status}")
     print(f"  Safe mode:    {sentinel['safe_mode']}")
     print("=" * 60)
 

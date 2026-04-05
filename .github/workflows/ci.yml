@@ -1,0 +1,56 @@
+name: ci
+
+"on":
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Bootstrap
+        shell: bash
+        run: ./ops/bootstrap_dev.sh
+
+      - name: Python self-check
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          cd sim
+          python -m pytest tests/test_end_to_end.py -v
+
+      - name: Contract suite
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          cd contracts
+          forge test --summary
+
+      - name: Overlay devnet
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          python overlay/devnet.py
+
+      - name: Local deployment smoke
+        shell: bash
+        run: ./ops/smoke_deploy_local.sh

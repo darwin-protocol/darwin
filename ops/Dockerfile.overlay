@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 WORKDIR /app
 COPY sim/pyproject.toml sim/
-RUN pip install --no-cache-dir pyyaml
 COPY sim/ sim/
+RUN pip install --no-cache-dir ./sim
 COPY overlay/ overlay/
 EXPOSE 9443 9444 9445 9446 9447 9448 9449
