@@ -1,0 +1,54 @@
+# DARWIN v0.4 baseline simulator config
+suite_id: darwin-sim-v0.4
+pairs:
+  - ETH_USDC
+
+species:
+  - id: S0_SENTINEL
+    kind: sentinel_clamm
+    enabled: true
+    canary: false
+  - id: S1_BATCH_5S
+    kind: batch_auction
+    enabled: true
+    canary: true
+    batch_window_sec: 5
+  - id: S2_RFQ_ORACLE
+    kind: rfq_oracle
+    enabled: true
+    canary: true
+
+epochs:
+  duration_sec: 3600
+  warmup_epochs: 6
+  control_share_bps_default: 1500
+
+routing:
+  policy: softmax
+  beta_default: 2.0
+  epsilon_default: 0.08
+  novelty_bonus_x1e6: 25000
+  canary_weight_cap_bps: 500
+
+scoring:
+  entity_cap_bps: 1500
+  trim_alpha_bps: 500
+  min_external_fills: 25
+  markout_horizon_sec: 60
+  fee_floor_bps: 2.0
+  protocol_notional_floor_bps: 0.5
+  weight_coefficients:
+    trader_surplus: 0.35
+    lp_return: 0.20
+    fill_rate: 0.15
+    revenue: 0.10
+    adverse_markout: 0.12
+    risk_penalty: 0.08
+
+rebalance:
+  soft_idle_drift_bps: 15
+  soft_rebalance_bps: 50
+  hard_rebalance_bps: 200
+  gain_bps: 2500          # kappa_reb = gain_bps / 10000 = 0.25
+  forced_batches: 4
+  max_hard_breaches: 2
