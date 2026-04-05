@@ -1,0 +1,74 @@
+version: "3.9"
+
+# DARWIN v1 overlay devnet — all 7 services
+# Usage: docker compose -f ops/docker-compose.devnet.yml up
+
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/gateway/server.py", "9443", "/data/gateway"]
+    ports:
+      - "9443:9443"
+    volumes:
+      - gateway_data:/data/gateway
+
+  router:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/router/service.py", "9444"]
+    ports:
+      - "9444:9444"
+
+  scorer:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/scorer/service.py", "9445"]
+    ports:
+      - "9445:9445"
+
+  watcher:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/watcher/service.py", "9446", "/data/watcher", "http://archive:9447"]
+    ports:
+      - "9446:9446"
+    volumes:
+      - watcher_data:/data/watcher
+    depends_on:
+      - archive
+
+  archive:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/archive/service.py", "9447", "/data/archive"]
+    ports:
+      - "9447:9447"
+    volumes:
+      - archive_data:/data/archive
+
+  finalizer:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/finalizer/service.py", "9448", "1800"]
+    ports:
+      - "9448:9448"
+
+  sentinel:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile.overlay
+    command: ["python", "overlay/sentinel/service.py", "9449"]
+    ports:
+      - "9449:9449"
+
+volumes:
+  gateway_data:
+  watcher_data:
+  archive_data:
