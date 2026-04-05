@@ -9,8 +9,8 @@ The repository is an alpha implementation that works end to end locally today an
 
 ## What Is Live Now
 
-- Python self-check: `31/31` passing
-- Solidity contracts: `87` passing checks (`60` unit tests + `18` fuzz targets + `9` invariants)
+- Python self-check: `33/33` passing
+- Solidity contracts: `93` passing checks (`66` unit tests + `18` fuzz targets + `9` invariants)
 - Overlay devnet: `7/7` services up, watcher archive replay passing, epoch finalizing
 - Local Anvil deployment smoke: deploy script writes a complete artifact
 - Base Sepolia deployment: public testnet artifact emitted at `ops/deployments/base-sepolia.json` with explicit `bond_asset_mode`
@@ -27,6 +27,7 @@ The repository is an alpha implementation that works end to end locally today an
 - Finalizer automation: background auto-polling can finalize registered epochs as soon as the challenge window expires
 - Wallet readiness: `darwinctl wallet-check` inspects deployer balances on Base Sepolia and Ethereum Sepolia
 - Wallet suite: `wallet-init`, `wallet-show`, `wallet-export-public`, and `intent-create --wallet-file` provide an encrypted local trader wallet path instead of one-off ephemeral accounts
+- DRW alpha genesis stack: the repo now includes `DRWToken`, `DRWStaking`, `./ops/preflight_drw_genesis.sh`, `./ops/init_drw_genesis.sh`, and `./ops/deploy_drw_genesis.sh` so a local or testnet deployment can produce a fixed DRW genesis and staking reserve artifact
 - Contract hardening: duplicate challenge IDs rejected, pair recreation blocked, safe mode halts settlement, batch submission and intent cancellation are operator-gated, malformed batch headers and malformed net transfers are rejected, net settlement is restricted to the batch submitter or governance, epoch IDs are immutable, epoch roots must be non-zero and only post after close, score roots are single-use and non-zero, missing species can no longer be mutated, zero-value LP actions and ghost pair weight updates are rejected, full root gating on epoch finalization, stateful invariants passing
 - GitHub Actions workflow: bootstrap + Python + Foundry + devnet + deployment smoke
 
@@ -44,11 +45,21 @@ In the DARWIN spec, DRW exists for:
 
 The important current reality is simpler:
 
-- **DRW is not activated in this repo yet**
-- **there is no live DRW token contract here**
-- **there is no on-chain DRW earning path live today**
+- **the public Base Sepolia canary is still the WETH-bond alpha**
+- **DRW is still not activated for the public canary economics**
+- **there is still no live DRW earning path on the public canary today**
 
 Today, the live alpha uses WETH-style bonding and rewards for challenge flows. See `contracts/src/BondVault.sol` and `contracts/src/ChallengeEscrow.sol`.
+
+What changed in this repo is that the missing DRW genesis path is now implemented for local and optional testnet deployment:
+
+- `contracts/src/DRWToken.sol`
+- `contracts/src/DRWStaking.sol`
+- `contracts/script/DeployDRWGenesis.s.sol`
+- `ops/init_drw_genesis.sh`
+- `ops/deploy_drw_genesis.sh`
+
+That means DARWIN can now produce a fixed-supply alpha DRW genesis artifact and staking reserve when you explicitly deploy that layer against an existing DARWIN deployment artifact.
 
 ## Wallet Suite
 
@@ -74,6 +85,53 @@ That creates or refreshes:
 - `ops/wallets/darwin-demo-trader.passphrase`
 - `sim/intent-base-sepolia.json`
 
+Manual wallet path:
+
+```bash
+export DARWIN_WALLET_PASSPHRASE='change-me-local'
+darwinctl wallet-init --deployment-file ops/deployments/base-sepolia.json --label alpha-trader --out darwin_wallet.json
+darwinctl wallet-show darwin_wallet.json
+darwinctl wallet-export-public darwin_wallet.json --out darwin_account.json
+```
+
+## How To Produce DRW Genesis
+
+There are now two concrete ways to do it.
+
+Local one-command smoke path:
+
+```bash
+DARWIN_DEPLOY_DRW_GENESIS=1 ./ops/smoke_deploy_local.sh
+darwinctl deployment-show --deployment-file ops/deployments/local-anvil.json
+```
+
+That deploys the core DARWIN contracts, deploys `DRWToken` + `DRWStaking`, mints a fixed genesis allocation, schedules the initial staking rewards, and merges the DRW section into `ops/deployments/local-anvil.json`.
+
+Existing deployment artifact path:
+
+```bash
+cp ops/base_sepolia.env.example .env.base-sepolia
+# fill in DARWIN_DEPLOYER_PRIVATE_KEY and any optional DRW recipient overrides once
+
+./ops/preflight_drw_genesis.sh
+./ops/init_drw_genesis.sh
+darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
+```
+
+Default alpha genesis parameters:
+
+- total supply: `1,000,000,000 DRW`
+- treasury: `20%`
+- insurance: `20%`
+- sponsor rewards: `10%`
+- staking reserve: `30%`
+- community reserve: `20%`
+- staking duration: `31536000` seconds (`365 days`)
+
+`./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh` now auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
+
+All of those can be overridden with `DARWIN_DRW_*` env vars in [ops/base_sepolia.env.example](/path/to/darwin/ops/base_sepolia.env.example).
+
 ## How You Earn In The DARWIN Design
 
 ### What is actually earnable today
@@ -98,7 +156,7 @@ Reference design from the spec:
 - Treasury: 20%
 - Species sponsor reward: 10%
 
-These are protocol-design targets, not live token mechanics in this repo yet.
+These are protocol-design targets. The repo now has an alpha DRW genesis/staking implementation, but the public Base Sepolia canary has not been switched over to DRW-bond economics yet.
 
 ## What DARWIN Is Not
 
@@ -182,8 +240,8 @@ Gateway -> Router -> Species
 
 | Component | Status |
 |---|---|
-| Python self-check | Verified locally (`31/31` passing) |
-| Solidity contracts | Verified locally (`60` unit tests + `18` fuzz targets + `9` invariants) |
+| Python self-check | Verified locally (`33/33` passing) |
+| Solidity contracts | Verified locally (`66` unit tests + `18` fuzz targets + `9` invariants) |
 | Gateway verification | Real signature verification plus optional deployment pinning |
 | Overlay services | Verified locally (`7/7` services up), including watcher archive replay, readiness after archive ingest, auto-sync status reporting, persisted state snapshots, finalizer auto-poll, and deployment-pinned on-chain auth checks |
 | Local deployment | Working on Anvil with emitted artifact |
@@ -192,7 +250,7 @@ Gateway -> Router -> Species
 | External watcher handoff | Exportable as an operator packet via `ops/export_external_watcher_bundle.py` |
 | External watcher intake | Verifiable against the pinned deployment and bundle via `ops/intake_external_watcher_report.py` |
 | External packet prep | Sendable operator/reviewer tarballs via `ops/prepare_external_packets.py` |
-| DRW activation | Not live; blocked behind canary and security gates |
+| DRW activation | Optional alpha genesis path implemented locally/testnet; not live on the public canary |
 | Wallet suite | Encrypted local wallet files plus repeatable intent signing via `darwinctl wallet-*` |
 
 ## Quick Start
@@ -214,6 +272,7 @@ cd ..
 darwinctl wallet-show ops/wallets/darwin-demo-trader.wallet.json
 python overlay/devnet.py
 ./ops/smoke_deploy_local.sh
+DARWIN_DEPLOY_DRW_GENESIS=1 ./ops/smoke_deploy_local.sh
 darwinctl deployment-show --deployment-file ops/deployments/local-anvil.json
 darwinctl intent-create --wallet-file ops/wallets/darwin-demo-trader.wallet.json --deployment-file ops/deployments/local-anvil.json
 darwinctl intent-verify intent.json --deployment-file ops/deployments/local-anvil.json
@@ -245,6 +304,7 @@ export DARWIN_BOND_ASSET=0x4200000000000000000000000000000000000006
 
 There is also a starter env template in `ops/base_sepolia.env.example`.
 If `ALCHEMY_API_KEY` is set, the preflight and deploy scripts can derive Base Sepolia and Ethereum Sepolia RPC URLs automatically.
+`./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh` auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
 
 What preflight checks:
 
@@ -260,6 +320,16 @@ You can inspect a wallet directly before preflight:
 ```bash
 darwinctl wallet-check --address 0xD4C2E5225a69E6947F6B95479e3e4E5D28EAEF04
 darwinctl wallet-check --address 0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d
+```
+
+For DRW specifically, the shortest path is now:
+
+```bash
+cp ops/base_sepolia.env.example .env.base-sepolia
+# fill in DARWIN_DEPLOYER_PRIVATE_KEY and any optional DARWIN_DRW_* overrides
+
+./ops/preflight_drw_genesis.sh
+./ops/init_drw_genesis.sh
 ```
 
 If preflight passes:

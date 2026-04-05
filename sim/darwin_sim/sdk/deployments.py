@@ -24,6 +24,7 @@ class DarwinDeployment:
     roles: dict[str, str]
     deployer: str
     deployed_at: int
+    drw: dict | None = None
 
 
 def _normalize_address_fields(values: dict) -> dict:
@@ -71,4 +72,5 @@ def load_deployment(deployment_file: str | os.PathLike | None = None, network: s
         roles=roles,
         deployer=normalize_evm_address(data["deployer"]),
         deployed_at=int(data["deployed_at"]),
+        drw=data.get("drw"),
     )

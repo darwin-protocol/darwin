@@ -126,12 +126,22 @@ def _decode_bool(result: str) -> bool:
     return int(result, 16) != 0
 
 
+def _decode_uint(result: str) -> int:
+    if not result.startswith("0x"):
+        raise ValueError(f"invalid eth_call uint result: {result}")
+    return int(result, 16)
+
+
 def _rpc_call_address(url: str, address: str, selector: str) -> str:
     return _decode_address(_rpc_call(url, address, selector))
 
 
 def _rpc_call_bool(url: str, address: str, call_data: str) -> bool:
     return _decode_bool(_rpc_call(url, address, call_data))
+
+
+def _rpc_call_uint(url: str, address: str, call_data: str) -> int:
+    return _decode_uint(_rpc_call(url, address, call_data))
 
 
 def _wei_to_eth(wei: int) -> str:
@@ -146,7 +156,9 @@ def _utc_timestamp(ts: float | None = None) -> str:
 def _write_report(path_value: str, content: str) -> None:
     path = Path(path_value)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content)
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    tmp_path.write_text(content)
+    tmp_path.replace(path)
 
 
 def _render_status_markdown(report: dict) -> str:
@@ -170,6 +182,16 @@ def _render_status_markdown(report: dict) -> str:
             f"- Batch operator: `{roles.get('batch_operator', roles.get('epoch_operator', ''))}`",
             f"- Safe mode authority: `{roles.get('safe_mode_authority', '')}`",
         ])
+        drw = deployment.get("drw")
+        if drw:
+            contracts = drw.get("contracts", {})
+            lines.extend([
+                f"- DRW enabled: `{drw.get('enabled', False)}`",
+                f"- DRW token: `{contracts.get('drw_token', '')}`",
+                f"- DRW staking: `{contracts.get('drw_staking', '')}`",
+                f"- DRW supply: `{drw.get('total_supply', '')}`",
+                f"- DRW duration: `{drw.get('staking_duration', '')}`",
+            ])
 
     lines.extend([
         "",
@@ -315,6 +337,25 @@ def cmd_deployment_show(args):
     if deployment.roles.get("batch_operator"):
         print(f"  Batch operator:   {deployment.roles['batch_operator']}")
     print(f"  Safe mode auth:   {deployment.roles['safe_mode_authority']}")
+    if deployment.drw:
+        drw = deployment.drw
+        contracts = drw.get("contracts", {})
+        allocations = drw.get("allocations", {})
+        print("  DRW enabled:      yes")
+        print(f"  DRW token:        {contracts.get('drw_token', '')}")
+        print(f"  DRW staking:      {contracts.get('drw_staking', '')}")
+        print(f"  DRW supply:       {drw.get('total_supply', '')}")
+        print(f"  DRW duration:     {drw.get('staking_duration', '')}")
+        print(f"  DRW treasury:     {allocations.get('treasury_recipient', '')} ({allocations.get('treasury_amount', '')})")
+        print(
+            f"  DRW insurance:    {allocations.get('insurance_recipient', '')} ({allocations.get('insurance_amount', '')})"
+        )
+        print(
+            "  DRW staking res:  "
+            f"{allocations.get('staking_recipient', '')} ({allocations.get('staking_amount', '')})"
+        )
+    else:
+        print("  DRW enabled:      no")
 
 
 def cmd_config_lint(args):
@@ -721,6 +762,7 @@ def cmd_status_check(args):
             "deployer": deployment.deployer,
             "artifact": str(deployment.path),
             "roles": deployment.roles,
+            "drw": deployment.drw,
         }
         report["checks"]["deployment"] = {
             "state": "PIN",
@@ -945,6 +987,77 @@ def cmd_status_check(args):
                 if observed_epoch_operator != expected_epoch_operator:
                     auth_failures.append("deployment_score_registry_epoch_operator_mismatch")
 
+            drw_token = deployment.contracts.get("drw_token", "")
+            if drw_token:
+                observed_governance = _rpc_call_address(base_rpc_url, drw_token, "0x5aa6e675")
+                observed_finalized = _rpc_call_bool(base_rpc_url, drw_token, "0x4421d5f5")
+                observed_total_supply = _rpc_call_uint(base_rpc_url, drw_token, "0x18160ddd")
+                expected_total_supply = int((deployment.drw or {}).get("total_supply", 0))
+                token_ok = (
+                    observed_governance == expected_governance
+                    and observed_finalized
+                    and (expected_total_supply == 0 or observed_total_supply == expected_total_supply)
+                )
+                auth_components["drw_token"] = {
+                    "ok": token_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "genesis_finalized": True,
+                        "total_supply": expected_total_supply,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "genesis_finalized": observed_finalized,
+                        "total_supply": observed_total_supply,
+                    },
+                    "summary": (
+                        f"governance={observed_governance} "
+                        f"genesis_finalized={'yes' if observed_finalized else 'no'} "
+                        f"total_supply={observed_total_supply}"
+                    ),
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_drw_token_governance_mismatch")
+                if not observed_finalized:
+                    auth_failures.append("deployment_drw_token_genesis_open")
+                if expected_total_supply and observed_total_supply != expected_total_supply:
+                    auth_failures.append("deployment_drw_token_supply_mismatch")
+
+            drw_staking = deployment.contracts.get("drw_staking", "")
+            if drw_staking:
+                observed_governance = _rpc_call_address(base_rpc_url, drw_staking, "0x5aa6e675")
+                observed_token = _rpc_call_address(base_rpc_url, drw_staking, "0x6891e77c")
+                observed_duration = _rpc_call_uint(base_rpc_url, drw_staking, "0xf520e7e5")
+                expected_duration = int((deployment.drw or {}).get("staking_duration", 0))
+                staking_ok = (
+                    observed_governance == expected_governance
+                    and (not drw_token or observed_token == drw_token)
+                    and (expected_duration == 0 or observed_duration == expected_duration)
+                )
+                auth_components["drw_staking"] = {
+                    "ok": staking_ok,
+                    "expected": {
+                        "governance": expected_governance,
+                        "drw_token": drw_token,
+                        "reward_duration": expected_duration,
+                    },
+                    "observed": {
+                        "governance": observed_governance,
+                        "drw_token": observed_token,
+                        "reward_duration": observed_duration,
+                    },
+                    "summary": (
+                        f"governance={observed_governance} "
+                        f"token={observed_token} duration={observed_duration}"
+                    ),
+                }
+                if observed_governance != expected_governance:
+                    auth_failures.append("deployment_drw_staking_governance_mismatch")
+                if drw_token and observed_token != drw_token:
+                    auth_failures.append("deployment_drw_staking_token_mismatch")
+                if expected_duration and observed_duration != expected_duration:
+                    auth_failures.append("deployment_drw_staking_duration_mismatch")
+
             auth_ok = not auth_failures
             print(
                 f"  {'authz':12} {'OK ' if auth_ok else 'FAIL':4} "
@@ -994,6 +1107,12 @@ def cmd_status_check(args):
         "deployment_species_registry_challenge_escrow_mismatch": "species registry challenge escrow does not match the pinned deployment",
         "deployment_score_registry_governance_mismatch": "score registry governance does not match the pinned deployment",
         "deployment_score_registry_epoch_operator_mismatch": "score registry epoch operator does not match the pinned deployment",
+        "deployment_drw_token_governance_mismatch": "DRW token governance does not match the pinned deployment",
+        "deployment_drw_token_genesis_open": "DRW token genesis is still open and not finalized",
+        "deployment_drw_token_supply_mismatch": "DRW token total supply does not match the pinned deployment",
+        "deployment_drw_staking_governance_mismatch": "DRW staking governance does not match the pinned deployment",
+        "deployment_drw_staking_token_mismatch": "DRW staking token does not match the pinned deployment",
+        "deployment_drw_staking_duration_mismatch": "DRW staking reward duration does not match the pinned deployment",
     }
     report["blockers"] = [blocker_messages.get(name, name) for name in failures]
     watcher_state = report["checks"].get("watcher_ready", {}).get("state", "")

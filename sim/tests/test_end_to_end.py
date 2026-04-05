@@ -2059,6 +2059,156 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("Focus Areas", (handoff / "EXTERNAL_REVIEW_REQUEST.md").read_text())
             print("  Ops: prepare_external_packets emits sendable operator and reviewer archives")
 
+    def test_32_deployment_show_with_drw_genesis(self):
+        """CLI: deployment-show surfaces DRW genesis metadata when present."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_staking": "0x0000000000000000000000000000000000000012",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+                "drw": {
+                    "enabled": True,
+                    "total_supply": 1_000_000_000000000000000000000,
+                    "staking_duration": 31536000,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000011",
+                        "drw_staking": "0x0000000000000000000000000000000000000012",
+                    },
+                    "allocations": {
+                        "treasury_recipient": "0x0000000000000000000000000000000000000009",
+                        "treasury_amount": 200,
+                        "insurance_recipient": "0x0000000000000000000000000000000000000009",
+                        "insurance_amount": 200,
+                        "staking_recipient": "0x0000000000000000000000000000000000000012",
+                        "staking_amount": 300,
+                    },
+                },
+            }))
+
+            env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM)}
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "darwin_sim.cli.darwinctl",
+                    "deployment-show",
+                    "--deployment-file",
+                    str(deployment),
+                ],
+                cwd=str(SIM),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("DRW enabled:      yes", result.stdout)
+            self.assertIn("DRW token:", result.stdout)
+            self.assertIn("DRW staking:", result.stdout)
+            print("  CLI: deployment-show prints DRW genesis metadata when the artifact includes it")
+
+    def test_33_preflight_drw_genesis_loads_env_file(self):
+        """Ops: DRW genesis preflight can bootstrap from a saved .env-style file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            env_file = tmp / ".env.base-sepolia"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+            }))
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    length = int(self.headers.get("Content-Length", "0"))
+                    body = json.loads(self.rfile.read(length).decode())
+                    method = body.get("method")
+                    params = body.get("params", [])
+
+                    if method == "eth_chainId":
+                        result = hex(84532)
+                    elif method == "eth_getBalance":
+                        result = hex(2 * 10**15)
+                    else:
+                        result = "0x"
+
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            rpc_server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            rpc_thread = Thread(target=rpc_server.serve_forever, daemon=True)
+            rpc_thread.start()
+
+            env_file.write_text(
+                "\n".join([
+                    f"DARWIN_RPC_URL=http://127.0.0.1:{rpc_server.server_port}",
+                    "DARWIN_DEPLOYER_ADDRESS=0x00000000000000000000000000000000000000aa",
+                    "",
+                ])
+            )
+
+            try:
+                env = {
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "DARWIN_DEPLOYMENT_FILE": str(deployment),
+                }
+                result = subprocess.run(
+                    ["bash", str(ROOT / "ops" / "preflight_drw_genesis.sh")],
+                    cwd=str(ROOT),
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                rpc_server.shutdown()
+                rpc_server.server_close()
+                rpc_thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("ready_to_deploy:      yes", result.stdout)
+            self.assertIn("existing_drw:         no", result.stdout)
+            self.assertIn("governance:           0x0000000000000000000000000000000000000009", result.stdout)
+            print("  Ops: DRW genesis preflight can load env defaults from a saved file")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

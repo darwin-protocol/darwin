@@ -24,13 +24,14 @@ A bug bounty program will be established before mainnet launch. Details will be 
 
 | Component | Status |
 |---|---|
-| Contracts | Written, tested (`60` unit tests + `18` fuzz targets + `9` invariants), NOT audited |
+| Contracts | Written, tested (`66` unit tests + `18` fuzz targets + `9` invariants), NOT audited |
 | Overlay services | Alpha, local/devnet proven, with watcher auto-sync, finalizer auto-poll, and persisted router/sentinel/finalizer state snapshots; NOT production-hardened |
-| Base Sepolia deployment | Live alpha artifact exists at `ops/deployments/base-sepolia.json`; current public deploy uses external Base Sepolia `WETH9`, and `./ops/run_base_sepolia_canary.sh` pins the overlay stack to that artifact while verifying on-chain contract code plus governance/operator wiring across settlement, bond, challenge, species, and score contracts |
+| Base Sepolia deployment | Live alpha artifact exists at `ops/deployments/base-sepolia.json`; current public deploy uses external Base Sepolia `WETH9`, and `./ops/run_base_sepolia_canary.sh` pins the overlay stack to that artifact while verifying on-chain contract code plus governance/operator wiring across settlement, bond, challenge, species, score, and optional DRW contracts when present |
 | SDK crypto | Real ML-DSA-65 + real secp256k1 signatures |
 | Gateway verification | Verifies both signature legs and payload binding off-chain; can pin admission to a deployment artifact |
 | Watcher verification | Archive artifacts can be mirrored and replayed with hash checks before scoring verification; deployment-aware `darwinctl status-check` emits machine-readable readiness reports with on-chain auth checks, `./ops/run_external_watcher.sh` provides a dedicated outside-operator bootstrap path, `ops/export_external_watcher_bundle.py` packages a handoff packet for outside watchers, `ops/intake_external_watcher_report.py` verifies returned watcher evidence against the pinned deployment, and `ops/export_audit_bundle.py` packages the evidence plus `docs/AUDIT_READINESS.md` and `docs/THREAT_MODEL.md` for external review |
 | Key management | Development only — encrypted local wallet files exist for trader identities via `darwinctl wallet-init`, but there is still no HSM or production custody integration |
+| DRW genesis | Alpha-only local/testnet genesis path exists via `DRWToken`, `DRWStaking`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh`; the public Base Sepolia canary has not yet been switched to DRW-bond economics |
 | External review prep | `ops/prepare_external_packets.py` emits sendable operator/reviewer tarballs, checksums, request templates, and `docs/EXTERNAL_CANARY_CHECKLIST.md` so outside evidence intake follows a fixed path |
 
 ## Known Limitations
@@ -41,7 +42,7 @@ A bug bounty program will be established before mainnet launch. Details will be 
 4. **No formal audit has been conducted.**
 5. **Meaningful Foundry fuzz and stateful invariant coverage exists, but deeper cross-contract and long-run adversarial testing are still pending.**
 6. **Safe mode is triggered manually by an admin multisig in v1.**
-7. **The current public Base Sepolia deployment is still alpha.** It uses an external testnet WETH asset, but has not yet been canary-operated by outside watchers or audited.
+7. **The current public Base Sepolia deployment is still alpha.** It uses an external testnet WETH asset, and the new DRW genesis path has not yet replaced that public alpha deployment.
 
 ## Security Invariants
 

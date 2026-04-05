@@ -30,7 +30,7 @@ cd sim
 python -m pytest tests/test_end_to_end.py -v
 ```
 
-All 31 tests must pass before proceeding.
+All 33 tests must pass before proceeding.
 
 ## Local Wallet Suite
 
@@ -49,6 +49,12 @@ Or use the default end-to-end helper:
 ./ops/init_demo_wallet.sh
 ```
 
+To inspect the default local wallet after that helper runs:
+
+```bash
+darwinctl wallet-show ops/wallets/darwin-demo-trader.wallet.json
+```
+
 To sign a repeatable intent from that wallet:
 
 ```bash
@@ -57,6 +63,35 @@ darwinctl intent-create \
   --deployment-file ops/deployments/base-sepolia.json \
   --out intent.json
 ```
+
+## Optional DRW Alpha Genesis
+
+If you want to produce the alpha DRW token + staking layer against an existing DARWIN deployment artifact, use the same untracked Base Sepolia env file and run:
+
+```bash
+cp ops/base_sepolia.env.example .env.base-sepolia
+# fill in DARWIN_DEPLOYER_PRIVATE_KEY and optional DARWIN_DRW_* overrides once
+
+./ops/preflight_drw_genesis.sh
+./ops/init_drw_genesis.sh
+darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
+```
+
+For a pure local end-to-end smoke path:
+
+```bash
+DARWIN_DEPLOY_DRW_GENESIS=1 ./ops/smoke_deploy_local.sh
+```
+
+That writes the DRW section directly into the emitted deployment artifact, including:
+
+- `drw_token`
+- `drw_staking`
+- total supply
+- staking duration
+- fixed genesis allocation buckets
+
+`./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh` auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
 
 ## Step 4: Run the E1-E7 experiment suite
 
@@ -210,7 +245,7 @@ If you are booting a fresh watcher with no mirrored epochs yet, allow the expect
 darwinctl status-check --allow-cold-watcher
 ```
 
-The JSON report is intended for automation; the Markdown report is the operator-facing canary summary. When you pin `--deployment-file`, `status-check` also verifies on-chain bytecode, governance/operator wiring, settlement batch authorization, and bond-asset linkage against the artifact.
+The JSON report is intended for automation; the Markdown report is the operator-facing canary summary. When you pin `--deployment-file`, `status-check` also verifies on-chain bytecode, governance/operator wiring, settlement batch authorization, bond-asset linkage, and optional DRW token/staking wiring against the artifact.
 
 To package the current deployment artifact plus readiness evidence for an outside reviewer:
 

@@ -39,6 +39,11 @@ export DARWIN_DEPLOYMENT_FILE="${DARWIN_DEPLOYMENT_FILE:-$ROOT/ops/deployments/l
 
 "$ROOT/ops/deploy_contracts.sh"
 
+if [[ "${DARWIN_DEPLOY_DRW_GENESIS:-0}" == "1" ]]; then
+  export DARWIN_DRW_GENESIS_FILE="${DARWIN_DRW_GENESIS_FILE:-$ROOT/ops/deployments/.local-anvil.drw.json}"
+  "$ROOT/ops/init_drw_genesis.sh"
+fi
+
 source "$ROOT/.venv/bin/activate" 2>/dev/null || true
 python3 - <<'PY'
 import json, os, pathlib
@@ -49,4 +54,8 @@ print(f"  file: {path}")
 print(f"  chain_id: {data['chain_id']}")
 for name, addr in data["contracts"].items():
     print(f"  {name}: {addr}")
+if data.get("drw"):
+    print("  drw:")
+    print(f"    total_supply: {data['drw'].get('total_supply')}")
+    print(f"    staking_duration: {data['drw'].get('staking_duration')}")
 PY
