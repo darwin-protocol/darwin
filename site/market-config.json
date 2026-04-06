@@ -1,0 +1,56 @@
+{
+  "generated_at": "2026-04-06T19:20:44.522718Z",
+  "links": {
+    "deployment_artifact": "https://github.com/darwin-protocol/darwin/blob/main/ops/deployments/base-sepolia.json",
+    "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",
+    "market_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md",
+    "repo": "https://github.com/darwin-protocol/darwin"
+  },
+  "network": {
+    "explorer_base_url": "https://sepolia-explorer.base.org",
+    "hex": "0x14a34",
+    "id": 84532,
+    "name": "Base Sepolia",
+    "native_symbol": "ETH",
+    "rpc_url": "https://sepolia.base.org",
+    "slug": "base-sepolia"
+  },
+  "notes": {
+    "alpha_stage": true,
+    "bond_asset": "0x4200000000000000000000000000000000000006",
+    "bond_asset_mode": "external",
+    "market_seeded": true,
+    "warning": "This is a DARWIN-owned Base Sepolia reference pool. It is live and tradeable, but it is still testnet alpha infrastructure."
+  },
+  "pool": {
+    "address": "0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891",
+    "fee_bps": 30,
+    "initial_base_amount": "1000000000000000000000",
+    "initial_quote_amount": "500000000000000",
+    "venue_id": "darwin_reference_pool",
+    "venue_type": "constant_product_bootstrap"
+  },
+  "project": {
+    "name": "DARWIN",
+    "tagline": "Trade DRW on the Base Sepolia reference pool"
+  },
+  "quote_token": {
+    "address": "0x4200000000000000000000000000000000000006",
+    "decimals": 18,
+    "symbol": "WETH"
+  },
+  "roles": {
+    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+    "market_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d"
+  },
+  "source": {
+    "deployment_file": "ops/deployments/base-sepolia.json",
+    "repo_url": "https://github.com/darwin-protocol/darwin"
+  },
+  "token": {
+    "address": "0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2",
+    "decimals": 18,
+    "symbol": "DRW",
+    "total_supply": "1000000000000000000000000000"
+  }
+}

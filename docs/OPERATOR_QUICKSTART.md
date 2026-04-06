@@ -110,6 +110,8 @@ The current public Base Sepolia market is already seeded at:
 - `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`
 - reserves: `1000 DRW` + `0.0005 WETH`
 
+The repo now also ships a first-party browser portal in `site/`, published through `.github/workflows/pages.yml`, so outside users do not need to start with shell scripts if they just want to connect a wallet and trade on Base Sepolia.
+
 Then confirm the venue path is real on the same network:
 
 ```bash

@@ -9,6 +9,7 @@ Last repo update: `2026-04-06`
 - The public canary is still the `WETH`-bond alpha, not the `DRW`-bond version.
 - The Base Sepolia `DRW` token + staking layer is now live.
 - A seeded Base Sepolia `DRW/WETH` reference pool is now live.
+- A first-party browser swap portal now exists in `site/` and deploys through GitHub Pages.
 - The next real steps are outside-watcher operation, outside archive flow, and external review.
 
 ## Verified Baseline
@@ -30,6 +31,7 @@ Last repo update: `2026-04-06`
 - Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`
 - Governance + staking still directly hold `999,998,950 DRW`; the remaining `1,050 DRW` sit in the reference pool and DARWIN-controlled demo traders
 - The governance wallet no longer holds spare `WETH` because it was used to seed the live pool
+- The repo now ships a first-party swap portal for the seeded pool
 - A dedicated `./.venv/bin/python ops/preflight_market_venue.py --venue darwin_reference_pool` check now exists for the artifact-backed venue path, and `uniswap_v4` remains tracked separately
 
 ## What Is Live
@@ -41,6 +43,7 @@ Last repo update: `2026-04-06`
 - Market bootstrap preflight for `DRW/WETH`
 - Artifact-backed reference-pool deployment path for `DRW/WETH`
 - Seeded artifact-backed Base Sepolia reference pool for `DRW/WETH`
+- First-party browser portal for the seeded Base Sepolia market
 - External watcher bootstrap/export/intake flow
 - Audit bundle export flow
 - Local encrypted wallet flow
@@ -66,7 +69,7 @@ Last repo update: `2026-04-06`
 1. Run the live canary with an outside watcher
 2. Ingest a genuinely external archive epoch through that watcher path
 3. Hand the live artifact and evidence to an outside reviewer
-4. Point outside users at the live Base Sepolia reference pool
+4. Point outside users at the live Base Sepolia reference pool and Pages portal
 5. Point outside users at the simple swap runbook in `docs/MARKET_BOOTSTRAP.md`
 6. Wait for real third-party interaction instead of project-controlled swaps
 

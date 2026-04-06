@@ -18,6 +18,7 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - The live seeded reserves are `1000 DRW` and `0.0005 WETH`.
 - Initial DARWIN-controlled demo trades have now executed against the live pool.
 - Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
+- A first-party browser portal now exists in `site/` for direct wallet-driven pool trading.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
 ## Preflight
@@ -104,6 +105,30 @@ DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
 
 That helper reads the seeded market from the artifact, calls `quoteExactInput`, and prints the slippage-guarded minimum output. A live swap uses the same command without `--dry-run`, but it requires `DARWIN_DEPLOYER_PRIVATE_KEY` and should only be used for genuine testnet trading, not self-generated optics.
 
+## Browser Portal
+
+The repo now ships a static market portal in `site/` that connects directly to the live Base Sepolia reference pool.
+
+- source: `site/`
+- config: `site/market-config.json`
+- exporter: `ops/export_market_portal_config.py`
+- Pages workflow: `.github/workflows/pages.yml`
+
+Expected GitHub Pages URL:
+
+```text
+https://darwin-protocol.github.io/darwin/
+```
+
+The portal supports:
+
+- wallet connect
+- Base Sepolia network switch/add
+- DRW wallet import
+- live reserve + governance-balance reads
+- direct `WETH -> DRW` and `DRW -> WETH` swaps
+- direct `ETH -> WETH` wrapping for the quote side
+
 ## Initial Demo Activity
 
 On `2026-04-06`, DARWIN-controlled demo traders executed the first live Base Sepolia swaps against the reference pool to prove the end-to-end trading path.
@@ -131,6 +156,7 @@ Current DARWIN-tracked venue state:
 - `darwin_reference_pool` is tracked from the pinned deployment artifact itself
 - the current public Base Sepolia artifact now has that pool deployed and seeded
 - the current public Base Sepolia artifact is now backed by successful DARWIN-controlled demo trades
+- the repo now includes a browser portal for the same pool
 - `uniswap_v4` is tracked from the current Uniswap deployment docs
 - Base mainnet (`8453`) is listed there
 - Base Sepolia (`84532`) is not listed there
@@ -139,7 +165,8 @@ So the current viable Base Sepolia path is:
 
 1. use the seeded DARWIN reference pool
 2. rerun the artifact-backed venue preflight
-3. point third parties at the pool and wait for real usage
+3. point third parties at the pool and the browser portal
+4. wait for real usage
 
 Third-party Base Sepolia venue support remains optional and unconfirmed in the tracked registry.
 

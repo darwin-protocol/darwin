@@ -2950,6 +2950,68 @@ exit 1
             self.assertIn("dry_run:            yes", result.stdout)
             print("  Ops: swap helper handles 18-decimal DRW amounts above bash integer range")
 
+    def test_43_market_portal_config_export(self):
+        """Ops: market portal config is exported from the pinned deployment artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            out = tmp / "market-config.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x4200000000000000000000000000000000000006",
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "market_operator": "0x0000000000000000000000000000000000000008",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+                "drw": {
+                    "total_supply": "1000000000000000000000000000",
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_market_portal_config.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            config = json.loads(out.read_text())
+            self.assertEqual(config["network"]["id"], 84532)
+            self.assertEqual(config["network"]["name"], "Base Sepolia")
+            self.assertEqual(config["pool"]["address"], "0x0000000000000000000000000000000000000042")
+            self.assertEqual(config["token"]["address"], "0x0000000000000000000000000000000000000011")
+            self.assertEqual(config["quote_token"]["address"], "0x4200000000000000000000000000000000000006")
+            self.assertEqual(config["roles"]["market_operator"], "0x0000000000000000000000000000000000000008")
+            print("  Ops: market portal config exports from the live deployment artifact")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
