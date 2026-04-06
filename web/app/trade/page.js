@@ -18,6 +18,10 @@ export default function TradePage() {
         src="https://cdn.jsdelivr.net/npm/ethers@6.14.3/dist/ethers.umd.min.js"
         strategy="afterInteractive"
       />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"
+        strategy="afterInteractive"
+      />
       <Script src="../trade.js" strategy="afterInteractive" />
 
       <div className="background">
@@ -259,6 +263,44 @@ export default function TradePage() {
               <div>
                 <span className="label">WETH</span>
                 <strong id="walletWeth">-</strong>
+              </div>
+            </div>
+          </section>
+
+          <section className="card panel qr-panel">
+            <div className="section-heading">
+              <h2>Peer-to-peer QR</h2>
+              <span className="badge">scan to send DRW</span>
+            </div>
+            <div className="qr-layout">
+              <div className="qr-stage">
+                <canvas id="qrCanvas" width="224" height="224"></canvas>
+              </div>
+              <div className="qr-controls">
+                <label className="field">
+                  <span>Recipient</span>
+                  <input id="qrRecipient" type="text" placeholder="0x..." />
+                </label>
+                <label className="field">
+                  <span>DRW amount</span>
+                  <input id="qrAmount" type="number" min="0" step="any" defaultValue="25" />
+                </label>
+                <div className="hero-actions qr-actions">
+                  <button id="useConnectedWalletButton" className="button button-secondary">
+                    Use connected wallet
+                  </button>
+                  <button id="copyQrUriButton" className="button button-secondary">
+                    Copy request URI
+                  </button>
+                </div>
+                <label className="field">
+                  <span>Wallet request</span>
+                  <textarea id="qrUri" rows="4" readOnly></textarea>
+                </label>
+                <p className="caption">
+                  This QR encodes a Base Sepolia DRW transfer request. Another wallet can scan it
+                  and open a token transfer flow directly.
+                </p>
               </div>
             </div>
           </section>

@@ -93,6 +93,25 @@ function formatTimestamp(seconds) {
   return date.toLocaleString();
 }
 
+function isHexAddress(value) {
+  return /^0x[a-fA-F0-9]{40}$/.test(value || "");
+}
+
+function buildDrwTransferUri(recipient, amountText) {
+  if (!isHexAddress(recipient)) {
+    return "";
+  }
+
+  const chainId = state.config.network.chain_id || 84532;
+  const trimmedAmount = (amountText || "").trim();
+  if (!trimmedAmount || Number(trimmedAmount) <= 0) {
+    return `ethereum:${state.config.token.address}@${chainId}/transfer?address=${recipient}`;
+  }
+
+  const amount = ethers.parseUnits(trimmedAmount, state.config.token.decimals).toString();
+  return `ethereum:${state.config.token.address}@${chainId}/transfer?address=${recipient}&uint256=${amount}`;
+}
+
 function setMessage(kind, text, txHash = "") {
   els.messageKind.textContent = kind;
   els.messageText.textContent = text;
@@ -255,6 +274,7 @@ async function refreshWallet() {
     els.walletEth.textContent = "-";
     els.walletDrw.textContent = "-";
     els.walletWeth.textContent = "-";
+    updateQrState();
     return;
   }
 
@@ -267,6 +287,10 @@ async function refreshWallet() {
   els.walletEth.textContent = formatUnits(ethBalance, 18, 6);
   els.walletDrw.textContent = formatUnits(drwBalance, state.config.token.decimals, 6);
   els.walletWeth.textContent = formatUnits(wethBalance, state.config.quote_token.decimals, 12);
+  if (!els.qrRecipient.value.trim()) {
+    els.qrRecipient.value = state.account;
+  }
+  updateQrState();
   await refreshFaucet();
 }
 
@@ -446,6 +470,50 @@ async function watchAsset() {
   }
 }
 
+function drawQr(uri) {
+  const canvas = els.qrCanvas;
+  const hasRenderer = Boolean(window.QRCode && typeof window.QRCode.toCanvas === "function");
+  const context = canvas.getContext("2d");
+
+  if (!uri || !hasRenderer) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#f4efe5";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#5d6978";
+    context.font = "14px monospace";
+    context.textAlign = "center";
+    context.fillText(hasRenderer ? "Enter a valid wallet" : "QR loader missing", canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  window.QRCode.toCanvas(
+    canvas,
+    uri,
+    {
+      width: 224,
+      margin: 1,
+      color: {
+        dark: "#14202f",
+        light: "#f4efe5",
+      },
+    },
+    (error) => {
+      if (error) {
+        console.error(error);
+      }
+    },
+  );
+}
+
+function updateQrState() {
+  const recipient = els.qrRecipient.value.trim();
+  const amount = els.qrAmount.value.trim();
+  const uri = buildDrwTransferUri(recipient, amount);
+  els.qrUri.value = uri || "Enter a valid Base Sepolia wallet address to generate a DRW transfer QR.";
+  els.copyQrUriButton.disabled = !uri;
+  drawQr(uri);
+}
+
 function installCopyHandlers() {
   for (const row of document.querySelectorAll("[data-copy-target]")) {
     row.addEventListener("click", async () => {
@@ -468,6 +536,12 @@ async function boot() {
     swapButton: $("swapButton"),
     wrapAmount: $("wrapAmount"),
     wrapButton: $("wrapButton"),
+    qrCanvas: $("qrCanvas"),
+    qrRecipient: $("qrRecipient"),
+    qrAmount: $("qrAmount"),
+    qrUri: $("qrUri"),
+    copyQrUriButton: $("copyQrUriButton"),
+    useConnectedWalletButton: $("useConnectedWalletButton"),
     faucetPanel: $("faucetPanel"),
     faucetBadge: $("faucetBadge"),
     faucetClaimAmount: $("faucetClaimAmount"),
@@ -512,6 +586,7 @@ async function boot() {
   bindStaticConfig();
   syncModeButtons();
   installCopyHandlers();
+  updateQrState();
   await refreshMarket();
   await refreshQuote();
 
@@ -544,9 +619,25 @@ async function boot() {
   }));
   els.swapAmount.addEventListener("input", () => refreshQuote());
   els.slippageBps.addEventListener("input", () => refreshQuote());
+  els.qrRecipient.addEventListener("input", () => updateQrState());
+  els.qrAmount.addEventListener("input", () => updateQrState());
   els.swapButton.addEventListener("click", () => handleSwap());
   els.wrapButton.addEventListener("click", () => handleWrap());
   els.claimButton?.addEventListener("click", () => handleClaim());
+  els.copyQrUriButton.addEventListener("click", async () => {
+    if (!els.copyQrUriButton.disabled) {
+      await navigator.clipboard.writeText(els.qrUri.value);
+      setMessage("copy", "Copied DRW transfer request URI.");
+    }
+  });
+  els.useConnectedWalletButton.addEventListener("click", async () => {
+    if (!state.account) {
+      await connectWallet();
+    }
+    els.qrRecipient.value = state.account;
+    updateQrState();
+    setMessage("wallet", "QR request updated for the connected wallet.");
+  });
 
   setMessage("ready", "Portal ready. Connect a wallet to trade.");
 }

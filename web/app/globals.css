@@ -332,6 +332,17 @@ code {
   color: var(--text);
 }
 
+.field textarea {
+  width: 100%;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(20, 62, 108, 0.14);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.95rem 1rem;
+  color: var(--text);
+  resize: vertical;
+  font-family: var(--mono);
+}
+
 .inline-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -457,6 +468,44 @@ code {
   grid-column: span 2;
 }
 
+.qr-panel {
+  grid-column: span 2;
+}
+
+.qr-layout {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.qr-stage {
+  display: grid;
+  place-items: center;
+  min-height: 16rem;
+  padding: 1rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(230, 220, 199, 0.58));
+  border: 1px solid rgba(20, 62, 108, 0.08);
+}
+
+.qr-stage canvas {
+  width: 14rem;
+  height: 14rem;
+  max-width: 100%;
+  border-radius: 1rem;
+  background: #f4efe5;
+}
+
+.qr-controls {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.qr-actions {
+  margin-top: 0;
+}
+
 #messageText {
   margin: 0;
   color: var(--muted);
@@ -492,7 +541,8 @@ code {
   }
 
   .swap-panel,
-  .message-panel {
+  .message-panel,
+  .qr-panel {
     grid-row: auto;
     grid-column: span 1;
   }
@@ -511,7 +561,8 @@ code {
   .stat-grid,
   .wallet-grid,
   .quote-box,
-  .inline-fields {
+  .inline-fields,
+  .qr-layout {
     grid-template-columns: 1fr;
   }
 
