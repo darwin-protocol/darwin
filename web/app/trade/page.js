@@ -33,18 +33,16 @@ export default function TradePage() {
       <div className="page-shell">
         <header className="hero card">
           <div className="hero-copy">
-            <p className="eyebrow">DARWIN MARKET PORTAL</p>
             <h2 className="section-title">
-              Trade <span>DRW</span> on Base Sepolia.
+              Trade <span>DRW</span>.
             </h2>
             <p className="lede">
-              This portal connects directly to the live DARWIN-owned reference pool. It is a real
-              testnet market, not a mockup, but it is still alpha and still waiting on outside
-              participants.
+              Claim testnet DRW, wrap Base Sepolia ETH into WETH, swap against the live pool, or
+              open a direct peer-to-peer transfer request.
             </p>
             <p className="hero-status-line">
-              Canonical host: <code>usedarwin.xyz</code>. HTTPS certificate is still provisioning
-              through GitHub Pages, so the custom domain is currently live over HTTP.
+              <code>usedarwin.xyz</code> is live now. HTTPS will turn on automatically when GitHub
+              Pages finishes issuing the certificate.
             </p>
             <div className="hero-actions">
               <button id="connectButton" className="button button-primary">

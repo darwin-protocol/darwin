@@ -189,6 +189,7 @@ code {
   font-family: var(--mono);
   font-size: 0.78rem;
   line-height: 1.55;
+  max-width: 38rem;
 }
 
 .hero-actions,
@@ -381,6 +382,7 @@ code {
 .button-wide {
   width: 100%;
   margin-bottom: 0.8rem;
+  margin-top: 0.2rem;
 }
 
 .status-chip {
@@ -498,7 +500,7 @@ code {
 
 .qr-controls {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.35rem;
 }
 
 .qr-actions {
