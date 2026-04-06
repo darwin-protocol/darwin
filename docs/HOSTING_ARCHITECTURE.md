@@ -35,6 +35,8 @@ This keeps the public site simple, cacheable, and easy to move, while avoiding a
 5. Only add Cloudflare if you want DNS control, CDN, or extra edge features.
 6. Only add Raspberry Pi hosting for private or dynamic services later.
 
+For the exact GitHub-side and registrar cutover sequence, see [CUSTOM_DOMAIN_SETUP.md](CUSTOM_DOMAIN_SETUP.md).
+
 ## Repo Settings
 
 The Pages workflow now supports two repo variables:

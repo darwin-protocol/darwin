@@ -11,6 +11,7 @@ A peer-to-peer system for evolving exchange microstructure.
 - Security posture: [docs/SECURITY.md](docs/SECURITY.md)
 - Market bootstrap: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
 - Hosting plan: [docs/HOSTING_ARCHITECTURE.md](docs/HOSTING_ARCHITECTURE.md)
+- Custom domain setup: [docs/CUSTOM_DOMAIN_SETUP.md](docs/CUSTOM_DOMAIN_SETUP.md)
 
 ## Status At A Glance
 
@@ -189,6 +190,12 @@ Recommended next step:
 - set `DARWIN_SITE_DOMAIN` as a GitHub repository variable
 - point the bought domain at GitHub Pages
 - let the workflow emit a `CNAME` file automatically during deploy
+
+One-command GitHub-side setup:
+
+```bash
+./ops/configure_pages_domain.sh example.com
+```
 
 2. A tracked third-party venue, only if its preflight passes on `84532`:
 
