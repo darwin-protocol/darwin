@@ -143,6 +143,12 @@ Current preflight result on the live governance wallet:
 - `0 WETH`
 - immediate blocker for a `DRW/WETH` demo pool: wrap ETH first
 
+Exact next step:
+
+```bash
+./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
+```
+
 ## Status
 
 | Component | State |

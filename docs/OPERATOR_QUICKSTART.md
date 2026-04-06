@@ -105,6 +105,12 @@ Use this only as a preflight. It does not create a pool or execute swaps.
 
 The correct operator claim is "a testnet market exists and third parties can trade it", not "we created activity by swapping ourselves."
 
+If the preflight says the wallet has ETH but `0 WETH`, the exact next step is:
+
+```bash
+./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
+```
+
 ## Step 4: Run the E1-E7 experiment suite
 
 ```bash

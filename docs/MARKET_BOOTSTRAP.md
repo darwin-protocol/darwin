@@ -36,7 +36,11 @@ This checks:
 - live quote-token balance
 - recommended pair from the pinned deployment
 
-If the quote token is `WETH` and the wallet only has native ETH, wrap ETH first.
+If the quote token is `WETH` and the wallet only has native ETH, wrap ETH first:
+
+```bash
+./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
+```
 
 On the current live wallet, that is the immediate blocker:
 
@@ -44,13 +48,16 @@ On the current live wallet, that is the immediate blocker:
 - `DRW` is present
 - `WETH` is not
 
+That wrap helper auto-loads `.env.base-sepolia`, uses the pinned deployment artifact bond asset as the WETH address, and can run in `--dry-run` mode if you only want the exact calldata / readiness output first.
+
 ## Demo Market Path
 
 1. Start with Base Sepolia, not mainnet.
-2. Seed a small `DRW/WETH` pool.
-3. Publish the pool address and exact network.
-4. Tell users it is a testnet market.
-5. Wait for third-party swaps and liquidity, not just project-controlled flow.
+2. Wrap a small amount of ETH into `WETH`.
+3. Seed a small `DRW/WETH` pool.
+4. Publish the pool address and exact network.
+5. Tell users it is a testnet market.
+6. Wait for third-party swaps and liquidity, not just project-controlled flow.
 
 If your chosen interface does not support Base Sepolia, treat the market bootstrap as a separate venue-selection task rather than pretending the pool path is already solved.
 

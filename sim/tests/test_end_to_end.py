@@ -2535,6 +2535,85 @@ class TestEndToEnd(unittest.TestCase):
         self.assertEqual(offenders, [], f"public docs contain local absolute links: {offenders}")
         print("  Docs: public markdown uses repo-relative links")
 
+    def test_37_wrap_weth_dry_run(self):
+        """Ops: the WETH wrap helper can dry-run against a pinned deployment artifact."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            env_file = tmp / ".env.base-sepolia"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                },
+            }))
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                    method = body.get("method")
+                    result = "0x0"
+
+                    if method == "eth_chainId":
+                        result = hex(84532)
+                    elif method == "eth_getBalance":
+                        result = hex(3 * 10**15)
+                    elif method == "eth_call":
+                        result = "0x" + hex(0)[2:].rjust(64, "0")
+
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            rpc_server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            rpc_thread = Thread(target=rpc_server.serve_forever, daemon=True)
+            rpc_thread.start()
+
+            env_file.write_text(
+                "\n".join([
+                    f'export DARWIN_RPC_URL="http://127.0.0.1:{rpc_server.server_port}"',
+                    f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
+                    'export DARWIN_DEPLOYER_ADDRESS="0x0000000000000000000000000000000000000009"',
+                ]) + "\n"
+            )
+
+            try:
+                result = subprocess.run(
+                    [
+                        "bash",
+                        str(ROOT / "ops" / "wrap_base_sepolia_weth.sh"),
+                        "--dry-run",
+                        "--amount-eth",
+                        "0.0005",
+                    ],
+                    cwd=str(ROOT),
+                    env={**os.environ, "DARWIN_ENV_FILE": str(env_file)},
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                rpc_server.shutdown()
+                rpc_server.server_close()
+                rpc_thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("dry_run:           yes", result.stdout)
+            self.assertIn("wrap_amount_eth:   0.0005", result.stdout)
+            self.assertIn("weth_address:      0x4200000000000000000000000000000000000006", result.stdout)
+            print("  Ops: WETH wrap helper can dry-run against the pinned market quote asset")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

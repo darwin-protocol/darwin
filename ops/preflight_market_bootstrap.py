@@ -195,6 +195,7 @@ def main() -> None:
         blockers.append("no_quote_token_balance")
         if quote_token.lower() == "0x4200000000000000000000000000000000000006" and base_balance > 0:
             notes.append("wallet has Base Sepolia ETH but zero WETH; wrap ETH before seeding a DRW/WETH pool")
+            notes.append("exact next step: ./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005")
 
     drw_live = bool(drw.get("enabled"))
     checks["deployment_drw"] = {

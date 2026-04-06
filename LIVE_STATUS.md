@@ -22,6 +22,7 @@ Last repo update: `2026-04-06`
 - Latest warm canary report: `ready: true`, `onchain_drw: OK`, `tracked_supply: 1000000000000000000000000000/1000000000000000000000000000`
 - Market bootstrap preflight path exists for a `DRW/WETH` Base Sepolia demo market
 - Latest market preflight on the governance wallet is blocked only by `0 WETH`; Base Sepolia ETH and `DRW` are already present
+- A dedicated `./ops/wrap_base_sepolia_weth.sh` helper now exists for the exact next market-bootstrap step
 
 ## What Is Live
 
@@ -56,6 +57,7 @@ Last repo update: `2026-04-06`
 2. Ingest a genuinely external archive epoch through that watcher path
 3. Hand the live artifact and evidence to an outside reviewer
 4. If you want a public testnet market, run the `DRW/WETH` bootstrap preflight in `docs/MARKET_BOOTSTRAP.md`
+5. Wrap a small amount of Base Sepolia ETH into WETH with `./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005`
 
 ## What Remains After The Public DRW Deploy
 
