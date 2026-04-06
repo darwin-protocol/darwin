@@ -2142,6 +2142,7 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("Files To Send", (handoff / "handoff-summary.md").read_text())
             self.assertIn("Why This Matters", (handoff / "WATCHER_OPERATOR_REQUEST.md").read_text())
             self.assertIn("Focus Areas", (handoff / "EXTERNAL_REVIEW_REQUEST.md").read_text())
+            self.assertIn("intake_external_review.py", (handoff / "EXTERNAL_REVIEW_REQUEST.md").read_text())
             print("  Ops: prepare_external_packets emits sendable operator and reviewer archives")
 
     def test_32_deployment_show_with_drw_genesis(self):
@@ -2293,6 +2294,96 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("existing_drw:         no", result.stdout)
             self.assertIn("governance:           0x0000000000000000000000000000000000000009", result.stdout)
             print("  Ops: DRW genesis preflight can load env defaults from a saved file")
+
+    def test_34_external_review_intake(self):
+        """Ops: external review intake logs structured findings and emits triage artifacts."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            bundle = tmp / "base-sepolia-audit"
+            bundle.mkdir()
+            deployment = bundle / "base-sepolia.json"
+            status_json = bundle / "status-report.json"
+            audit_summary = bundle / "audit-summary.json"
+            review_md = tmp / "review-findings.md"
+            review_json = tmp / "review-findings.json"
+            out_dir = tmp / "intake"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                },
+            }))
+            status_json.write_text("{}\n")
+            (bundle / "AUDIT_READINESS.md").write_text("# audit\n")
+            (bundle / "THREAT_MODEL.md").write_text("# threat\n")
+            audit_summary.write_text(json.dumps({
+                "deployment": {
+                    "network": "base-sepolia",
+                    "chain_id": 84532,
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                },
+                "bundle_files": {
+                    "deployment": "base-sepolia.json",
+                    "status_json": "status-report.json",
+                    "status_markdown": "",
+                    "audit_readiness": "AUDIT_READINESS.md",
+                    "threat_model": "THREAT_MODEL.md",
+                },
+            }, indent=2))
+
+            review_md.write_text("# Findings\n\n- HIGH: settlement replay edge case\n")
+            review_json.write_text(json.dumps({
+                "findings": [
+                    {
+                        "severity": "HIGH",
+                        "title": "Settlement replay edge case",
+                        "affected_paths": ["contracts/src/SettlementHub.sol"],
+                        "status": "open",
+                        "notes": "needs additional adversarial coverage",
+                    },
+                    {
+                        "severity": "LOW",
+                        "title": "Docs wording",
+                        "affected_paths": ["README.md"],
+                        "status": "open",
+                    },
+                ],
+            }, indent=2))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "intake_external_review.py"),
+                    "--bundle-dir",
+                    str(bundle),
+                    "--review-markdown",
+                    str(review_md),
+                    "--review-json",
+                    str(review_json),
+                    "--out-dir",
+                    str(out_dir),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            intake = next(out_dir.glob("base-sepolia-review-intake-*"))
+            summary = json.loads((intake / "external-review-intake.json").read_text())
+            self.assertTrue(summary["accepted"])
+            self.assertTrue(summary["review"]["requires_action"])
+            self.assertEqual(summary["review"]["highest_severity"], "HIGH")
+            self.assertEqual(summary["review"]["severity_counts"]["HIGH"], 1)
+            self.assertEqual(summary["review"]["severity_counts"]["LOW"], 1)
+            self.assertEqual(summary["review"]["findings_count"], 2)
+            self.assertTrue((intake / "external-review-triage.md").exists())
+            self.assertIn("Settlement replay edge case", (intake / "external-review-triage.md").read_text())
+            print("  Ops: external review intake logs findings and emits triage artifacts")
 
 
 if __name__ == "__main__":

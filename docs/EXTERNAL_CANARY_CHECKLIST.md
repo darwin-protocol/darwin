@@ -24,7 +24,17 @@ python ops/intake_external_watcher_report.py \
 1. Receive the audit packet tarball produced by `ops/prepare_external_packets.py`.
 2. Review the pinned deployment artifact, readiness report, audit-readiness doc, and threat model together.
 3. Focus on settlement authorization, lifecycle correctness, and watcher/challenge assumptions.
-4. Return written findings with severity, affected paths, and recommended fixes.
+4. Return `review-findings.md` with severity, affected paths, and recommended fixes.
+5. Optionally return `review-findings.json` using `findings: [{severity, title, affected_paths, status, notes}]`.
+
+The maintainer should then verify and log the review with:
+
+```bash
+python ops/intake_external_review.py \
+  --bundle-dir ops/audit-bundles/<bundle-dir> \
+  --review-markdown review-findings.md \
+  --review-json review-findings.json
+```
 
 ## Acceptance Criteria
 

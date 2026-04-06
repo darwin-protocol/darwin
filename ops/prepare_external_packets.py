@@ -99,9 +99,13 @@ def render_reviewer_request(summary: dict) -> str:
         "",
         "## Requested Response",
         "",
-        "- written findings with severity",
-        "- affected paths / files",
+        "- `review-findings.md` with written findings and severity",
+        "- optionally `review-findings.json` with `findings: [{severity, title, affected_paths, status, notes}]`",
         "- recommended fixes or follow-up review areas",
+        "",
+        "## Intake",
+        "",
+        "- maintainer command: `python ops/intake_external_review.py --bundle-dir ops/audit-bundles/<bundle-dir> --review-markdown review-findings.md --review-json review-findings.json`",
         "",
     ]) + "\n"
 
@@ -129,6 +133,7 @@ def render_markdown(summary: dict) -> str:
         "- outside watcher should return `watcher-status.json` and `watcher-status.md`",
         "- intake those files with `ops/intake_external_watcher_report.py`",
         "- external reviewer should respond against the bundled deployment, readiness report, audit-readiness doc, and threat model",
+        "- intake reviewer findings with `ops/intake_external_review.py`",
         "",
         "## Integrity",
         "",
