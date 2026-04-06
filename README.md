@@ -76,6 +76,7 @@ The repo now includes:
 - `contracts/script/DeployDRWGenesis.s.sol`
 - `ops/preflight_drw_genesis.sh`
 - `ops/init_drw_genesis.sh`
+- `ops/deploy_public_drw.sh`
 
 ## Wallets
 
@@ -107,9 +108,7 @@ Public Base Sepolia path:
 cp ops/base_sepolia.env.example .env.base-sepolia
 # fill in DARWIN_DEPLOYER_PRIVATE_KEY and any optional DARWIN_DRW_* overrides
 
-./ops/preflight_drw_genesis.sh
-./ops/init_drw_genesis.sh
-darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
+./ops/deploy_public_drw.sh
 ```
 
 The Base Sepolia scripts auto-load `.env.base-sepolia` or the file named by `DARWIN_ENV_FILE`.
@@ -132,8 +131,7 @@ The Base Sepolia scripts auto-load `.env.base-sepolia` or the file named by `DAR
 Immediate next step:
 
 1. load the Base Sepolia signer key into `.env.base-sepolia`
-2. run `./ops/preflight_drw_genesis.sh`
-3. run `./ops/init_drw_genesis.sh`
+2. run `./ops/deploy_public_drw.sh`
 
 Real blockers after that:
 

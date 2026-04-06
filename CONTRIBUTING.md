@@ -14,7 +14,7 @@
 10. For watcher-specific operator work, use the standalone bootstrap path: `DARWIN_WATCHER_ARCHIVE_URL=http://archive-host:9447 ./ops/run_external_watcher.sh`
 11. To exercise the canary data path after boot, publish a local epoch through the running stack: `./ops/publish_canary_epoch.sh canary-2 "$PWD/sim/outputs/test_e2"`
 12. If you need to reproduce the testnet deploy, start from `ops/base_sepolia.env.example`, choose either `DARWIN_DEPLOY_BOND_ASSET_MOCK=1` or a real `DARWIN_BOND_ASSET`, and run `./ops/preflight_base_sepolia.sh`
-13. If you need to reproduce the DRW alpha genesis flow, use `.env.base-sepolia` plus `./ops/preflight_drw_genesis.sh` and `./ops/init_drw_genesis.sh`
+13. If you need to reproduce the DRW alpha genesis flow, use `.env.base-sepolia` plus `./ops/deploy_public_drw.sh`
 14. If you open a PR, expect GitHub Actions to run bootstrap, the Python self-check, the Foundry suite, the devnet flow, and the local deployment smoke flow.
 
 ## Code Style

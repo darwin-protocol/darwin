@@ -72,9 +72,7 @@ If you want to produce the alpha DRW token + staking layer against an existing D
 cp ops/base_sepolia.env.example .env.base-sepolia
 # fill in DARWIN_DEPLOYER_PRIVATE_KEY and optional DARWIN_DRW_* overrides once
 
-./ops/preflight_drw_genesis.sh
-./ops/init_drw_genesis.sh
-darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
+./ops/deploy_public_drw.sh
 ```
 
 For a pure local end-to-end smoke path:
@@ -91,7 +89,7 @@ That writes the DRW section directly into the emitted deployment artifact, inclu
 - staking duration
 - fixed genesis allocation buckets
 
-`./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh` auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
+`./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, `./ops/init_drw_genesis.sh`, and `./ops/deploy_public_drw.sh` auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
 
 ## Step 4: Run the E1-E7 experiment suite
 

@@ -51,9 +51,7 @@ Last repo update: `2026-04-05`
 ## Exact Next Action
 
 1. Fill in `DARWIN_DEPLOYER_PRIVATE_KEY` in [.env.base-sepolia](/path/to/darwin/.env.base-sepolia)
-2. Run `./ops/preflight_drw_genesis.sh`
-3. Run `./ops/init_drw_genesis.sh`
-4. Verify with `darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json`
+2. Run `./ops/deploy_public_drw.sh`
 
 ## What Remains After The Public DRW Deploy
 

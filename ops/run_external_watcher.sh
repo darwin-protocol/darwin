@@ -85,20 +85,26 @@ write_report() {
   local status_json="$REPORT_DIR/watcher-status.json"
   local archive_json="$REPORT_DIR/archive-epochs.json"
   local report_md="$REPORT_DIR/watcher-status.md"
+  local ready_tmp status_tmp archive_tmp report_tmp
   local ready_body="{}"
   local ready_state="NO"
 
-  if curl -fsS "http://127.0.0.1:${WATCHER_PORT}/readyz" >"$ready_json" 2>/dev/null; then
+  ready_tmp="$(mktemp "$REPORT_DIR/.watcher-ready.XXXXXX")"
+  status_tmp="$(mktemp "$REPORT_DIR/.watcher-status.XXXXXX")"
+  archive_tmp="$(mktemp "$REPORT_DIR/.archive-epochs.XXXXXX")"
+  report_tmp="$(mktemp "$REPORT_DIR/.watcher-status-md.XXXXXX")"
+
+  if curl -fsS "http://127.0.0.1:${WATCHER_PORT}/readyz" >"$ready_tmp" 2>/dev/null; then
     ready_state="YES"
   elif curl -fsS "http://127.0.0.1:${WATCHER_PORT}/healthz" >/dev/null 2>&1; then
-    printf '{"ready": false}\n' >"$ready_json"
+    printf '{"ready": false}\n' >"$ready_tmp"
     ready_state="COLD"
   fi
 
-  curl -fsS "http://127.0.0.1:${WATCHER_PORT}/v1/status" >"$status_json"
-  curl -fsS "${ARCHIVE_URL%/}/v1/epochs" >"$archive_json"
+  curl -fsS "http://127.0.0.1:${WATCHER_PORT}/v1/status" >"$status_tmp"
+  curl -fsS "${ARCHIVE_URL%/}/v1/epochs" >"$archive_tmp"
 
-  "$PYTHON_BIN" - "$status_json" "$ready_json" "$archive_json" "$report_md" "$ready_state" <<'PY'
+  "$PYTHON_BIN" - "$status_tmp" "$ready_tmp" "$archive_tmp" "$report_tmp" "$ready_state" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
@@ -154,6 +160,11 @@ if ready_state != "YES":
 
 report_path.write_text("\n".join(lines) + "\n")
 PY
+
+  mv "$ready_tmp" "$ready_json"
+  mv "$archive_tmp" "$archive_json"
+  mv "$report_tmp" "$report_md"
+  mv "$status_tmp" "$status_json"
 }
 
 log_file="$LOG_DIR/watcher.log"
