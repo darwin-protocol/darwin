@@ -2614,6 +2614,121 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("weth_address:      0x4200000000000000000000000000000000000006", result.stdout)
             print("  Ops: WETH wrap helper can dry-run against the pinned market quote asset")
 
+    def test_38_market_venue_preflight_blocks_unconfirmed_network(self):
+        """Ops: venue preflight rejects a venue that is not tracked for the deployment chain."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            registry = tmp / "market-venues.json"
+            json_out = tmp / "venue.json"
+            md_out = tmp / "venue.md"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+            }))
+            registry.write_text(json.dumps({
+                "venues": {
+                    "uniswap_v4": {
+                        "label": "Uniswap v4",
+                        "source": "https://docs.uniswap.org/contracts/v4/deployments",
+                        "tracked_networks": {
+                            "8453": {
+                                "network": "base",
+                                "contracts": {
+                                    "pool_manager": "0x1"
+                                }
+                            }
+                        },
+                        "notes": [
+                            "Base Sepolia is not listed."
+                        ]
+                    }
+                }
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "preflight_market_venue.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--registry-file",
+                    str(registry),
+                    "--venue",
+                    "uniswap_v4",
+                    "--json-out",
+                    str(json_out),
+                    "--markdown-out",
+                    str(md_out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 1, msg=result.stdout + result.stderr)
+            report = json.loads(json_out.read_text())
+            self.assertFalse(report["ready"])
+            self.assertIn("venue_not_supported_or_unconfirmed", report["blockers"])
+            self.assertEqual(report["checks"]["venue_support"]["state"], "FAIL")
+            self.assertIn("Base Sepolia is not listed.", md_out.read_text())
+            print("  Ops: market venue preflight blocks unconfirmed Base Sepolia support")
+
+    def test_39_market_venue_preflight_accepts_tracked_network(self):
+        """Ops: venue preflight accepts a tracked network with known venue contracts."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base.json"
+            registry = tmp / "market-venues.json"
+            json_out = tmp / "venue.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base",
+                "chain_id": 8453,
+            }))
+            registry.write_text(json.dumps({
+                "venues": {
+                    "uniswap_v4": {
+                        "label": "Uniswap v4",
+                        "source": "https://docs.uniswap.org/contracts/v4/deployments",
+                        "tracked_networks": {
+                            "8453": {
+                                "network": "base",
+                                "contracts": {
+                                    "pool_manager": "0x498581ff718922c3f8e6a244956af099b2652b2b"
+                                }
+                            }
+                        }
+                    }
+                }
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "preflight_market_venue.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--registry-file",
+                    str(registry),
+                    "--venue",
+                    "uniswap_v4",
+                    "--json-out",
+                    str(json_out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            report = json.loads(json_out.read_text())
+            self.assertTrue(report["ready"])
+            self.assertEqual(report["checks"]["venue_support"]["state"], "OK")
+            self.assertEqual(report["venue"]["tracked_network"]["contracts"]["pool_manager"], "0x498581ff718922c3f8e6a244956af099b2652b2b")
+            print("  Ops: market venue preflight accepts tracked Base venue support")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

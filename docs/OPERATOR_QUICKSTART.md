@@ -30,7 +30,7 @@ cd sim
 python -m pytest tests/test_end_to_end.py -v
 ```
 
-All 36 tests must pass before proceeding.
+All 39 tests must pass before proceeding.
 
 ## Local Wallet Suite
 
@@ -109,6 +109,14 @@ If the preflight says the wallet has ETH but `0 WETH`, the exact next step is:
 
 ```bash
 ./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
+```
+
+Then confirm the venue path is real on the same network:
+
+```bash
+./.venv/bin/python ops/preflight_market_venue.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --venue uniswap_v4
 ```
 
 ## Step 4: Run the E1-E7 experiment suite

@@ -149,11 +149,24 @@ Exact next step:
 ./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
 ```
 
+Then confirm venue support on the actual deployment network:
+
+```bash
+./.venv/bin/python ops/preflight_market_venue.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --venue uniswap_v4
+```
+
+Current market blockers are now:
+
+- wrap ETH first
+- venue support for Base Sepolia is still unconfirmed in the tracked registry
+
 ## Status
 
 | Component | State |
 |---|---|
-| Simulator | Working. `36/36` Python checks pass locally. |
+| Simulator | Working. `39/39` Python checks pass locally. |
 | Contracts | `93` checks pass locally (`66` unit + `18` fuzz + `9` invariants). |
 | Overlay | 7 services run locally. Gateway admits real PQ-signed intents. |
 | Watcher replay | Works. Independent score reconstruction matches. |

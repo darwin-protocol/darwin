@@ -42,6 +42,16 @@ If the quote token is `WETH` and the wallet only has native ETH, wrap ETH first:
 ./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
 ```
 
+Then confirm that your chosen venue is actually tracked for the deployment network:
+
+```bash
+./.venv/bin/python ops/preflight_market_venue.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --venue uniswap_v4 \
+  --json-out ops/state/market-bootstrap/venue.json \
+  --markdown-out ops/state/market-bootstrap/venue.md
+```
+
 On the current live wallet, that is the immediate blocker:
 
 - gas is present
@@ -54,12 +64,19 @@ That wrap helper auto-loads `.env.base-sepolia`, uses the pinned deployment arti
 
 1. Start with Base Sepolia, not mainnet.
 2. Wrap a small amount of ETH into `WETH`.
-3. Seed a small `DRW/WETH` pool.
-4. Publish the pool address and exact network.
-5. Tell users it is a testnet market.
-6. Wait for third-party swaps and liquidity, not just project-controlled flow.
+3. Run a venue preflight against the exact deployment network.
+4. Seed a small `DRW/WETH` pool.
+5. Publish the pool address and exact network.
+6. Tell users it is a testnet market.
+7. Wait for third-party swaps and liquidity, not just project-controlled flow.
 
-If your chosen interface does not support Base Sepolia, treat the market bootstrap as a separate venue-selection task rather than pretending the pool path is already solved.
+Current DARWIN-tracked venue state:
+
+- `uniswap_v4` is tracked from the current Uniswap deployment docs
+- Base mainnet (`8453`) is listed there
+- Base Sepolia (`84532`) is not listed there
+
+So even after wrapping ETH, the current public Base Sepolia path remains blocked until a tracked venue exists for `84532`.
 
 ## Why This Matters
 
