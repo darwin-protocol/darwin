@@ -147,7 +147,7 @@ Current preflight result on the live governance wallet:
 
 | Component | State |
 |---|---|
-| Simulator | Working. `33/33` Python checks pass locally. |
+| Simulator | Working. `36/36` Python checks pass locally. |
 | Contracts | `93` checks pass locally (`66` unit + `18` fuzz + `9` invariants). |
 | Overlay | 7 services run locally. Gateway admits real PQ-signed intents. |
 | Watcher replay | Works. Independent score reconstruction matches. |

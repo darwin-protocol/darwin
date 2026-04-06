@@ -30,7 +30,7 @@ cd sim
 python -m pytest tests/test_end_to_end.py -v
 ```
 
-All 33 tests must pass before proceeding.
+All 36 tests must pass before proceeding.
 
 ## Local Wallet Suite
 

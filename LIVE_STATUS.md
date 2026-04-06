@@ -12,7 +12,7 @@ Last repo update: `2026-04-06`
 
 ## Verified Baseline
 
-- Python self-check: `33/33` passing
+- Python self-check: `36/36` passing
 - Solidity checks: `93` passing (`66` unit + `18` fuzz + `9` invariants)
 - Overlay devnet: `7/7` services up locally
 - Local DRW genesis smoke: passing
