@@ -16,7 +16,7 @@ A peer-to-peer system for evolving exchange microstructure.
 - The public canary exists on Base Sepolia.
 - The public canary is still `WETH`-bond, not `DRW`-bond.
 - The Base Sepolia `DRW` token + staking layer is now live.
-- The repo now ships a first-party reference-pool path for a `DRW/WETH` testnet market.
+- A seeded `DRW/WETH` reference pool now exists on Base Sepolia.
 - The next live steps are outside-watcher operation, outside archive flow, and external review.
 
 ## Abstract
@@ -135,32 +135,28 @@ That checks:
 - live quote-token balance
 - whether the pinned deployment is suitable for a `DRW/WETH` demo market
 
-Current preflight result on the live governance wallet:
+Current live market state:
 
-- `700,000,000 DRW`
-- enough Base Sepolia ETH for gas
-- `0 WETH`
-- immediate blocker for a `DRW/WETH` demo pool: wrap ETH first
-
-Exact next step:
-
-```bash
-./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
-```
+- reference pool: `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`
+- initial reserves: `1000 DRW` and `0.0005 WETH`
+- venue preflight now keys off the seeded artifact-backed pool
+- the governance wallet no longer holds spare `WETH` because it was used to seed the pool
 
 From there, DARWIN now supports two venue paths:
 
-1. A first-party artifact-backed reference pool:
+1. The live first-party artifact-backed reference pool:
 
 ```bash
-./ops/init_reference_market.sh
-export DARWIN_REFERENCE_MARKET_BASE_AMOUNT=1000000000000000000000
-export DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT=500000000000000
-./ops/seed_reference_market.sh
-
 ./.venv/bin/python ops/preflight_market_venue.py \
   --deployment-file ops/deployments/base-sepolia.json \
   --venue darwin_reference_pool
+```
+
+For a contract-level quote without broadcasting:
+
+```bash
+DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
+./ops/swap_reference_market.sh --token-in base --amount 1 --dry-run
 ```
 
 2. A tracked third-party venue, only if its preflight passes on `84532`:
@@ -173,8 +169,8 @@ export DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT=500000000000000
 
 Current market blockers are now:
 
-- wrap ETH first
-- deploy and seed the artifact-backed reference pool, or wait for a tracked third-party Base Sepolia venue
+- no third-party Base Sepolia venue is tracked yet
+- the live pool is still a DARWIN-owned reference pool, not independent market activity
 
 See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook and risk framing.
 
@@ -188,7 +184,7 @@ See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook an
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
 | DRW token | Live on Base Sepolia. Token + staking deployed; `status-check` now verifies live holder balances against the pinned allocation table. |
-| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is not seeded yet. |
+| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is seeded at `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |
 
@@ -203,8 +199,9 @@ Real blockers now:
 
 If a public testnet market is desired before that, the exact market work left is:
 
-1. wrap a small amount of Base Sepolia ETH into WETH
-2. deploy and seed the artifact-backed `darwin_reference_pool`, or use a separately tracked third-party venue if one becomes available
+1. point outside users at the seeded Base Sepolia reference pool
+2. add a simple swap/liquidity runbook around `ReferenceMarketPool.swapExactInput`
+3. wait for real third-party usage instead of project-controlled swaps
 
 The canonical tracker is [LIVE_STATUS.md](LIVE_STATUS.md).
 

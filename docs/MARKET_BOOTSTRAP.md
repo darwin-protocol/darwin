@@ -14,7 +14,8 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - The canary still uses Base Sepolia `WETH9` as its bond asset.
 - The simplest demo market is `DRW/WETH`.
 - DARWIN now ships a first-party `ReferenceMarketPool` deployment path for Base Sepolia and local smoke tests.
-- The current governance wallet has `DRW` and Base Sepolia ETH, but the latest preflight shows `0 WETH`, so ETH must be wrapped first.
+- The live reference pool is `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`.
+- The live seeded reserves are `1000 DRW` and `0.0005 WETH`.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
 ## Preflight
@@ -53,12 +54,12 @@ Then confirm that your chosen venue is actually tracked for the deployment netwo
   --markdown-out ops/state/market-bootstrap/venue.md
 ```
 
-On the current live wallet, these are the immediate blockers:
+On the current live artifact, the market path is already active:
 
-- gas is present
-- `DRW` is present
-- `WETH` is not
-- the public Base Sepolia artifact does not yet include a seeded `market` section
+- the artifact includes a seeded `market` section
+- the reference pool is deployed and funded
+- venue preflight for `darwin_reference_pool` should now pass
+- the governance wallet no longer holds spare `WETH` because it was used to seed the pool
 
 That wrap helper auto-loads `.env.base-sepolia`, uses the pinned deployment artifact bond asset as the WETH address, and can run in `--dry-run` mode if you only want the exact calldata / readiness output first.
 
@@ -90,33 +91,39 @@ Then verify the artifact-backed venue path:
   --markdown-out ops/state/market-bootstrap/reference-venue.md
 ```
 
-Those example amounts are `1000 DRW` and `0.0005 WETH`. Adjust them if you want a different testnet price anchor, but keep it small and clearly labeled as testnet liquidity.
+Those example amounts are `1000 DRW` and `0.0005 WETH`. That is the current live Base Sepolia seed.
+
+To quote a contract-level swap against the live pool without broadcasting:
+
+```bash
+DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
+./ops/swap_reference_market.sh --token-in base --amount 1 --dry-run
+```
+
+That helper reads the seeded market from the artifact, calls `quoteExactInput`, and prints the slippage-guarded minimum output. A live swap uses the same command without `--dry-run`, but it requires `DARWIN_DEPLOYER_PRIVATE_KEY` and should only be used for genuine testnet trading, not self-generated optics.
 
 ## Demo Market Path
 
 1. Start with Base Sepolia, not mainnet.
-2. Wrap a small amount of ETH into `WETH`.
-3. Prefer the DARWIN reference pool on Base Sepolia unless a third-party venue is explicitly tracked for `84532`.
-4. Run a venue preflight against the exact deployment network.
-5. Seed a small `DRW/WETH` pool.
-6. Publish the pool address and exact network.
-7. Tell users it is a testnet market.
-8. Wait for third-party swaps and liquidity, not just project-controlled flow.
+2. Prefer the seeded DARWIN reference pool on Base Sepolia unless a third-party venue is explicitly tracked for `84532`.
+3. Run a venue preflight against the exact deployment network.
+4. Publish the pool address and exact network.
+5. Tell users it is a testnet market.
+6. Wait for third-party swaps and liquidity, not just project-controlled flow.
 
 Current DARWIN-tracked venue state:
 
 - `darwin_reference_pool` is tracked from the pinned deployment artifact itself
-- the current public Base Sepolia artifact does not yet have that pool deployed and seeded
+- the current public Base Sepolia artifact now has that pool deployed and seeded
 - `uniswap_v4` is tracked from the current Uniswap deployment docs
 - Base mainnet (`8453`) is listed there
 - Base Sepolia (`84532`) is not listed there
 
 So the current viable Base Sepolia path is:
 
-1. wrap ETH into WETH
-2. deploy the DARWIN reference pool
-3. seed it
-4. rerun the artifact-backed venue preflight
+1. use the seeded DARWIN reference pool
+2. rerun the artifact-backed venue preflight
+3. point third parties at the pool and wait for real usage
 
 Third-party Base Sepolia venue support remains optional and unconfirmed in the tracked registry.
 

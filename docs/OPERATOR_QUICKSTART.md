@@ -105,11 +105,10 @@ Use this only as a preflight. It does not create a pool or execute swaps.
 
 The correct operator claim is "a testnet market exists and third parties can trade it", not "we created activity by swapping ourselves."
 
-If the preflight says the wallet has ETH but `0 WETH`, the exact next step is:
+The current public Base Sepolia market is already seeded at:
 
-```bash
-./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
-```
+- `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`
+- reserves: `1000 DRW` + `0.0005 WETH`
 
 Then confirm the venue path is real on the same network:
 
@@ -132,7 +131,14 @@ export DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT=500000000000000
   --venue darwin_reference_pool
 ```
 
-Those example seed amounts are `1000 DRW` and `0.0005 WETH`. Keep them small and clearly label the pool as testnet-only.
+Those example seed amounts are `1000 DRW` and `0.0005 WETH`. That is the current live Base Sepolia seed, and the pool should already be reflected in `ops/deployments/base-sepolia.json`.
+
+To quote a swap against the live pool without sending a transaction:
+
+```bash
+DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
+./ops/swap_reference_market.sh --token-in base --amount 1 --dry-run
+```
 
 ## Step 4: Run the E1-E7 experiment suite
 

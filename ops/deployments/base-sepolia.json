@@ -8,6 +8,7 @@
     "drw_staking": "0xC84090E74880a672C5273f6A454E208Fe114634e",
     "drw_token": "0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2",
     "epoch_manager": "0xE53A27DA8e3C2c69495a97C3AcD6E484AbD7892B",
+    "reference_pool": "0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891",
     "score_registry": "0x9135b4BDDa2739212a7c5c0dB0C45AdEc42b7346",
     "settlement_hub": "0x556d75f4455cf3f0D7c5F9c6e7ea49447f66D8d2",
     "shared_pair_vault": "0xbecDB8e518C9C1B57db0656297F5F1c1FE5c2851",
@@ -35,6 +36,22 @@
     "enabled": true,
     "staking_duration": 31536000,
     "total_supply": "1000000000000000000000000000"
+  },
+  "market": {
+    "base_token": "0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2",
+    "contracts": {
+      "reference_pool": "0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891"
+    },
+    "enabled": true,
+    "fee_bps": 30,
+    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+    "initial_base_amount": "1000000000000000000000",
+    "initial_quote_amount": "500000000000000",
+    "market_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+    "quote_token": "0x4200000000000000000000000000000000000006",
+    "seeded": true,
+    "venue_id": "darwin_reference_pool",
+    "venue_type": "constant_product_bootstrap"
   },
   "network": "base-sepolia",
   "roles": {
