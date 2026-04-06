@@ -1,15 +1,15 @@
 {
   "faucet": {
-    "address": "",
-    "claim_amount": "",
-    "claim_cooldown": 0,
-    "enabled": false,
-    "funded": false,
-    "initial_native_funding": "",
-    "initial_token_funding": "",
-    "native_drip_amount": ""
+    "address": "0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0",
+    "claim_amount": "100000000000000000000",
+    "claim_cooldown": 86400,
+    "enabled": true,
+    "funded": true,
+    "initial_native_funding": "200000000000000",
+    "initial_token_funding": "100000000000000000000000",
+    "native_drip_amount": "10000000000000"
   },
-  "generated_at": "2026-04-06T19:52:56.600517Z",
+  "generated_at": "2026-04-06T20:19:47.955086Z",
   "links": {
     "deployment_artifact": "https://github.com/darwin-protocol/darwin/blob/main/ops/deployments/base-sepolia.json",
     "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",

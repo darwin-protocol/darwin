@@ -112,7 +112,13 @@ The current public Base Sepolia market is already seeded at:
 
 The repo now also ships a first-party browser portal in `site/`, published through `.github/workflows/pages.yml`, so outside users do not need to start with shell scripts if they just want to connect a wallet and trade on Base Sepolia.
 
-If you want outside wallets to hold `DRW` without the project trading on their behalf, the repo now includes a transparent faucet path:
+If you want outside wallets to hold `DRW` without the project trading on their behalf, the public Base Sepolia faucet is now live at `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0` with:
+
+- `100 DRW` per claim
+- `0.00001 ETH` native drip
+- `86400` second cooldown
+
+Redeploy path:
 
 ```bash
 ./ops/init_drw_faucet.sh

@@ -20,6 +20,8 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
 - A first-party browser portal now exists in `site/` for direct wallet-driven pool trading.
 - A first-party faucet contract + portal claim path now exists for transparent third-party DRW distribution.
+- The live public Base Sepolia faucet is `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`.
+- Live faucet funding is `100,000 DRW` + `0.0002 ETH`.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
 ## Preflight
@@ -149,7 +151,15 @@ Suggested Base Sepolia defaults:
 - cooldown: `86400` seconds
 - initial funding: `100000 DRW` + `0.0002 ETH`
 
-Live deploy path once a signer is loaded locally:
+Current live Base Sepolia faucet:
+
+- address: `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`
+- claim amount: `100 DRW`
+- native drip: `0.00001 ETH`
+- cooldown: `86400` seconds
+- initial funding: `100000 DRW` + `0.0002 ETH`
+
+Redeploy path once a signer is loaded locally:
 
 ```bash
 ./ops/init_drw_faucet.sh
@@ -198,7 +208,7 @@ Current DARWIN-tracked venue state:
 So the current viable Base Sepolia path is:
 
 1. use the seeded DARWIN reference pool
-2. deploy the transparent DRW faucet
+2. use the live transparent DRW faucet
 3. rerun the artifact-backed venue preflight
 4. point third parties at the pool, faucet, and browser portal
 5. wait for real usage
