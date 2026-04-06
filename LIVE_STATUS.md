@@ -9,7 +9,7 @@ Last repo update: `2026-04-06`
 - The public canary is still the `WETH`-bond alpha, not the `DRW`-bond version.
 - The Base Sepolia `DRW` token + staking layer is now live.
 - A seeded Base Sepolia `DRW/WETH` reference pool is now live.
-- A first-party browser swap portal now exists in `site/` and deploys through GitHub Pages.
+- A first-party Next.js static-export site now exists in `web/` and deploys through GitHub Pages.
 - A transparent public `DRW` faucet is now live on Base Sepolia.
 - The next real steps are third-party token distribution, outside-watcher operation, outside archive flow, and external review.
 
@@ -36,6 +36,7 @@ Last repo update: `2026-04-06`
 - The repo now ships a DRW faucet contract, deploy path, funding path, and portal claim UI for transparent third-party onboarding
 - Live Base Sepolia DRW faucet: `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`
 - Live faucet funding: `100,000 DRW` + `0.0002 ETH`
+- Public website source: `web/`
 - A dedicated `./.venv/bin/python ops/preflight_market_venue.py --venue darwin_reference_pool` check now exists for the artifact-backed venue path, and `uniswap_v4` remains tracked separately
 
 ## What Is Live

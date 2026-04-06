@@ -20,16 +20,42 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
+    env:
+      DARWIN_SITE_DOMAIN: ${{ vars.DARWIN_SITE_DOMAIN }}
+      DARWIN_SITE_BASE_PATH: ${{ vars.DARWIN_SITE_BASE_PATH }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
 
       - name: Export market portal config
         shell: bash
         run: |
           python3 ops/export_market_portal_config.py \
             --deployment-file ops/deployments/base-sepolia.json \
-            --out site/market-config.json
+            --out web/public/market-config.json
+
+      - name: Write custom domain
+        shell: bash
+        run: |
+          rm -f web/public/CNAME
+          if [[ -n "${DARWIN_SITE_DOMAIN:-}" ]]; then
+            printf '%s\n' "$DARWIN_SITE_DOMAIN" > web/public/CNAME
+          fi
+
+      - name: Install web dependencies
+        shell: bash
+        run: npm --prefix web ci
+
+      - name: Build Next.js site
+        shell: bash
+        run: npm --prefix web run build
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -39,7 +65,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: web/out
 
   deploy:
     runs-on: ubuntu-latest

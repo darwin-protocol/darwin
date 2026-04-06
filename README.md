@@ -5,11 +5,12 @@ A peer-to-peer system for evolving exchange microstructure.
 ## Start Here
 
 - Current project status: [LIVE_STATUS.md](LIVE_STATUS.md)
-- Public swap portal source: [site/](site/)
+- Public web source: [web/](web/)
 - Public Base Sepolia artifact: [ops/deployments/base-sepolia.json](ops/deployments/base-sepolia.json)
 - Operator flow: [docs/OPERATOR_QUICKSTART.md](docs/OPERATOR_QUICKSTART.md)
 - Security posture: [docs/SECURITY.md](docs/SECURITY.md)
 - Market bootstrap: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
+- Hosting plan: [docs/HOSTING_ARCHITECTURE.md](docs/HOSTING_ARCHITECTURE.md)
 
 ## Status At A Glance
 
@@ -18,7 +19,7 @@ A peer-to-peer system for evolving exchange microstructure.
 - The public canary is still `WETH`-bond, not `DRW`-bond.
 - The Base Sepolia `DRW` token + staking layer is now live.
 - A seeded `DRW/WETH` reference pool now exists on Base Sepolia.
-- A first-party browser swap portal now exists in `site/` and deploys through GitHub Pages.
+- A first-party Next.js static-export site now exists in `web/` and deploys through GitHub Pages.
 - A transparent Base Sepolia `DRW` faucet is now live for third-party onboarding.
 - The next live steps are third-party distribution, outside-watcher operation, outside archive flow, and external review.
 
@@ -156,7 +157,7 @@ Current live market state:
 - current reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`
 - venue preflight now keys off the seeded artifact-backed pool
 - the governance wallet no longer holds spare `WETH` because it was used to seed the pool
-- the repo now includes a first-party browser portal in `site/` for direct pool trading on Base Sepolia
+- the repo now includes a first-party browser portal in `web/` for direct pool trading on Base Sepolia
 - the repo now includes a live public `DRW` faucet at `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`
 
 From there, DARWIN now supports two venue paths:
@@ -176,12 +177,18 @@ DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
 ./ops/swap_reference_market.sh --token-in base --amount 1 --dry-run
 ```
 
-For a browser-wallet path, the Pages deployment publishes the static portal from `site/`.
-Expected project-site URL:
+For a browser-wallet path, the Pages deployment publishes the static site from `web/`.
+Current project-site URL:
 
 ```text
 https://darwin-protocol.github.io/darwin/
 ```
+
+Recommended next step:
+
+- set `DARWIN_SITE_DOMAIN` as a GitHub repository variable
+- point the bought domain at GitHub Pages
+- let the workflow emit a `CNAME` file automatically during deploy
 
 2. A tracked third-party venue, only if its preflight passes on `84532`:
 
@@ -208,7 +215,7 @@ See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook an
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
 | DRW token | Live on Base Sepolia. Token + staking deployed; `status-check` now verifies live holder balances against the pinned allocation table. |
-| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is seeded at `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`, has seen initial DARWIN-controlled demo trades, and now has a first-party browser portal in `site/`. |
+| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is seeded at `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`, has seen initial DARWIN-controlled demo trades, and now has a first-party browser portal in `web/`. |
 | DRW faucet | Live on Base Sepolia at `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`; funded with `100,000 DRW` + `0.0002 ETH`, and exposed through the portal claim UI. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |

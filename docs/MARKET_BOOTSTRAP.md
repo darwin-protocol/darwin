@@ -18,7 +18,7 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - The live seeded reserves are `1000 DRW` and `0.0005 WETH`.
 - Initial DARWIN-controlled demo trades have now executed against the live pool.
 - Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
-- A first-party browser portal now exists in `site/` for direct wallet-driven pool trading.
+- A first-party Next.js portal now exists in `web/` for direct wallet-driven pool trading.
 - A first-party faucet contract + portal claim path now exists for transparent third-party DRW distribution.
 - The live public Base Sepolia faucet is `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`.
 - Live faucet funding is `100,000 DRW` + `0.0002 ETH`.
@@ -110,10 +110,10 @@ That helper reads the seeded market from the artifact, calls `quoteExactInput`, 
 
 ## Browser Portal
 
-The repo now ships a static market portal in `site/` that connects directly to the live Base Sepolia reference pool.
+The repo now ships a static market portal in `web/` that connects directly to the live Base Sepolia reference pool.
 
-- source: `site/`
-- config: `site/market-config.json`
+- source: `web/`
+- config: `web/public/market-config.json`
 - exporter: `ops/export_market_portal_config.py`
 - Pages workflow: `.github/workflows/pages.yml`
 
@@ -164,7 +164,7 @@ Redeploy path once a signer is loaded locally:
 ```bash
 ./ops/init_drw_faucet.sh
 python -m darwin_sim.cli.darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
-python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out site/market-config.json
+python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out web/public/market-config.json
 ```
 
 If the token holder differs from the deployer, set a separate funder key locally before running the faucet init:

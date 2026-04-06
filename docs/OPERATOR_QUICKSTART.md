@@ -110,7 +110,7 @@ The current public Base Sepolia market is already seeded at:
 - `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`
 - reserves: `1000 DRW` + `0.0005 WETH`
 
-The repo now also ships a first-party browser portal in `site/`, published through `.github/workflows/pages.yml`, so outside users do not need to start with shell scripts if they just want to connect a wallet and trade on Base Sepolia.
+The repo now also ships a first-party browser portal in `web/`, published through `.github/workflows/pages.yml`, so outside users do not need to start with shell scripts if they just want to connect a wallet and trade on Base Sepolia.
 
 If you want outside wallets to hold `DRW` without the project trading on their behalf, the public Base Sepolia faucet is now live at `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0` with:
 
@@ -123,7 +123,7 @@ Redeploy path:
 ```bash
 ./ops/init_drw_faucet.sh
 python -m darwin_sim.cli.darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
-python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out site/market-config.json
+python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out web/public/market-config.json
 ```
 
 If the wallet funding the faucet is different from the deployer key, set a separate local-only funder key first:
