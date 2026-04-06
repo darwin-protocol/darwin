@@ -91,6 +91,20 @@ That writes the DRW section directly into the emitted deployment artifact, inclu
 
 `./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, `./ops/init_drw_genesis.sh`, and `./ops/deploy_public_drw.sh` auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
 
+## Optional DRW Market Bootstrap
+
+If you want to seed a small testnet `DRW/WETH` market, start with the readiness check:
+
+```bash
+./.venv/bin/python ops/preflight_market_bootstrap.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --wallet-address 0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d
+```
+
+Use this only as a preflight. It does not create a pool or execute swaps.
+
+The correct operator claim is "a testnet market exists and third parties can trade it", not "we created activity by swapping ourselves."
+
 ## Step 4: Run the E1-E7 experiment suite
 
 ```bash

@@ -4,10 +4,11 @@ A peer-to-peer system for evolving exchange microstructure.
 
 ## Start Here
 
-- Current project status: [LIVE_STATUS.md](/path/to/darwin/LIVE_STATUS.md)
-- Public Base Sepolia artifact: [ops/deployments/base-sepolia.json](/path/to/darwin/ops/deployments/base-sepolia.json)
-- Operator flow: [docs/OPERATOR_QUICKSTART.md](/path/to/darwin/docs/OPERATOR_QUICKSTART.md)
-- Security posture: [docs/SECURITY.md](/path/to/darwin/docs/SECURITY.md)
+- Current project status: [LIVE_STATUS.md](LIVE_STATUS.md)
+- Public Base Sepolia artifact: [ops/deployments/base-sepolia.json](ops/deployments/base-sepolia.json)
+- Operator flow: [docs/OPERATOR_QUICKSTART.md](docs/OPERATOR_QUICKSTART.md)
+- Security posture: [docs/SECURITY.md](docs/SECURITY.md)
+- Market bootstrap: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
 
 ## Status At A Glance
 
@@ -114,6 +115,34 @@ cp ops/base_sepolia.env.example .env.base-sepolia
 
 The Base Sepolia scripts auto-load `.env.base-sepolia` or the file named by `DARWIN_ENV_FILE`.
 
+## Market Bootstrap
+
+The honest next market step is a small `DRW/WETH` testnet pool, not self-swapping for optics.
+
+Run the market preflight first:
+
+```bash
+./.venv/bin/python ops/preflight_market_bootstrap.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --wallet-address 0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d
+```
+
+That checks:
+
+- gas on Base Sepolia
+- live `DRW` balance
+- live quote-token balance
+- whether the pinned deployment is suitable for a `DRW/WETH` demo market
+
+See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the runbook and risk framing.
+
+Current preflight result on the live governance wallet:
+
+- `700,000,000 DRW`
+- enough Base Sepolia ETH for gas
+- `0 WETH`
+- immediate blocker for a `DRW/WETH` demo pool: wrap ETH first
+
 ## Status
 
 | Component | State |
@@ -136,7 +165,7 @@ Real blockers now:
 3. external security review / audit
 4. legal/compliance structure before any real public token distribution
 
-The canonical tracker is [LIVE_STATUS.md](/path/to/darwin/LIVE_STATUS.md).
+The canonical tracker is [LIVE_STATUS.md](LIVE_STATUS.md).
 
 ## Repository
 

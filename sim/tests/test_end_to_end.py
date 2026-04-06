@@ -2385,6 +2385,156 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("Settlement replay edge case", (intake / "external-review-triage.md").read_text())
             print("  Ops: external review intake logs findings and emits triage artifacts")
 
+    def test_35_preflight_market_bootstrap(self):
+        """Ops: market bootstrap preflight checks live DRW + quote balances."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            json_out = tmp / "preflight.json"
+            md_out = tmp / "preflight.md"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                },
+                "drw": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000011",
+                        "drw_staking": "0x0000000000000000000000000000000000000012",
+                    },
+                },
+            }))
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                    method = body.get("method")
+                    params = body.get("params", [])
+
+                    def encode_uint(value: int) -> str:
+                        return "0x" + hex(value)[2:].rjust(64, "0")
+
+                    def encode_string(value: str) -> str:
+                        raw = value.encode()
+                        length = len(raw)
+                        padded = raw + b"\x00" * ((32 - (length % 32)) % 32)
+                        payload = (
+                            (32).to_bytes(32, "big")
+                            + length.to_bytes(32, "big")
+                            + padded
+                        )
+                        return "0x" + payload.hex()
+
+                    if method == "eth_chainId":
+                        result = hex(84532)
+                    elif method == "eth_getBalance":
+                        result = hex(2 * 10**15)
+                    elif method == "eth_call":
+                        to = params[0]["to"].lower()
+                        data = params[0].get("data", "").lower()
+                        if to == "0x0000000000000000000000000000000000000011":
+                            if data == "0x95d89b41":
+                                result = encode_string("DRW")
+                            elif data == "0x313ce567":
+                                result = encode_uint(18)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000009":
+                                result = encode_uint(700 * 10**18)
+                            else:
+                                result = encode_uint(0)
+                        elif to == "0x4200000000000000000000000000000000000006":
+                            if data == "0x95d89b41":
+                                result = encode_string("WETH")
+                            elif data == "0x313ce567":
+                                result = encode_uint(18)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000009":
+                                result = encode_uint(5 * 10**17)
+                            else:
+                                result = encode_uint(0)
+                        else:
+                            result = "0x"
+                    else:
+                        result = "0x0"
+
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            rpc_server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            rpc_thread = Thread(target=rpc_server.serve_forever, daemon=True)
+            rpc_thread.start()
+
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(ROOT / "ops" / "preflight_market_bootstrap.py"),
+                        "--deployment-file",
+                        str(deployment),
+                        "--wallet-address",
+                        "0x0000000000000000000000000000000000000009",
+                        "--base-rpc-url",
+                        f"http://127.0.0.1:{rpc_server.server_port}",
+                        "--json-out",
+                        str(json_out),
+                        "--markdown-out",
+                        str(md_out),
+                    ],
+                    cwd=str(ROOT),
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                rpc_server.shutdown()
+                rpc_server.server_close()
+                rpc_thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            report = json.loads(json_out.read_text())
+            self.assertTrue(report["ready"])
+            self.assertEqual(report["checks"]["drw_balance"]["state"], "OK")
+            self.assertEqual(report["checks"]["quote_balance"]["state"], "OK")
+            self.assertIn("recommended_pair=DRW/WETH", report["checks"]["market_pair"]["detail"])
+            self.assertIn("do not self-trade for optics", md_out.read_text())
+            print("  Ops: market bootstrap preflight checks DRW and quote-token readiness")
+
+    def test_36_public_docs_use_repo_relative_links(self):
+        """Docs: public markdown should not contain local filesystem links."""
+        public_docs = [
+            ROOT / "README.md",
+            ROOT / "LIVE_STATUS.md",
+            ROOT / "CONTRIBUTING.md",
+            ROOT / "docs" / "OPERATOR_QUICKSTART.md",
+            ROOT / "docs" / "SECURITY.md",
+            ROOT / "docs" / "MARKET_BOOTSTRAP.md",
+            ROOT / "docs" / "EXTERNAL_CANARY_CHECKLIST.md",
+            ROOT / "docs" / "AUDIT_READINESS.md",
+            ROOT / "docs" / "THREAT_MODEL.md",
+        ]
+
+        offenders: list[str] = []
+        for path in public_docs:
+            if not path.exists():
+                continue
+            text = path.read_text()
+            if "](/" + "Users/" in text or "](/tmp/" in text:
+                offenders.append(str(path.relative_to(ROOT)))
+
+        self.assertEqual(offenders, [], f"public docs contain local absolute links: {offenders}")
+        print("  Docs: public markdown uses repo-relative links")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
