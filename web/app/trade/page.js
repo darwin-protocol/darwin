@@ -17,7 +17,7 @@ export default function TradePage() {
         strategy="afterInteractive"
       />
       <Script
-        src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"
+        src="../vendor/qrcode.min.js"
         strategy="afterInteractive"
       />
       <Script src="../trade.js" strategy="afterInteractive" />
@@ -29,32 +29,20 @@ export default function TradePage() {
       </div>
 
       <div className="page-shell">
-        <section className="card status-banner compact-banner">
-          <div>
-            <p className="eyebrow">DARWIN MARKET PORTAL</p>
-            <h1 className="plain-title">Trade DRW on Base Sepolia.</h1>
-            <p className="plain-note">
-              Canonical host: <code>usedarwin.xyz</code>. HTTPS certificate is still provisioning
-              through GitHub Pages, so the custom domain is currently live over HTTP.
-            </p>
-          </div>
-          <div className="status-banner-meta">
-            <span className="badge">DRW live</span>
-            <span className="badge">Pool live</span>
-            <span className="badge">Cert pending</span>
-          </div>
-        </section>
-
         <header className="hero card">
           <div className="hero-copy">
-            <p className="eyebrow">LIVE TESTNET MARKET</p>
+            <p className="eyebrow">DARWIN MARKET PORTAL</p>
             <h2 className="section-title">
-              Trade <span>DRW</span> directly from a wallet.
+              Trade <span>DRW</span> on Base Sepolia.
             </h2>
             <p className="lede">
               This portal connects directly to the live DARWIN-owned reference pool. It is a real
               testnet market, not a mockup, but it is still alpha and still waiting on outside
               participants.
+            </p>
+            <p className="hero-status-line">
+              Canonical host: <code>usedarwin.xyz</code>. HTTPS certificate is still provisioning
+              through GitHub Pages, so the custom domain is currently live over HTTP.
             </p>
             <div className="hero-actions">
               <button id="connectButton" className="button button-primary">
@@ -235,7 +223,7 @@ export default function TradePage() {
                 <small>connected wallet</small>
               </article>
             </div>
-            <button id="claimButton" className="button button-secondary button-wide">
+            <button id="claimButton" className="button button-primary button-wide">
               Claim DRW
             </button>
             <p className="caption">
@@ -280,7 +268,7 @@ export default function TradePage() {
             </div>
             <div className="qr-layout">
               <div className="qr-stage">
-                <canvas id="qrCanvas" width="176" height="176"></canvas>
+                <div id="qrCanvas" className="qr-render"></div>
               </div>
               <div className="qr-controls">
                 <label className="field">

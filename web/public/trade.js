@@ -471,38 +471,30 @@ async function watchAsset() {
 }
 
 function drawQr(uri) {
-  const canvas = els.qrCanvas;
-  const hasRenderer = Boolean(window.QRCode && typeof window.QRCode.toCanvas === "function");
-  const context = canvas.getContext("2d");
+  const mount = els.qrCanvas;
+  const hasRenderer = Boolean(window.QRCode);
+  mount.innerHTML = "";
 
   if (!uri || !hasRenderer) {
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "#f4efe5";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "#5d6978";
-    context.font = "14px monospace";
-    context.textAlign = "center";
-    context.fillText(hasRenderer ? "Enter a valid wallet" : "QR loader missing", canvas.width / 2, canvas.height / 2);
+    mount.textContent = hasRenderer ? "Enter a valid wallet" : "QR loader missing";
+    mount.classList.add("qr-empty");
     return;
   }
-
-  window.QRCode.toCanvas(
-    canvas,
-    uri,
-    {
+  mount.classList.remove("qr-empty");
+  try {
+    new window.QRCode(mount, {
+      text: uri,
       width: 176,
-      margin: 1,
-      color: {
-        dark: "#14202f",
-        light: "#f4efe5",
-      },
-    },
-    (error) => {
-      if (error) {
-        console.error(error);
-      }
-    },
-  );
+      height: 176,
+      colorDark: "#14202f",
+      colorLight: "#f4efe5",
+      correctLevel: window.QRCode.CorrectLevel.M,
+    });
+  } catch (error) {
+    console.error(error);
+    mount.textContent = "QR render failed";
+    mount.classList.add("qr-empty");
+  }
 }
 
 function updateQrState() {

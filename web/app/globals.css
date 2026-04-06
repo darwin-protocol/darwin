@@ -183,6 +183,14 @@ code {
   line-height: 1.55;
 }
 
+.hero-status-line {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
 .hero-actions,
 .link-row {
   display: flex;
@@ -460,6 +468,32 @@ code {
   max-width: 100%;
   border-radius: 1rem;
   background: #f4efe5;
+}
+
+.qr-render {
+  display: grid;
+  place-items: center;
+  width: 11rem;
+  height: 11rem;
+  max-width: 100%;
+  border-radius: 1rem;
+  background: #f4efe5;
+  overflow: hidden;
+}
+
+.qr-render img,
+.qr-render canvas {
+  display: block;
+  width: 11rem;
+  height: 11rem;
+}
+
+.qr-render.qr-empty {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  text-align: center;
+  padding: 1rem;
 }
 
 .qr-controls {
