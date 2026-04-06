@@ -70,8 +70,7 @@ contract DeployDRWGenesis is Script {
         cfg.outputPath = vm.envOr(
             "DARWIN_DRW_GENESIS_FILE", string.concat(vm.projectRoot(), "/../ops/deployments/", cfg.network, ".drw.json")
         );
-        // Launch annex canonical supply: 100M DRW (not 1B)
-        cfg.totalSupply = vm.envOr("DARWIN_DRW_TOTAL_SUPPLY", uint256(100_000_000 ether));
+        cfg.totalSupply = vm.envOr("DARWIN_DRW_TOTAL_SUPPLY", uint256(1_000_000_000 ether));
         cfg.stakingDuration = vm.envOr("DARWIN_DRW_STAKING_DURATION", uint256(365 days));
         cfg.treasuryRecipient = vm.envOr("DARWIN_DRW_TREASURY_RECIPIENT", cfg.governance);
         cfg.insuranceRecipient = vm.envOr("DARWIN_DRW_INSURANCE_RECIPIENT", cfg.governance);

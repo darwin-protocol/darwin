@@ -118,14 +118,14 @@ cp ops/base_sepolia.env.example .env.base-sepolia
 darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
 ```
 
-Default alpha genesis parameters (per launch annex):
+Default alpha genesis parameters:
 
-- total supply: `100,000,000 DRW` (100M fixed supply)
-- treasury: `20%` (20M DRW)
-- insurance: `20%` (20M DRW)
-- sponsor rewards: `10%` (10M DRW)
-- staking reserve: `30%` (30M DRW)
-- community reserve: `20%` (20M DRW)
+- total supply: `1,000,000,000 DRW` (1B fixed supply)
+- treasury: `20%` (200M DRW)
+- insurance: `20%` (200M DRW)
+- sponsor rewards: `10%` (100M DRW)
+- staking reserve: `30%` (300M DRW)
+- community reserve: `20%` (200M DRW)
 - staking duration: `31536000` seconds (`365 days`)
 
 `./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh` now auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
@@ -536,7 +536,7 @@ Until then, DRW is specified protocol stake, not a live public token.
 
 19. All 6 gates pass with 14-day challenge windows
 20. Founding council signs activation notice
-21. Genesis mint: 100M DRW (treasury 20M, insurance 20M, sponsor rewards 10M, staking 30M, community 20M)
+21. Genesis mint: 1B DRW (treasury 200M, insurance 200M, sponsor rewards 100M, staking 300M, community 200M)
 22. DRW staking goes live
 
 **Phase 6 — Growth (post-activation)**
