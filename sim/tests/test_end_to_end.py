@@ -2843,6 +2843,113 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("Market pool:", result.stdout)
             print("  CLI: deployment-show prints reference market metadata when the artifact includes it")
 
+    def test_42_reference_market_swap_helper_handles_large_base_amounts(self):
+        """Ops: swap helper dry-runs 18-decimal DRW amounts above bash int range."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            env_file = tmp / ".env.base-sepolia"
+            fake_bin = tmp / "bin"
+            fake_cast = fake_bin / "cast"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x0000000000000000000000000000000000000022",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+            }))
+            env_file.write_text(
+                "\n".join([
+                    'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
+                    f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
+                    'export DARWIN_DEPLOYER_ADDRESS="0x0000000000000000000000000000000000000009"',
+                ]) + "\n"
+            )
+
+            fake_bin.mkdir(parents=True, exist_ok=True)
+            fake_cast.write_text(
+                """#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$1" == "chain-id" ]]; then
+  echo 84532
+  exit 0
+fi
+
+if [[ "$1" == "wallet" && "${2:-}" == "address" ]]; then
+  echo 0x0000000000000000000000000000000000000009
+  exit 0
+fi
+
+if [[ "$1" == "call" ]]; then
+  addr="${2:-}"
+  sig="${3:-}"
+  case "$sig" in
+    'decimals()(uint8)')
+      echo 18
+      ;;
+    'symbol()(string)')
+      if [[ "$addr" == "0x0000000000000000000000000000000000000011" ]]; then
+        echo '"DRW"'
+      else
+        echo '"WETH"'
+      fi
+      ;;
+    'balanceOf(address)(uint256)')
+      echo 25000000000000000000
+      ;;
+    'allowance(address,address)(uint256)')
+      echo 0
+      ;;
+    'quoteExactInput(address,uint256)(uint256)')
+      echo 4935790171985
+      ;;
+    *)
+      echo 0
+      ;;
+  esac
+  exit 0
+fi
+
+echo "unexpected cast invocation: $*" >&2
+exit 1
+"""
+            )
+            fake_cast.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "ops" / "swap_reference_market.sh"),
+                    "--token-in",
+                    "base",
+                    "--amount",
+                    "10",
+                    "--dry-run",
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("amount_in:          10", result.stdout)
+            self.assertIn("quoted_out:", result.stdout)
+            self.assertIn("dry_run:            yes", result.stdout)
+            print("  Ops: swap helper handles 18-decimal DRW amounts above bash integer range")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

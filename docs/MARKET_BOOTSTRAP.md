@@ -16,6 +16,8 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - DARWIN now ships a first-party `ReferenceMarketPool` deployment path for Base Sepolia and local smoke tests.
 - The live reference pool is `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`.
 - The live seeded reserves are `1000 DRW` and `0.0005 WETH`.
+- Initial DARWIN-controlled demo trades have now executed against the live pool.
+- Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
 ## Preflight
@@ -102,6 +104,19 @@ DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
 
 That helper reads the seeded market from the artifact, calls `quoteExactInput`, and prints the slippage-guarded minimum output. A live swap uses the same command without `--dry-run`, but it requires `DARWIN_DEPLOYER_PRIVATE_KEY` and should only be used for genuine testnet trading, not self-generated optics.
 
+## Initial Demo Activity
+
+On `2026-04-06`, DARWIN-controlled demo traders executed the first live Base Sepolia swaps against the reference pool to prove the end-to-end trading path.
+
+- trader A wrap: `0x23774b08711a83580c2ed65670edad4bb6646c9ff6e97adb788c6f6a8d06bb82`
+- trader B wrap: `0x14191a73a6a460f08bf00c8350f5156ad6d5a52e056ccede1863281647e308a4`
+- trader A `10 DRW -> WETH`: `0xb21331c770bf490ee6cdc43e36e637ff56b3af999e41a4ef44a768671256535c`
+- trader B `0.00001 WETH -> DRW`: `0x5c1871bb64ca40b92d0d85f122773f51b3965a14dff32c3654a011ad42307e34`
+- trader A `0.000005 WETH -> DRW`: `0xfe32916d7a4c0a0552166d9308e28be607a971fa5b454157ded74280e63ef5da`
+- trader B `5 DRW -> WETH`: `0xb089cab4bf185d92393a6efaf0e378533a98941964c0f8a3e70a370adf79bd6e`
+
+Those transactions prove the pool is tradeable today on Base Sepolia. They do not count as third-party market validation.
+
 ## Demo Market Path
 
 1. Start with Base Sepolia, not mainnet.
@@ -115,6 +130,7 @@ Current DARWIN-tracked venue state:
 
 - `darwin_reference_pool` is tracked from the pinned deployment artifact itself
 - the current public Base Sepolia artifact now has that pool deployed and seeded
+- the current public Base Sepolia artifact is now backed by successful DARWIN-controlled demo trades
 - `uniswap_v4` is tracked from the current Uniswap deployment docs
 - Base mainnet (`8453`) is listed there
 - Base Sepolia (`84532`) is not listed there

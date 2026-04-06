@@ -26,6 +26,9 @@ Last repo update: `2026-04-06`
 - Reference-pool deploy/seed path exists for a DARWIN-owned Base Sepolia demo market
 - Live reference pool: `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`
 - Live seeded reserves: `1000 DRW` + `0.0005 WETH`
+- Initial DARWIN-controlled demo trades have now executed against the live reference pool
+- Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`
+- Governance + staking still directly hold `999,998,950 DRW`; the remaining `1,050 DRW` sit in the reference pool and DARWIN-controlled demo traders
 - The governance wallet no longer holds spare `WETH` because it was used to seed the live pool
 - A dedicated `./.venv/bin/python ops/preflight_market_venue.py --venue darwin_reference_pool` check now exists for the artifact-backed venue path, and `uniswap_v4` remains tracked separately
 
@@ -64,7 +67,7 @@ Last repo update: `2026-04-06`
 2. Ingest a genuinely external archive epoch through that watcher path
 3. Hand the live artifact and evidence to an outside reviewer
 4. Point outside users at the live Base Sepolia reference pool
-5. Add a minimal public swap/liquidity runbook around the seeded pool
+5. Point outside users at the simple swap runbook in `docs/MARKET_BOOTSTRAP.md`
 6. Wait for real third-party interaction instead of project-controlled swaps
 
 ## What Remains After The Public DRW Deploy

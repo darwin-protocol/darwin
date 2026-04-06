@@ -207,7 +207,7 @@ IN_SYMBOL="$(cast call "$TOKEN_IN" 'symbol()(string)' --rpc-url "$DARWIN_RPC_URL
 OUT_SYMBOL="$(cast call "$TOKEN_OUT" 'symbol()(string)' --rpc-url "$DARWIN_RPC_URL" | tr -d '"')"
 
 AMOUNT_IN="$(to_units "$AMOUNT_RAW" "$IN_DECIMALS")"
-if [[ "$AMOUNT_IN" -le 0 ]]; then
+if uint_lt "$AMOUNT_IN" 1; then
   echo "Swap amount must be positive." >&2
   exit 1
 fi

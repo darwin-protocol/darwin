@@ -71,6 +71,9 @@ Current truth:
 - public Base Sepolia `DRW` staking: live at `0xC84090E74880a672C5273f6A454E208Fe114634e`
 - public DRW total supply: `1,000,000,000`
 - current live bond asset is still Base Sepolia `WETH9`, not `DRW`
+- governance + staking still directly hold `999,998,950 DRW`
+- the remaining `1,050 DRW` are in the seeded reference pool and DARWIN-controlled demo traders
+- no third-party DRW distribution exists yet
 
 The repo now includes:
 
@@ -139,6 +142,8 @@ Current live market state:
 
 - reference pool: `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`
 - initial reserves: `1000 DRW` and `0.0005 WETH`
+- initial DARWIN-controlled demo trades have now executed against the live pool
+- current reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`
 - venue preflight now keys off the seeded artifact-backed pool
 - the governance wallet no longer holds spare `WETH` because it was used to seed the pool
 
@@ -170,7 +175,7 @@ DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
 Current market blockers are now:
 
 - no third-party Base Sepolia venue is tracked yet
-- the live pool is still a DARWIN-owned reference pool, not independent market activity
+- the live pool activity is still DARWIN-controlled demo flow, not independent market activity
 
 See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook and risk framing.
 
@@ -184,7 +189,7 @@ See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook an
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
 | DRW token | Live on Base Sepolia. Token + staking deployed; `status-check` now verifies live holder balances against the pinned allocation table. |
-| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is seeded at `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`. |
+| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is seeded at `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891` and has seen initial DARWIN-controlled demo trades. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |
 
