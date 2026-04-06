@@ -66,7 +66,7 @@ darwinctl intent-create \
 
 ## Optional DRW Alpha Genesis
 
-If you want to produce the alpha DRW token + staking layer against an existing DARWIN deployment artifact, use the same untracked Base Sepolia env file and run:
+The public Base Sepolia artifact already includes the alpha DRW token + staking layer. To reproduce that deployment against an existing DARWIN deployment artifact, use the same untracked Base Sepolia env file and run:
 
 ```bash
 cp ops/base_sepolia.env.example .env.base-sepolia

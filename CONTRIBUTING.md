@@ -34,7 +34,7 @@
 Priority contributions (in order):
 
 1. **External canary operations** — first outside watcher, first outside archive epoch, and real operator feedback against the live Base Sepolia artifact
-2. **Public DRW rollout** — once the signer is loaded, broadcast the Base Sepolia DRW genesis, verify the merged artifact, and then operate the DRW-enabled canary honestly
+2. **DRW canary integration** — operate the live DRW-enabled Base Sepolia artifact honestly, expose live token/staking state in ops evidence, and decide if or when bond economics should migrate away from the current WETH-bond alpha
 3. **Audit prep** — deepen cross-contract invariants, adversarial testing, and reviewer-facing threat/model evidence beyond the current auth + lifecycle coverage; use `ops/export_audit_bundle.py` to package the live artifact, readiness evidence, `docs/AUDIT_READINESS.md`, and `docs/THREAT_MODEL.md`
 4. **Watcher improvements** — more granular replay checks, better error reporting, long-run auto-sync recovery under real archive churn, better operator handoff material via `ops/export_external_watcher_bundle.py`, and cleaner incoming evidence verification via `ops/intake_external_watcher_report.py`
 5. **Canary data flow** — automate archive ingest, replay promotion, and external watcher onboarding around the live Base Sepolia artifact plus `run_external_watcher.sh`, `publish_canary_epoch.sh`, the operator bundle export, and the watcher-intake path

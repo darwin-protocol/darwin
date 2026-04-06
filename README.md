@@ -14,8 +14,8 @@ A peer-to-peer system for evolving exchange microstructure.
 - The repo is reproducible locally.
 - The public canary exists on Base Sepolia.
 - The public canary is still `WETH`-bond, not `DRW`-bond.
-- The DRW genesis path is implemented and verified locally.
-- The next live on-chain step is the Base Sepolia DRW genesis broadcast.
+- The Base Sepolia `DRW` token + staking layer is now live.
+- The next live steps are outside-watcher operation, outside archive flow, and external review.
 
 ## Abstract
 
@@ -65,9 +65,10 @@ Reference alpha genesis split:
 Current truth:
 
 - public Base Sepolia canary: `WETH`-bond alpha
-- public DRW supply: zero
-- DRW contracts exist and test pass
-- DRW genesis deploy path exists but has not been broadcast publicly yet
+- public Base Sepolia `DRW` token: live at `0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2`
+- public Base Sepolia `DRW` staking: live at `0xC84090E74880a672C5273f6A454E208Fe114634e`
+- public DRW total supply: `1,000,000,000`
+- current live bond asset is still Base Sepolia `WETH9`, not `DRW`
 
 The repo now includes:
 
@@ -122,18 +123,13 @@ The Base Sepolia scripts auto-load `.env.base-sepolia` or the file named by `DAR
 | Overlay | 7 services run locally. Gateway admits real PQ-signed intents. |
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
-| DRW token | Contracts written and tested. Public genesis not yet broadcast. |
+| DRW token | Live on Base Sepolia. Token + staking deployed; public artifact updated. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |
 
 ## What Remains
 
-Immediate next step:
-
-1. load the Base Sepolia signer key into `.env.base-sepolia`
-2. run `./ops/deploy_public_drw.sh`
-
-Real blockers after that:
+Real blockers now:
 
 1. first outside watcher operator
 2. first outside archive epoch through the live canary

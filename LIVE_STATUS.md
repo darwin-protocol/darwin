@@ -1,14 +1,14 @@
 # DARWIN Live Status
 
-Last repo update: `2026-04-05`
+Last repo update: `2026-04-06`
 
 ## Current Truth
 
 - The repo is real and reproducible locally.
 - The public canary exists on Base Sepolia.
 - The public canary is still the `WETH`-bond alpha, not the `DRW`-bond version.
-- The DRW genesis path now exists in code and works locally.
-- The next live on-chain step is the Base Sepolia DRW genesis broadcast.
+- The Base Sepolia `DRW` token + staking layer is now live.
+- The next real steps are outside-watcher operation, outside archive flow, and external review.
 
 ## Verified Baseline
 
@@ -17,10 +17,13 @@ Last repo update: `2026-04-05`
 - Overlay devnet: `7/7` services up locally
 - Local DRW genesis smoke: passing
 - Public Base Sepolia core artifact: [ops/deployments/base-sepolia.json](/path/to/darwin/ops/deployments/base-sepolia.json)
+- Public Base Sepolia DRW token: `0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2`
+- Public Base Sepolia DRW staking: `0xC84090E74880a672C5273f6A454E208Fe114634e`
 
 ## What Is Live
 
 - Base Sepolia core DARWIN deployment
+- Base Sepolia DRW token + staking deployment
 - Gateway signature verification
 - Deployment-pinned readiness checks
 - External watcher bootstrap/export/intake flow
@@ -30,17 +33,13 @@ Last repo update: `2026-04-05`
 
 ## What Is Not Live Yet
 
-- Public Base Sepolia DRW genesis
+- A genuine outside watcher on the live canary
 - Outside watcher evidence on the live canary
 - Outside archive epoch through the live canary
 - External audit / security review
 - Mainnet or public-token-launch posture
 
 ## True Blockers
-
-### Immediate blocker for public DRW deploy
-
-- A funded Base Sepolia signer key must be loaded locally into `.env.base-sepolia`
 
 ### Real canary blockers after that
 
@@ -50,8 +49,9 @@ Last repo update: `2026-04-05`
 
 ## Exact Next Action
 
-1. Fill in `DARWIN_DEPLOYER_PRIVATE_KEY` in [.env.base-sepolia](/path/to/darwin/.env.base-sepolia)
-2. Run `./ops/deploy_public_drw.sh`
+1. Run the live canary with an outside watcher
+2. Ingest a genuinely external archive epoch through that watcher path
+3. Hand the live artifact and evidence to an outside reviewer
 
 ## What Remains After The Public DRW Deploy
 
