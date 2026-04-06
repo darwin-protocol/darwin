@@ -53,6 +53,14 @@ CNAME www  darwin-protocol.github.io.
 gh api repos/darwin-protocol/darwin/pages/health
 ```
 
+8. Enforce HTTPS once the certificate exists:
+
+```bash
+./ops/enforce_pages_https.sh example.com
+```
+
+If you are using spare redirect domains, it is reasonable to point them at `http://example.com/` until the certificate is live, then switch them to `https://example.com/`.
+
 ## IONOS Guidance
 
 If the bought domain is at IONOS:

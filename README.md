@@ -191,6 +191,12 @@ Recommended next step:
 - wait for GitHub Pages certificate issuance, then enforce HTTPS on `usedarwin.xyz`
 - keep the spare `usedarwin.*` domains as redirects to the canonical host
 
+When the certificate is ready:
+
+```bash
+./ops/enforce_pages_https.sh usedarwin.xyz
+```
+
 One-command GitHub-side setup:
 
 ```bash
