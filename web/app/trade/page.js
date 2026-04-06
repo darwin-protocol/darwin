@@ -9,6 +9,8 @@ export const metadata = {
   },
 };
 
+const tradeScriptVersion = "20260406-portal2";
+
 export default function TradePage() {
   return (
     <>
@@ -17,10 +19,10 @@ export default function TradePage() {
         strategy="afterInteractive"
       />
       <Script
-        src="../vendor/qrcode.min.js"
+        src={`../vendor/qrcode.min.js?v=${tradeScriptVersion}`}
         strategy="afterInteractive"
       />
-      <Script src="../trade.js" strategy="afterInteractive" />
+      <Script src={`../trade.js?v=${tradeScriptVersion}`} strategy="afterInteractive" />
 
       <div className="background">
         <div className="orb orb-a"></div>
