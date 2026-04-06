@@ -1,4 +1,6 @@
 import Script from "next/script";
+import BrandMark from "../../components/BrandMark";
+import SiteHeader from "../../components/SiteHeader";
 
 export const metadata = {
   title: "Trade DRW",
@@ -25,9 +27,17 @@ export default function TradePage() {
       </div>
 
       <div className="page-shell">
+        <SiteHeader compact />
+
         <header className="hero card">
           <div className="hero-copy">
-            <p className="eyebrow">DARWIN MARKET PORTAL</p>
+            <div className="trade-title-row">
+              <BrandMark className="trade-mark" title="DRW market" />
+              <div>
+                <p className="eyebrow">DARWIN MARKET PORTAL</p>
+                <span className="trade-subtitle">Wallet-native Base Sepolia alpha market</span>
+              </div>
+            </div>
             <h1>
               Trade <span>DRW</span> on Base Sepolia
             </h1>
@@ -50,6 +60,20 @@ export default function TradePage() {
           </div>
 
           <aside className="hero-panel">
+            <div className="status-ladder compact">
+              <div className="ladder-step">
+                <strong>Claim</strong>
+                <span>Pull DRW from the public faucet.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>Wrap</strong>
+                <span>Convert a little native ETH into WETH.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>Swap</strong>
+                <span>Buy or sell against the live pool.</span>
+              </div>
+            </div>
             <div className="hero-stat">
               <span className="label">Pool</span>
               <a id="poolLink" className="mono" href="#" target="_blank" rel="noreferrer"></a>

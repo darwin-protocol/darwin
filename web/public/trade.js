@@ -436,6 +436,7 @@ async function watchAsset() {
           address: state.config.token.address,
           symbol: state.config.token.symbol,
           decimals: state.config.token.decimals,
+          image: new URL("../drw-logo.svg", window.location.href).toString(),
         },
       },
     });

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import BrandMark from "../components/BrandMark";
+import SiteHeader from "../components/SiteHeader";
 
 export const metadata = {
   title: "Use Darwin",
@@ -7,6 +9,15 @@ export const metadata = {
   alternates: {
     canonical: "/",
   },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Use Darwin",
+  url: "https://usedarwin.xyz",
+  description:
+    "Claim testnet DRW, wrap Base Sepolia ETH, and trade against the live DARWIN reference pool.",
 };
 
 export default function HomePage() {
@@ -18,17 +29,28 @@ export default function HomePage() {
         <div className="grid"></div>
       </div>
 
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+
       <main className="home-shell">
+        <SiteHeader />
+
         <section className="card home-hero">
           <div className="home-hero-copy">
-            <p className="eyebrow">USE DARWIN</p>
+            <div className="eyebrow-row">
+              <p className="eyebrow">USE DARWIN</p>
+              <span className="status-chip">LIVE ON BASE SEPOLIA</span>
+            </div>
             <h1>
-              A live testnet market for <span>DRW</span>.
+              A live market surface for <span>DRW</span>.
             </h1>
             <p className="lede">
-              Darwin Protocol is a peer-to-peer market infrastructure project with a live Base
-              Sepolia token, public faucet, and reference pool. The current milestone is not hype.
-              It is getting real outside wallets to claim, trade, and observe the canary.
+              Darwin Protocol now has a branded public entry point: a live testnet token, public
+              faucet, reference pool, and wallet-driven market portal. The next milestone is
+              straightforward: move from DARWIN-controlled bootstrapping to real outside claims,
+              swaps, and watchers.
             </p>
             <div className="hero-actions">
               <Link className="button button-primary" href="/trade/">
@@ -51,24 +73,47 @@ export default function HomePage() {
                 GitHub repo
               </a>
             </div>
+            <div className="hero-stat-grid">
+              <div className="metric">
+                <span className="label">Canonical host</span>
+                <strong>usedarwin.xyz</strong>
+                <small>GitHub Pages custom domain</small>
+              </div>
+              <div className="metric">
+                <span className="label">Market path</span>
+                <strong>/trade</strong>
+                <small>connect, claim, wrap, swap</small>
+              </div>
+              <div className="metric">
+                <span className="label">Current pool</span>
+                <strong>DRW / WETH</strong>
+                <small>Base Sepolia reference liquidity</small>
+              </div>
+            </div>
           </div>
 
           <aside className="home-hero-panel">
-            <div className="hero-stat">
-              <span className="label">Chain</span>
-              <span className="badge">Base Sepolia</span>
+            <div className="coin-panel">
+              <BrandMark className="coin-mark" title="DRW coin mark" />
+              <div className="coin-stack">
+                <span className="coin-tag">TOKEN</span>
+                <strong>DRW</strong>
+                <span>Darwin is the wallet-visible token layer for the live DARWIN alpha.</span>
+              </div>
             </div>
-            <div className="hero-stat">
-              <span className="label">Token</span>
-              <code>DRW</code>
-            </div>
-            <div className="hero-stat">
-              <span className="label">Faucet</span>
-              <code>0x3DAa...bAe0</code>
-            </div>
-            <div className="hero-stat">
-              <span className="label">Pool</span>
-              <code>0x9E1f...B891</code>
+            <div className="hero-rail">
+              <div className="rail-card">
+                <span className="label">Faucet</span>
+                <code>0x3DAa...bAe0</code>
+              </div>
+              <div className="rail-card">
+                <span className="label">Reference pool</span>
+                <code>0x9E1f...B891</code>
+              </div>
+              <div className="rail-card">
+                <span className="label">Token contract</span>
+                <code>0x9051...0FF2</code>
+              </div>
             </div>
           </aside>
         </section>
@@ -119,15 +164,40 @@ export default function HomePage() {
 
           <article className="card home-panel">
             <div className="section-heading">
-              <h2>Why this matters</h2>
-              <span className="badge">honest alpha</span>
+              <h2>Why bots will notice it</h2>
+              <span className="badge">but still alpha</span>
             </div>
             <ul className="truth-list">
-              <li>The current market is live, but still mostly project-controlled.</li>
-              <li>The public faucet exists to create real outside holders, not synthetic demand.</li>
-              <li>The canary still needs outside watchers and outside archive flow.</li>
-              <li>The meaningful next milestone is third-party claims and trades, not more internal churn.</li>
+              <li>The token, pool, faucet, and portal are all public and machine-readable.</li>
+              <li>Wallets can import DRW directly from the portal using the token image and metadata.</li>
+              <li>Reference liquidity exists, but it is still DARWIN-owned bootstrap liquidity.</li>
+              <li>Real usage only starts counting once outside wallets claim and trade.</li>
             </ul>
+          </article>
+
+          <article className="card home-panel">
+            <div className="section-heading">
+              <h2>What still needs to happen</h2>
+              <span className="badge">honest next steps</span>
+            </div>
+            <div className="status-ladder">
+              <div className="ladder-step">
+                <strong>Outside holders</strong>
+                <span>Get claims from wallets that are not DARWIN-controlled.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>Outside trading</strong>
+                <span>Replace internal demo trades with third-party swaps.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>Outside watchers</strong>
+                <span>Run the canary with an external watcher and a real archive epoch.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>Review</strong>
+                <span>Land the independent audit/review response and close any findings.</span>
+              </div>
+            </div>
           </article>
 
           <article className="card home-panel">

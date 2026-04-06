@@ -12,30 +12,41 @@ const mono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://darwin-protocol.github.io/darwin";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://usedarwin.xyz";
+const siteDescription =
+  "Claim testnet DRW, wrap Base Sepolia ETH, and trade against the live DARWIN reference pool.";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Darwin Protocol",
-    template: "%s | Darwin Protocol",
+    default: "Use Darwin",
+    template: "%s | Use Darwin",
   },
-  description:
-    "Peer-to-peer market infrastructure with a live Base Sepolia DRW token, faucet, and reference pool.",
+  description: siteDescription,
+  applicationName: "Use Darwin",
   openGraph: {
-    title: "Darwin Protocol",
-    description:
-      "Peer-to-peer market infrastructure with a live Base Sepolia DRW token, faucet, and reference pool.",
+    title: "Use Darwin",
+    description: siteDescription,
     url: siteUrl,
-    siteName: "Darwin Protocol",
+    siteName: "Use Darwin",
     type: "website",
+    images: [{ url: "/og-card.svg", width: 1200, height: 630, alt: "Use Darwin DRW market" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Darwin Protocol",
-    description:
-      "Peer-to-peer market infrastructure with a live Base Sepolia DRW token, faucet, and reference pool.",
+    title: "Use Darwin",
+    description: siteDescription,
+    images: ["/og-card.svg"],
   },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
+};
+
+export const viewport = {
+  themeColor: "#f4efe5",
 };
 
 export default function RootLayout({ children }) {

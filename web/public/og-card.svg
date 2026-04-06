@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="15%" y1="10%" x2="82%" y2="90%">
+      <stop offset="0%" stop-color="#fff8ef" />
+      <stop offset="100%" stop-color="#e5ecfb" />
+    </linearGradient>
+    <linearGradient id="panel" x1="12%" y1="10%" x2="84%" y2="90%">
+      <stop offset="0%" stop-color="#1d5ccd" />
+      <stop offset="100%" stop-color="#0f2d67" />
+    </linearGradient>
+    <linearGradient id="orbit" x1="16%" y1="14%" x2="84%" y2="82%">
+      <stop offset="0%" stop-color="#4fd7cb" />
+      <stop offset="100%" stop-color="#0d7b73" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect x="60" y="60" width="1080" height="510" rx="34" fill="#ffffff" opacity="0.76" />
+  <rect x="700" y="115" width="360" height="360" rx="52" fill="#102540" />
+  <circle cx="880" cy="295" r="142" fill="url(#panel)" />
+  <circle cx="880" cy="295" r="98" fill="#f4efe5" />
+  <path
+    d="M805 214h43c48 0 80 29.8 80 73.2 0 43.5-32 73.8-80 73.8h-43V214Zm40 116.1c28.5 0 46.6-15.6 46.6-42.9 0-27-18.1-42.8-46.6-42.8h-11v85.7h11Z"
+    fill="#1546a0"
+  />
+  <path d="M730 290c8.2-37.1 33.4-65.8 68.3-78.9" fill="none" stroke="url(#orbit)" stroke-linecap="round" stroke-width="16" />
+  <circle cx="742" cy="292" r="11" fill="#f7a154" />
+  <circle cx="765" cy="248" r="10" fill="#f7a154" />
+  <circle cx="806" cy="216" r="9" fill="#f7a154" />
+  <text x="120" y="185" fill="#0d7b73" font-family="'IBM Plex Mono', monospace" font-size="30" letter-spacing="7">USE DARWIN</text>
+  <text x="120" y="292" fill="#14202f" font-family="'Space Grotesk', sans-serif" font-size="82" font-weight="700">A live market for DRW.</text>
+  <text x="120" y="370" fill="#5d6978" font-family="'Space Grotesk', sans-serif" font-size="34">Claim, wrap, and trade against the live Base Sepolia reference pool.</text>
+  <text x="120" y="468" fill="#1546a0" font-family="'IBM Plex Mono', monospace" font-size="28">usedarwin.xyz</text>
+</svg>
