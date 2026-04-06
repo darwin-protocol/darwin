@@ -13,6 +13,7 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - `DRW` token + staking are live on Base Sepolia.
 - The canary still uses Base Sepolia `WETH9` as its bond asset.
 - The simplest demo market is `DRW/WETH`.
+- DARWIN now ships a first-party `ReferenceMarketPool` deployment path for Base Sepolia and local smoke tests.
 - The current governance wallet has `DRW` and Base Sepolia ETH, but the latest preflight shows `0 WETH`, so ETH must be wrapped first.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
@@ -52,31 +53,72 @@ Then confirm that your chosen venue is actually tracked for the deployment netwo
   --markdown-out ops/state/market-bootstrap/venue.md
 ```
 
-On the current live wallet, that is the immediate blocker:
+On the current live wallet, these are the immediate blockers:
 
 - gas is present
 - `DRW` is present
 - `WETH` is not
+- the public Base Sepolia artifact does not yet include a seeded `market` section
 
 That wrap helper auto-loads `.env.base-sepolia`, uses the pinned deployment artifact bond asset as the WETH address, and can run in `--dry-run` mode if you only want the exact calldata / readiness output first.
+
+## Recommended Base Sepolia Path
+
+If you want a DARWIN-owned testnet venue on Base Sepolia today, use the artifact-backed reference pool instead of waiting on third-party venue support.
+
+Deploy the reference pool:
+
+```bash
+./ops/init_reference_market.sh
+```
+
+Seed it with small testnet amounts:
+
+```bash
+export DARWIN_REFERENCE_MARKET_BASE_AMOUNT=1000000000000000000000
+export DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT=500000000000000
+./ops/seed_reference_market.sh
+```
+
+Then verify the artifact-backed venue path:
+
+```bash
+./.venv/bin/python ops/preflight_market_venue.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --venue darwin_reference_pool \
+  --json-out ops/state/market-bootstrap/reference-venue.json \
+  --markdown-out ops/state/market-bootstrap/reference-venue.md
+```
+
+Those example amounts are `1000 DRW` and `0.0005 WETH`. Adjust them if you want a different testnet price anchor, but keep it small and clearly labeled as testnet liquidity.
 
 ## Demo Market Path
 
 1. Start with Base Sepolia, not mainnet.
 2. Wrap a small amount of ETH into `WETH`.
-3. Run a venue preflight against the exact deployment network.
-4. Seed a small `DRW/WETH` pool.
-5. Publish the pool address and exact network.
-6. Tell users it is a testnet market.
-7. Wait for third-party swaps and liquidity, not just project-controlled flow.
+3. Prefer the DARWIN reference pool on Base Sepolia unless a third-party venue is explicitly tracked for `84532`.
+4. Run a venue preflight against the exact deployment network.
+5. Seed a small `DRW/WETH` pool.
+6. Publish the pool address and exact network.
+7. Tell users it is a testnet market.
+8. Wait for third-party swaps and liquidity, not just project-controlled flow.
 
 Current DARWIN-tracked venue state:
 
+- `darwin_reference_pool` is tracked from the pinned deployment artifact itself
+- the current public Base Sepolia artifact does not yet have that pool deployed and seeded
 - `uniswap_v4` is tracked from the current Uniswap deployment docs
 - Base mainnet (`8453`) is listed there
 - Base Sepolia (`84532`) is not listed there
 
-So even after wrapping ETH, the current public Base Sepolia path remains blocked until a tracked venue exists for `84532`.
+So the current viable Base Sepolia path is:
+
+1. wrap ETH into WETH
+2. deploy the DARWIN reference pool
+3. seed it
+4. rerun the artifact-backed venue preflight
+
+Third-party Base Sepolia venue support remains optional and unconfirmed in the tracked registry.
 
 ## Why This Matters
 

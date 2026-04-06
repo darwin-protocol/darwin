@@ -16,6 +16,7 @@ A peer-to-peer system for evolving exchange microstructure.
 - The public canary exists on Base Sepolia.
 - The public canary is still `WETH`-bond, not `DRW`-bond.
 - The Base Sepolia `DRW` token + staking layer is now live.
+- The repo now ships a first-party reference-pool path for a `DRW/WETH` testnet market.
 - The next live steps are outside-watcher operation, outside archive flow, and external review.
 
 ## Abstract
@@ -134,8 +135,6 @@ That checks:
 - live quote-token balance
 - whether the pinned deployment is suitable for a `DRW/WETH` demo market
 
-See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the runbook and risk framing.
-
 Current preflight result on the live governance wallet:
 
 - `700,000,000 DRW`
@@ -149,7 +148,22 @@ Exact next step:
 ./ops/wrap_base_sepolia_weth.sh --amount-eth 0.0005
 ```
 
-Then confirm venue support on the actual deployment network:
+From there, DARWIN now supports two venue paths:
+
+1. A first-party artifact-backed reference pool:
+
+```bash
+./ops/init_reference_market.sh
+export DARWIN_REFERENCE_MARKET_BASE_AMOUNT=1000000000000000000000
+export DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT=500000000000000
+./ops/seed_reference_market.sh
+
+./.venv/bin/python ops/preflight_market_venue.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --venue darwin_reference_pool
+```
+
+2. A tracked third-party venue, only if its preflight passes on `84532`:
 
 ```bash
 ./.venv/bin/python ops/preflight_market_venue.py \
@@ -160,18 +174,21 @@ Then confirm venue support on the actual deployment network:
 Current market blockers are now:
 
 - wrap ETH first
-- venue support for Base Sepolia is still unconfirmed in the tracked registry
+- deploy and seed the artifact-backed reference pool, or wait for a tracked third-party Base Sepolia venue
+
+See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook and risk framing.
 
 ## Status
 
 | Component | State |
 |---|---|
-| Simulator | Working. `39/39` Python checks pass locally. |
-| Contracts | `93` checks pass locally (`66` unit + `18` fuzz + `9` invariants). |
+| Simulator | Working. `41/41` Python checks pass locally. |
+| Contracts | `100` checks pass locally (`73` unit + `18` fuzz + `9` invariants). |
 | Overlay | 7 services run locally. Gateway admits real PQ-signed intents. |
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
 | DRW token | Live on Base Sepolia. Token + staking deployed; `status-check` now verifies live holder balances against the pinned allocation table. |
+| Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is not seeded yet. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |
 
@@ -183,6 +200,11 @@ Real blockers now:
 2. first outside archive epoch through the live canary
 3. external security review / audit
 4. legal/compliance structure before any real public token distribution
+
+If a public testnet market is desired before that, the exact market work left is:
+
+1. wrap a small amount of Base Sepolia ETH into WETH
+2. deploy and seed the artifact-backed `darwin_reference_pool`, or use a separately tracked third-party venue if one becomes available
 
 The canonical tracker is [LIVE_STATUS.md](LIVE_STATUS.md).
 

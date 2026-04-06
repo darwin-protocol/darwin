@@ -2,6 +2,15 @@
   "tracked_at": "2026-04-06",
   "description": "DARWIN-tracked market venues for DRW bootstrap. This registry is intentionally conservative and only includes venues/networks confirmed from current official deployment docs.",
   "venues": {
+    "darwin_reference_pool": {
+      "label": "DARWIN reference pool",
+      "source": "https://github.com/darwin-protocol/darwin",
+      "artifact_backed": true,
+      "notes": [
+        "This venue is deployed and tracked from the DARWIN deployment artifact itself.",
+        "Venue readiness requires a live market section in the pinned artifact and seeded liquidity."
+      ]
+    },
     "uniswap_v4": {
       "label": "Uniswap v4",
       "source": "https://docs.uniswap.org/contracts/v4/deployments",

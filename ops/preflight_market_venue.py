@@ -83,7 +83,31 @@ def main() -> None:
         }
         tracked_network = (venue.get("tracked_networks") or {}).get(str(chain_id))
 
-    if tracked_network:
+    if venue and venue.get("artifact_backed"):
+        market = deployment.get("market") or {}
+        market_contracts = market.get("contracts") or {}
+        market_enabled = bool(market.get("enabled"))
+        market_seeded = bool(market.get("seeded"))
+        market_matches = market.get("venue_id") == venue_id and bool(market_contracts.get("reference_pool"))
+        if market_enabled and market_matches and market_seeded:
+            checks["venue_support"] = {
+                "state": "OK",
+                "detail": f"artifact has seeded {venue_id} pool={market_contracts.get('reference_pool', '')}",
+            }
+            notes.append(f"artifact-backed pool: {market_contracts.get('reference_pool', '')}")
+        else:
+            blockers.append("venue_not_supported_or_unconfirmed")
+            checks["venue_support"] = {
+                "state": "FAIL",
+                "detail": (
+                    f"artifact-backed venue={venue_id} enabled={market_enabled} "
+                    f"seeded={market_seeded} pool={market_contracts.get('reference_pool', '')}"
+                ),
+            }
+            notes.extend(venue.get("notes") or [])
+            if venue.get("source"):
+                notes.append(f"source: {venue['source']}")
+    elif tracked_network:
         checks["venue_support"] = {
             "state": "OK",
             "detail": f"venue={venue_id} supports chain={chain_id} network={tracked_network.get('network', '')}",

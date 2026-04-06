@@ -2729,6 +2729,120 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(report["venue"]["tracked_network"]["contracts"]["pool_manager"], "0x498581ff718922c3f8e6a244956af099b2652b2b")
             print("  Ops: market venue preflight accepts tracked Base venue support")
 
+    def test_40_market_venue_preflight_accepts_artifact_backed_reference_pool(self):
+        """Ops: venue preflight accepts a seeded artifact-backed DARWIN reference pool."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            registry = tmp / "market-venues.json"
+            json_out = tmp / "venue.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "market": {
+                    "enabled": True,
+                    "venue_id": "darwin_reference_pool",
+                    "seeded": True,
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+            }))
+            registry.write_text(json.dumps({
+                "venues": {
+                    "darwin_reference_pool": {
+                        "label": "DARWIN reference pool",
+                        "source": "https://github.com/darwin-protocol/darwin",
+                        "artifact_backed": True,
+                    }
+                }
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "preflight_market_venue.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--registry-file",
+                    str(registry),
+                    "--venue",
+                    "darwin_reference_pool",
+                    "--json-out",
+                    str(json_out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            report = json.loads(json_out.read_text())
+            self.assertTrue(report["ready"])
+            self.assertEqual(report["checks"]["venue_support"]["state"], "OK")
+            self.assertEqual(report["venue"]["id"], "darwin_reference_pool")
+            print("  Ops: market venue preflight accepts seeded artifact-backed reference pools")
+
+    def test_41_deployment_show_with_reference_market(self):
+        """CLI: deployment-show surfaces reference market metadata when present."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                    "reference_pool": "0x0000000000000000000000000000000000000042",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+                "market": {
+                    "enabled": True,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "market_operator": "0x0000000000000000000000000000000000000009",
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x4200000000000000000000000000000000000006",
+                    "fee_bps": 30,
+                    "seeded": False,
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+            }))
+
+            env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM)}
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "darwin_sim.cli.darwinctl",
+                    "deployment-show",
+                    "--deployment-file",
+                    str(deployment),
+                ],
+                cwd=str(SIM),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("Market enabled:   yes", result.stdout)
+            self.assertIn("Market venue:     darwin_reference_pool", result.stdout)
+            self.assertIn("Market pool:", result.stdout)
+            print("  CLI: deployment-show prints reference market metadata when the artifact includes it")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

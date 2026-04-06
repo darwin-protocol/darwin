@@ -44,6 +44,16 @@ if [[ "${DARWIN_DEPLOY_DRW_GENESIS:-0}" == "1" ]]; then
   "$ROOT/ops/init_drw_genesis.sh"
 fi
 
+if [[ "${DARWIN_DEPLOY_REFERENCE_MARKET:-0}" == "1" ]]; then
+  if [[ "${DARWIN_DEPLOY_DRW_GENESIS:-0}" != "1" ]]; then
+    echo "DARWIN_DEPLOY_REFERENCE_MARKET=1 requires DARWIN_DEPLOY_DRW_GENESIS=1" >&2
+    exit 1
+  fi
+  export DARWIN_REFERENCE_MARKET_OPERATOR="${DARWIN_REFERENCE_MARKET_OPERATOR:-$(cast wallet address --private-key "$DARWIN_DEPLOYER_PRIVATE_KEY")}"
+  export DARWIN_REFERENCE_MARKET_FILE="${DARWIN_REFERENCE_MARKET_FILE:-$ROOT/ops/deployments/.local-anvil.market.json}"
+  "$ROOT/ops/init_reference_market.sh"
+fi
+
 source "$ROOT/.venv/bin/activate" 2>/dev/null || true
 python3 - <<'PY'
 import json, os, pathlib
@@ -58,4 +68,8 @@ if data.get("drw"):
     print("  drw:")
     print(f"    total_supply: {data['drw'].get('total_supply')}")
     print(f"    staking_duration: {data['drw'].get('staking_duration')}")
+if data.get("market"):
+    print("  market:")
+    print(f"    venue_id: {data['market'].get('venue_id')}")
+    print(f"    reference_pool: {data['market'].get('contracts', {}).get('reference_pool')}")
 PY

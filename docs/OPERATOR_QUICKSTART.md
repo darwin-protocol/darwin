@@ -30,7 +30,7 @@ cd sim
 python -m pytest tests/test_end_to_end.py -v
 ```
 
-All 39 tests must pass before proceeding.
+All 41 tests must pass before proceeding.
 
 ## Local Wallet Suite
 
@@ -118,6 +118,21 @@ Then confirm the venue path is real on the same network:
   --deployment-file ops/deployments/base-sepolia.json \
   --venue uniswap_v4
 ```
+
+If you want a DARWIN-owned testnet venue on Base Sepolia right now, use the artifact-backed reference pool instead:
+
+```bash
+./ops/init_reference_market.sh
+export DARWIN_REFERENCE_MARKET_BASE_AMOUNT=1000000000000000000000
+export DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT=500000000000000
+./ops/seed_reference_market.sh
+
+./.venv/bin/python ops/preflight_market_venue.py \
+  --deployment-file ops/deployments/base-sepolia.json \
+  --venue darwin_reference_pool
+```
+
+Those example seed amounts are `1000 DRW` and `0.0005 WETH`. Keep them small and clearly label the pool as testnet-only.
 
 ## Step 4: Run the E1-E7 experiment suite
 

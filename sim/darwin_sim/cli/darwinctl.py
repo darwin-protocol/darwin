@@ -400,6 +400,20 @@ def cmd_deployment_show(args):
         )
     else:
         print("  DRW enabled:      no")
+    if deployment.market:
+        market = deployment.market
+        contracts = market.get("contracts", {})
+        print("  Market enabled:   yes")
+        print(f"  Market venue:     {market.get('venue_id', '')}")
+        print(f"  Market type:      {market.get('venue_type', '')}")
+        print(f"  Market pool:      {contracts.get('reference_pool', '')}")
+        print(f"  Market operator:  {market.get('market_operator', '')}")
+        print(f"  Market base:      {market.get('base_token', '')}")
+        print(f"  Market quote:     {market.get('quote_token', '')}")
+        print(f"  Market fee bps:   {market.get('fee_bps', '')}")
+        print(f"  Market seeded:    {market.get('seeded', False)}")
+    else:
+        print("  Market enabled:   no")
 
 
 def cmd_config_lint(args):

@@ -24,7 +24,7 @@ A bug bounty program will be established before mainnet launch. Details will be 
 
 | Component | Status |
 |---|---|
-| Contracts | Written, tested (`66` unit tests + `18` fuzz targets + `9` invariants), NOT audited |
+| Contracts | Written, tested (`73` unit tests + `18` fuzz targets + `9` invariants), NOT audited |
 | Overlay services | Alpha, local/devnet proven, with watcher auto-sync, finalizer auto-poll, and persisted router/sentinel/finalizer state snapshots; NOT production-hardened |
 | Base Sepolia deployment | Live alpha artifact exists at `ops/deployments/base-sepolia.json`; current public deploy uses external Base Sepolia `WETH9`, and `./ops/run_base_sepolia_canary.sh` pins the overlay stack to that artifact while verifying on-chain contract code plus governance/operator wiring across settlement, bond, challenge, species, score, and optional DRW contracts when present |
 | SDK crypto | Real ML-DSA-65 + real secp256k1 signatures |
@@ -32,7 +32,7 @@ A bug bounty program will be established before mainnet launch. Details will be 
 | Watcher verification | Archive artifacts can be mirrored and replayed with hash checks before scoring verification; deployment-aware `darwinctl status-check` emits machine-readable readiness reports with on-chain auth checks plus DRW allocation verification, `./ops/run_external_watcher.sh` provides a dedicated outside-operator bootstrap path, `ops/export_external_watcher_bundle.py` packages a handoff packet for outside watchers, `ops/intake_external_watcher_report.py` verifies returned watcher evidence against the pinned deployment, and `ops/export_audit_bundle.py` packages the evidence plus `docs/AUDIT_READINESS.md` and `docs/THREAT_MODEL.md` for external review |
 | Key management | Development only — encrypted local wallet files exist for trader identities via `darwinctl wallet-init`, but there is still no HSM or production custody integration |
 | DRW genesis | Alpha DRW token + staking are now live on Base Sepolia via `DRWToken`, `DRWStaking`, and `./ops/deploy_public_drw.sh`; the public canary still uses Base Sepolia `WETH9` as its bond asset |
-| Market bootstrap | `ops/preflight_market_bootstrap.py` checks whether a wallet can honestly seed a small `DRW/WETH` market, `./ops/wrap_base_sepolia_weth.sh` handles the exact ETH→WETH prep step, and `ops/preflight_market_venue.py` checks whether the chosen venue is actually tracked for the deployment network; these are readiness aids, not market-manipulation tools |
+| Market bootstrap | `ops/preflight_market_bootstrap.py` checks whether a wallet can honestly seed a small `DRW/WETH` market, `./ops/wrap_base_sepolia_weth.sh` handles the exact ETH→WETH prep step, `./ops/init_reference_market.sh` and `./ops/seed_reference_market.sh` provide a first-party artifact-backed pool path, and `ops/preflight_market_venue.py` checks whether the chosen venue is actually tracked for the deployment network; these are readiness aids, not market-manipulation tools |
 | External review prep | `ops/prepare_external_packets.py` emits sendable operator/reviewer tarballs, checksums, request templates, and `docs/EXTERNAL_CANARY_CHECKLIST.md`; `ops/intake_external_review.py` now logs returned reviewer findings into a fixed intake/triage path |
 
 ## Known Limitations
