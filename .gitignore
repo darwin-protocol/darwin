@@ -21,6 +21,7 @@ ops/external-intake/
 ops/handoffs/
 ops/wallets/
 ops/state/
+ops/domain-backups/
 sim/intent-base-sepolia.json
 darwin_wallet.json
 .env.external-watcher

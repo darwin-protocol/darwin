@@ -5,6 +5,7 @@ A peer-to-peer system for evolving exchange microstructure.
 ## Start Here
 
 - Current project status: [LIVE_STATUS.md](LIVE_STATUS.md)
+- Public site: `http://usedarwin.xyz/` for now, with HTTPS provisioning in progress
 - Public web source: [web/](web/)
 - Public Base Sepolia artifact: [ops/deployments/base-sepolia.json](ops/deployments/base-sepolia.json)
 - Operator flow: [docs/OPERATOR_QUICKSTART.md](docs/OPERATOR_QUICKSTART.md)
@@ -179,17 +180,16 @@ DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
 ```
 
 For a browser-wallet path, the Pages deployment publishes the static site from `web/`.
-Current project-site URL:
+Current public project-site URL:
 
 ```text
-https://darwin-protocol.github.io/darwin/
+http://usedarwin.xyz/
 ```
 
 Recommended next step:
 
-- set `DARWIN_SITE_DOMAIN` as a GitHub repository variable
-- point the bought domain at GitHub Pages
-- let the workflow emit a `CNAME` file automatically during deploy
+- wait for GitHub Pages certificate issuance, then enforce HTTPS on `usedarwin.xyz`
+- keep the spare `usedarwin.*` domains as redirects to the canonical host
 
 One-command GitHub-side setup:
 

@@ -84,7 +84,6 @@ import sys
 domain = sys.argv[1]
 print(json.dumps({
     "cname": domain,
-    "https_enforced": True,
     "build_type": "workflow",
     "source": {"branch": "main", "path": "/"},
 }))
@@ -133,4 +132,7 @@ Recommended registrar cleanup:
 
 After DNS propagates:
   gh api repos/${REPO}/pages/health
+
+When the certificate is ready, enforce HTTPS with:
+  gh api --method PUT repos/${REPO}/pages -f cname=${PRIMARY_DOMAIN} -F https_enforced=true
 EOF

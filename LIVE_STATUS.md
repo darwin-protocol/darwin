@@ -10,6 +10,7 @@ Last repo update: `2026-04-06`
 - The Base Sepolia `DRW` token + staking layer is now live.
 - A seeded Base Sepolia `DRW/WETH` reference pool is now live.
 - A first-party Next.js static-export site now exists in `web/` and deploys through GitHub Pages.
+- Canonical public domain is now `usedarwin.xyz`; HTTP is live and GitHub Pages HTTPS provisioning is in progress.
 - A transparent public `DRW` faucet is now live on Base Sepolia.
 - The next real steps are third-party token distribution, outside-watcher operation, outside archive flow, and external review.
 
@@ -37,6 +38,8 @@ Last repo update: `2026-04-06`
 - Live Base Sepolia DRW faucet: `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`
 - Live faucet funding: `100,000 DRW` + `0.0002 ETH`
 - Public website source: `web/`
+- Canonical public site: `http://usedarwin.xyz/`
+- Spare domains `usedarwin.info`, `usedarwin.online`, `usedarwin.org`, and `usedarwin.store` now forward to the canonical host
 - A dedicated `./.venv/bin/python ops/preflight_market_venue.py --venue darwin_reference_pool` check now exists for the artifact-backed venue path, and `uniswap_v4` remains tracked separately
 
 ## What Is Live
@@ -63,6 +66,7 @@ Last repo update: `2026-04-06`
 - External audit / security review
 - A tracked third-party Base Sepolia venue for `DRW/WETH`, if you want something other than the DARWIN reference pool
 - Mainnet or public-token-launch posture
+- GitHub Pages certificate issuance on `usedarwin.xyz`
 
 ## True Blockers
 
