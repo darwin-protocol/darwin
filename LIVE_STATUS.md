@@ -10,12 +10,13 @@ Last repo update: `2026-04-06`
 - The Base Sepolia `DRW` token + staking layer is now live.
 - A seeded Base Sepolia `DRW/WETH` reference pool is now live.
 - A first-party browser swap portal now exists in `site/` and deploys through GitHub Pages.
-- The next real steps are outside-watcher operation, outside archive flow, and external review.
+- A transparent `DRW` faucet path now exists in the repo, but is not deployed on Base Sepolia yet.
+- The next real steps are third-party token distribution, outside-watcher operation, outside archive flow, and external review.
 
 ## Verified Baseline
 
-- Python self-check: `41/41` passing
-- Solidity checks: `100` passing (`73` unit + `18` fuzz + `9` invariants)
+- Python self-check: `46/46` passing
+- Solidity checks: `106` passing (`79` unit + `18` fuzz + `9` invariants)
 - Overlay devnet: `7/7` services up locally
 - Local DRW genesis smoke: passing
 - Local DRW + reference-pool smoke: passing
@@ -32,6 +33,7 @@ Last repo update: `2026-04-06`
 - Governance + staking still directly hold `999,998,950 DRW`; the remaining `1,050 DRW` sit in the reference pool and DARWIN-controlled demo traders
 - The governance wallet no longer holds spare `WETH` because it was used to seed the live pool
 - The repo now ships a first-party swap portal for the seeded pool
+- The repo now ships a DRW faucet contract, deploy path, funding path, and portal claim UI for transparent third-party onboarding
 - A dedicated `./.venv/bin/python ops/preflight_market_venue.py --venue darwin_reference_pool` check now exists for the artifact-backed venue path, and `uniswap_v4` remains tracked separately
 
 ## What Is Live
@@ -44,6 +46,7 @@ Last repo update: `2026-04-06`
 - Artifact-backed reference-pool deployment path for `DRW/WETH`
 - Seeded artifact-backed Base Sepolia reference pool for `DRW/WETH`
 - First-party browser portal for the seeded Base Sepolia market
+- DRW faucet deploy + funding path, plus portal claim support
 - External watcher bootstrap/export/intake flow
 - Audit bundle export flow
 - Local encrypted wallet flow
@@ -56,6 +59,7 @@ Last repo update: `2026-04-06`
 - Outside archive epoch through the live canary
 - External audit / security review
 - A tracked third-party Base Sepolia venue for `DRW/WETH`, if you want something other than the DARWIN reference pool
+- A live public Base Sepolia DRW faucet
 - Mainnet or public-token-launch posture
 
 ## True Blockers
@@ -63,6 +67,7 @@ Last repo update: `2026-04-06`
 - first genuinely external watcher operator
 - first genuinely external archive epoch through the live canary
 - external audit / security review
+- live Base Sepolia faucet deploy/funding for third-party DRW distribution
 
 ## Exact Next Action
 
@@ -70,8 +75,9 @@ Last repo update: `2026-04-06`
 2. Ingest a genuinely external archive epoch through that watcher path
 3. Hand the live artifact and evidence to an outside reviewer
 4. Point outside users at the live Base Sepolia reference pool and Pages portal
-5. Point outside users at the simple swap runbook in `docs/MARKET_BOOTSTRAP.md`
-6. Wait for real third-party interaction instead of project-controlled swaps
+5. Deploy and fund the Base Sepolia faucet so outside wallets can get DRW without project-controlled trading
+6. Point outside users at the simple swap runbook in `docs/MARKET_BOOTSTRAP.md`
+7. Wait for real third-party interaction instead of project-controlled swaps
 
 ## What Remains After The Public DRW Deploy
 
@@ -79,4 +85,5 @@ Last repo update: `2026-04-06`
 - run a real outside archive epoch through it
 - hand the live artifact and evidence to an outside reviewer
 - capture real third-party activity against the seeded Base Sepolia market
+- distribute testnet DRW to outside wallets through a public faucet instead of project-only wallets
 - decide the legal/compliance structure before any real public token distribution

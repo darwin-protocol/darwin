@@ -30,7 +30,7 @@ cd sim
 python -m pytest tests/test_end_to_end.py -v
 ```
 
-All 41 tests must pass before proceeding.
+All 46 tests must pass before proceeding.
 
 ## Local Wallet Suite
 
@@ -111,6 +111,20 @@ The current public Base Sepolia market is already seeded at:
 - reserves: `1000 DRW` + `0.0005 WETH`
 
 The repo now also ships a first-party browser portal in `site/`, published through `.github/workflows/pages.yml`, so outside users do not need to start with shell scripts if they just want to connect a wallet and trade on Base Sepolia.
+
+If you want outside wallets to hold `DRW` without the project trading on their behalf, the repo now includes a transparent faucet path:
+
+```bash
+./ops/init_drw_faucet.sh
+python -m darwin_sim.cli.darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
+python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out site/market-config.json
+```
+
+If the wallet funding the faucet is different from the deployer key, set a separate local-only funder key first:
+
+```bash
+export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="0x..."
+```
 
 Then confirm the venue path is real on the same network:
 

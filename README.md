@@ -19,7 +19,8 @@ A peer-to-peer system for evolving exchange microstructure.
 - The Base Sepolia `DRW` token + staking layer is now live.
 - A seeded `DRW/WETH` reference pool now exists on Base Sepolia.
 - A first-party browser swap portal now exists in `site/` and deploys through GitHub Pages.
-- The next live steps are outside-watcher operation, outside archive flow, and external review.
+- A transparent Base Sepolia `DRW` faucet path now exists in the repo for third-party onboarding.
+- The next live steps are third-party distribution, outside-watcher operation, outside archive flow, and external review.
 
 ## Abstract
 
@@ -75,7 +76,7 @@ Current truth:
 - current live bond asset is still Base Sepolia `WETH9`, not `DRW`
 - governance + staking still directly hold `999,998,950 DRW`
 - the remaining `1,050 DRW` are in the seeded reference pool and DARWIN-controlled demo traders
-- no third-party DRW distribution exists yet
+- no live third-party DRW distribution is deployed yet
 
 The repo now includes:
 
@@ -85,6 +86,10 @@ The repo now includes:
 - `ops/preflight_drw_genesis.sh`
 - `ops/init_drw_genesis.sh`
 - `ops/deploy_public_drw.sh`
+- `contracts/src/DRWFaucet.sol`
+- `contracts/script/DeployDRWFaucet.s.sol`
+- `ops/init_drw_faucet.sh`
+- `ops/fund_drw_faucet.sh`
 
 ## Wallets
 
@@ -125,6 +130,8 @@ The Base Sepolia scripts auto-load `.env.base-sepolia` or the file named by `DAR
 
 The honest next market step is a small `DRW/WETH` testnet pool, not self-swapping for optics.
 
+The honest next distribution step is a small public testnet faucet, not pretending project-controlled flow is adoption.
+
 Run the market preflight first:
 
 ```bash
@@ -149,6 +156,7 @@ Current live market state:
 - venue preflight now keys off the seeded artifact-backed pool
 - the governance wallet no longer holds spare `WETH` because it was used to seed the pool
 - the repo now includes a first-party browser portal in `site/` for direct pool trading on Base Sepolia
+- the repo now includes a `DRW` faucet contract + funding path for third-party onboarding, but that faucet is not live on Base Sepolia yet
 
 From there, DARWIN now supports two venue paths:
 
@@ -193,13 +201,14 @@ See [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md) for the full runbook an
 
 | Component | State |
 |---|---|
-| Simulator | Working. `41/41` Python checks pass locally. |
-| Contracts | `100` checks pass locally (`73` unit + `18` fuzz + `9` invariants). |
+| Simulator | Working. `46/46` Python checks pass locally. |
+| Contracts | `106` checks pass locally (`79` unit + `18` fuzz + `9` invariants). |
 | Overlay | 7 services run locally. Gateway admits real PQ-signed intents. |
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
 | DRW token | Live on Base Sepolia. Token + staking deployed; `status-check` now verifies live holder balances against the pinned allocation table. |
 | Reference market | Local DRW + reference-pool smoke deploy passes; live Base Sepolia pool is seeded at `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`, has seen initial DARWIN-controlled demo trades, and now has a first-party browser portal in `site/`. |
+| DRW faucet | Local DRW + market + faucet smoke deploy passes; public Base Sepolia deploy path exists, but the faucet is not live there yet. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |
 
@@ -211,6 +220,7 @@ Real blockers now:
 2. first outside archive epoch through the live canary
 3. external security review / audit
 4. legal/compliance structure before any real public token distribution
+5. live Base Sepolia faucet deploy/funding for third-party DRW distribution
 
 If a public testnet market is desired before that, the exact market work left is:
 

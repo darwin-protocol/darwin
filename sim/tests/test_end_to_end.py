@@ -3012,6 +3012,212 @@ exit 1
             self.assertEqual(config["roles"]["market_operator"], "0x0000000000000000000000000000000000000008")
             print("  Ops: market portal config exports from the live deployment artifact")
 
+    def test_44_deployment_show_with_faucet(self):
+        """CLI: deployment-show surfaces faucet metadata when present."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                    "drw_faucet": "0x0000000000000000000000000000000000000045",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+                "faucet": {
+                    "enabled": True,
+                    "claim_amount": "100000000000000000000",
+                    "native_drip_amount": "10000000000000",
+                    "claim_cooldown": 86400,
+                    "funded": True,
+                    "contracts": {
+                        "drw_faucet": "0x0000000000000000000000000000000000000045",
+                    },
+                },
+            }))
+
+            env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM)}
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "darwin_sim.cli.darwinctl",
+                    "deployment-show",
+                    "--deployment-file",
+                    str(deployment),
+                ],
+                cwd=str(SIM),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("Faucet enabled:   yes", result.stdout)
+            self.assertIn("Faucet contract:", result.stdout)
+            self.assertIn("Faucet funded:    True", result.stdout)
+            print("  CLI: deployment-show prints faucet metadata when the artifact includes it")
+
+    def test_45_market_portal_config_export_includes_faucet(self):
+        """Ops: market portal config includes faucet metadata when the deployment does."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            out = tmp / "market-config.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_faucet": "0x0000000000000000000000000000000000000045",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x4200000000000000000000000000000000000006",
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "market_operator": "0x0000000000000000000000000000000000000008",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+                "drw": {
+                    "total_supply": "1000000000000000000000000000",
+                },
+                "faucet": {
+                    "enabled": True,
+                    "claim_amount": "100000000000000000000",
+                    "native_drip_amount": "10000000000000",
+                    "claim_cooldown": 86400,
+                    "funded": True,
+                    "initial_token_funding": "100000000000000000000000",
+                    "initial_native_funding": "200000000000000",
+                    "contracts": {
+                        "drw_faucet": "0x0000000000000000000000000000000000000045",
+                    },
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_market_portal_config.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            config = json.loads(out.read_text())
+            self.assertTrue(config["faucet"]["enabled"])
+            self.assertEqual(config["faucet"]["address"], "0x0000000000000000000000000000000000000045")
+            self.assertEqual(config["faucet"]["claim_amount"], "100000000000000000000")
+            self.assertEqual(config["links"]["operator_quickstart"], "https://github.com/darwin-protocol/darwin/blob/main/docs/OPERATOR_QUICKSTART.md")
+            print("  Ops: market portal config exports faucet metadata from the live deployment artifact")
+
+    def test_46_fund_drw_faucet_updates_artifact(self):
+        """Ops: faucet funding helper updates the deployment artifact after transfer calls."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            env_file = tmp / ".env.base-sepolia"
+            fake_bin = tmp / "bin"
+            fake_cast = fake_bin / "cast"
+            cast_log = tmp / "cast.log"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "contracts": {
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_faucet": "0x0000000000000000000000000000000000000045",
+                },
+                "drw": {
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000011",
+                    },
+                },
+                "faucet": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_faucet": "0x0000000000000000000000000000000000000045",
+                    },
+                    "funded": False,
+                },
+            }))
+
+            env_file.write_text(
+                "\n".join([
+                    'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
+                    'export DARWIN_NETWORK="base-sepolia"',
+                    f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
+                    'export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="0xabc123"',
+                ]) + "\n"
+            )
+
+            fake_bin.mkdir(parents=True, exist_ok=True)
+            fake_cast.write_text(
+                f"""#!/usr/bin/env bash
+set -euo pipefail
+echo "$*" >> "{cast_log}"
+exit 0
+"""
+            )
+            fake_cast.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "ops" / "fund_drw_faucet.sh"),
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "DARWIN_DRW_FAUCET_INITIAL_TOKEN_FUNDING": "123000000000000000000",
+                    "DARWIN_DRW_FAUCET_INITIAL_NATIVE_FUNDING": "45000000000000",
+                    "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            updated = json.loads(deployment.read_text())
+            self.assertTrue(updated["faucet"]["funded"])
+            self.assertEqual(updated["faucet"]["initial_token_funding"], "123000000000000000000")
+            self.assertEqual(updated["faucet"]["initial_native_funding"], "45000000000000")
+            log = cast_log.read_text()
+            self.assertIn("transfer(address,uint256)", log)
+            self.assertIn("0x0000000000000000000000000000000000000045", log)
+            print("  Ops: faucet funding helper updates the deployment artifact after funding")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

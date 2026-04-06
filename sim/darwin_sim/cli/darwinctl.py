@@ -414,6 +414,17 @@ def cmd_deployment_show(args):
         print(f"  Market seeded:    {market.get('seeded', False)}")
     else:
         print("  Market enabled:   no")
+    if deployment.faucet:
+        faucet = deployment.faucet
+        contracts = faucet.get("contracts", {})
+        print("  Faucet enabled:   yes")
+        print(f"  Faucet contract:  {contracts.get('drw_faucet', '')}")
+        print(f"  Faucet claim:     {faucet.get('claim_amount', '')}")
+        print(f"  Faucet native:    {faucet.get('native_drip_amount', '')}")
+        print(f"  Faucet cooldown:  {faucet.get('claim_cooldown', '')}")
+        print(f"  Faucet funded:    {faucet.get('funded', False)}")
+    else:
+        print("  Faucet enabled:   no")
 
 
 def cmd_config_lint(args):

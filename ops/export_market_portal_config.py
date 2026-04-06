@@ -56,6 +56,13 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
+def repo_relative_or_absolute(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def main() -> int:
     args = parse_args()
     deployment_path = Path(args.deployment_file).expanduser().resolve()
@@ -66,6 +73,7 @@ def main() -> int:
     contracts = deployment.get("contracts") or {}
     roles = deployment.get("roles") or {}
     drw = deployment.get("drw") or {}
+    faucet = deployment.get("faucet") or {}
 
     if not market.get("enabled"):
         raise SystemExit("deployment artifact does not enable market mode")
@@ -83,7 +91,7 @@ def main() -> int:
         "generated_at": utc_now(),
         "source": {
             "repo_url": args.repo_url,
-            "deployment_file": str(deployment_path.relative_to(REPO_ROOT)),
+            "deployment_file": repo_relative_or_absolute(deployment_path),
         },
         "project": {
             "name": "DARWIN",
@@ -117,6 +125,16 @@ def main() -> int:
             "initial_base_amount": str(market["initial_base_amount"]),
             "initial_quote_amount": str(market["initial_quote_amount"]),
         },
+        "faucet": {
+            "enabled": bool(faucet.get("enabled")),
+            "address": str((faucet.get("contracts") or {}).get("drw_faucet", "")),
+            "claim_amount": str(faucet.get("claim_amount", "")),
+            "native_drip_amount": str(faucet.get("native_drip_amount", "")),
+            "claim_cooldown": int(faucet.get("claim_cooldown", 0) or 0),
+            "funded": bool(faucet.get("funded", False)),
+            "initial_token_funding": str(faucet.get("initial_token_funding", "")),
+            "initial_native_funding": str(faucet.get("initial_native_funding", "")),
+        },
         "roles": {
             "governance": roles["governance"],
             "market_operator": market["market_operator"],
@@ -125,6 +143,7 @@ def main() -> int:
             "repo": args.repo_url,
             "live_status": f"{args.repo_url}/blob/main/LIVE_STATUS.md",
             "market_bootstrap": f"{args.repo_url}/blob/main/docs/MARKET_BOOTSTRAP.md",
+            "operator_quickstart": f"{args.repo_url}/blob/main/docs/OPERATOR_QUICKSTART.md",
             "deployment_artifact": f"{args.repo_url}/blob/main/ops/deployments/{deployment_path.name}",
         },
         "notes": {

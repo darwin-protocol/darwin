@@ -19,6 +19,7 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - Initial DARWIN-controlled demo trades have now executed against the live pool.
 - Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
 - A first-party browser portal now exists in `site/` for direct wallet-driven pool trading.
+- A first-party faucet contract + portal claim path now exists for transparent third-party DRW distribution.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
 ## Preflight
@@ -125,9 +126,42 @@ The portal supports:
 - wallet connect
 - Base Sepolia network switch/add
 - DRW wallet import
+- optional DRW faucet claim when the pinned artifact enables a funded faucet
 - live reserve + governance-balance reads
 - direct `WETH -> DRW` and `DRW -> WETH` swaps
 - direct `ETH -> WETH` wrapping for the quote side
+
+## Transparent Distribution
+
+The right way to get outside wallets into the system is distribution, not project-controlled volume.
+
+The repo now includes:
+
+- `contracts/src/DRWFaucet.sol`
+- `contracts/script/DeployDRWFaucet.s.sol`
+- `ops/init_drw_faucet.sh`
+- `ops/fund_drw_faucet.sh`
+
+Suggested Base Sepolia defaults:
+
+- claim amount: `100 DRW`
+- native drip: `0.00001 ETH`
+- cooldown: `86400` seconds
+- initial funding: `100000 DRW` + `0.0002 ETH`
+
+Live deploy path once a signer is loaded locally:
+
+```bash
+./ops/init_drw_faucet.sh
+python -m darwin_sim.cli.darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
+python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out site/market-config.json
+```
+
+If the token holder differs from the deployer, set a separate funder key locally before running the faucet init:
+
+```bash
+export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="0x..."
+```
 
 ## Initial Demo Activity
 
@@ -147,7 +181,7 @@ Those transactions prove the pool is tradeable today on Base Sepolia. They do no
 1. Start with Base Sepolia, not mainnet.
 2. Prefer the seeded DARWIN reference pool on Base Sepolia unless a third-party venue is explicitly tracked for `84532`.
 3. Run a venue preflight against the exact deployment network.
-4. Publish the pool address and exact network.
+4. Publish the pool address, faucet address, and exact network.
 5. Tell users it is a testnet market.
 6. Wait for third-party swaps and liquidity, not just project-controlled flow.
 
@@ -164,9 +198,10 @@ Current DARWIN-tracked venue state:
 So the current viable Base Sepolia path is:
 
 1. use the seeded DARWIN reference pool
-2. rerun the artifact-backed venue preflight
-3. point third parties at the pool and the browser portal
-4. wait for real usage
+2. deploy the transparent DRW faucet
+3. rerun the artifact-backed venue preflight
+4. point third parties at the pool, faucet, and browser portal
+5. wait for real usage
 
 Third-party Base Sepolia venue support remains optional and unconfirmed in the tracked registry.
 

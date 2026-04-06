@@ -21,6 +21,14 @@ const WETH_ABI = [
   "function approve(address,uint256) returns (bool)",
 ];
 
+const FAUCET_ABI = [
+  "function claim() returns (uint256,uint256)",
+  "function nextClaimAt(address) view returns (uint256)",
+  "function claimAmount() view returns (uint256)",
+  "function nativeDripAmount() view returns (uint256)",
+  "function claimCooldown() view returns (uint256)",
+];
+
 const state = {
   config: null,
   rpcProvider: null,
@@ -32,6 +40,7 @@ const state = {
   token: null,
   quoteToken: null,
   pool: null,
+  faucet: null,
 };
 
 const els = {};
@@ -59,6 +68,29 @@ function formatUnits(value, decimals, precision = 6) {
   if (!frac) return whole;
   const trimmed = frac.slice(0, precision).replace(/0+$/, "");
   return trimmed ? `${whole}.${trimmed}` : whole;
+}
+
+function formatDuration(seconds) {
+  const total = Number(seconds || 0);
+  if (total <= 0) return "none";
+  if (total % 86400 === 0) {
+    return `${total / 86400}d`;
+  }
+  if (total % 3600 === 0) {
+    return `${total / 3600}h`;
+  }
+  if (total % 60 === 0) {
+    return `${total / 60}m`;
+  }
+  return `${total}s`;
+}
+
+function formatTimestamp(seconds) {
+  const total = Number(seconds || 0);
+  if (!total) return "now";
+  const date = new Date(total * 1000);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString();
 }
 
 function setMessage(kind, text, txHash = "") {
@@ -170,6 +202,9 @@ async function loadConfig() {
   state.token = new ethers.Contract(state.config.token.address, ERC20_ABI, state.rpcProvider);
   state.quoteToken = new ethers.Contract(state.config.quote_token.address, WETH_ABI, state.rpcProvider);
   state.pool = new ethers.Contract(state.config.pool.address, POOL_ABI, state.rpcProvider);
+  if (state.config.faucet?.enabled && state.config.faucet.address) {
+    state.faucet = new ethers.Contract(state.config.faucet.address, FAUCET_ABI, state.rpcProvider);
+  }
 }
 
 function bindStaticConfig() {
@@ -180,6 +215,15 @@ function bindStaticConfig() {
   els.drwAddress.textContent = state.config.token.address;
   els.wethAddress.textContent = state.config.quote_token.address;
   els.governanceAddress.textContent = state.config.roles.governance;
+  if (state.config.faucet?.enabled && state.config.faucet.address) {
+    els.faucetPanel.hidden = false;
+    els.faucetAddressRow.hidden = false;
+    els.faucetAddress.textContent = state.config.faucet.address;
+    els.faucetClaimAmount.textContent = formatUnits(state.config.faucet.claim_amount || 0, state.config.token.decimals, 3);
+    els.faucetNativeAmount.textContent = formatUnits(state.config.faucet.native_drip_amount || 0, 18, 6);
+    els.faucetCooldown.textContent = formatDuration(state.config.faucet.claim_cooldown || 0);
+    els.faucetBadge.textContent = state.config.faucet.funded ? "funded faucet" : "unfunded faucet";
+  }
 
   els.poolLink.href = explorerLink(state.config.pool.address);
   els.poolLink.textContent = shortAddress(state.config.pool.address);
@@ -187,6 +231,7 @@ function bindStaticConfig() {
   els.tokenLink.textContent = shortAddress(state.config.token.address);
   els.liveStatusLink.href = state.config.links.live_status;
   els.marketDocLink.href = state.config.links.market_bootstrap;
+  els.operatorQuickstartLink.href = state.config.links.operator_quickstart;
   els.artifactLink.href = state.config.links.deployment_artifact;
   els.repoLink.href = state.config.links.repo;
 }
@@ -222,6 +267,26 @@ async function refreshWallet() {
   els.walletEth.textContent = formatUnits(ethBalance, 18, 6);
   els.walletDrw.textContent = formatUnits(drwBalance, state.config.token.decimals, 6);
   els.walletWeth.textContent = formatUnits(wethBalance, state.config.quote_token.decimals, 12);
+  await refreshFaucet();
+}
+
+async function refreshFaucet() {
+  if (!state.config.faucet?.enabled || !state.faucet) {
+    return;
+  }
+
+  if (!state.account) {
+    els.faucetNextClaim.textContent = "connect wallet";
+    return;
+  }
+
+  try {
+    const nextClaimAt = await state.faucet.nextClaimAt(state.account);
+    const nextTs = Number(nextClaimAt);
+    els.faucetNextClaim.textContent = nextTs === 0 || nextTs <= Math.floor(Date.now() / 1000) ? "now" : formatTimestamp(nextTs);
+  } catch (error) {
+    els.faucetNextClaim.textContent = "unavailable";
+  }
 }
 
 async function refreshQuote() {
@@ -335,6 +400,31 @@ async function handleWrap() {
   }
 }
 
+async function handleClaim() {
+  if (!state.config.faucet?.enabled || !state.faucet) {
+    setMessage("faucet", "No faucet is enabled in the current deployment artifact.");
+    return;
+  }
+  if (!state.account) {
+    await connectWallet();
+    return;
+  }
+
+  await ensureCorrectNetwork();
+  els.claimButton.disabled = true;
+  try {
+    const tx = await state.faucet.connect(state.signer).claim();
+    setMessage("faucet", "Faucet claim submitted.", tx.hash);
+    await tx.wait();
+    setMessage("faucet", "Faucet claim confirmed.", tx.hash);
+    await Promise.all([refreshWallet(), refreshMarket(), refreshQuote()]);
+  } catch (error) {
+    setMessage("error", error?.shortMessage || error?.message || "Faucet claim failed.");
+  } finally {
+    els.claimButton.disabled = false;
+  }
+}
+
 async function watchAsset() {
   const provider = await ensureWallet();
   try {
@@ -377,6 +467,13 @@ async function boot() {
     swapButton: $("swapButton"),
     wrapAmount: $("wrapAmount"),
     wrapButton: $("wrapButton"),
+    faucetPanel: $("faucetPanel"),
+    faucetBadge: $("faucetBadge"),
+    faucetClaimAmount: $("faucetClaimAmount"),
+    faucetNativeAmount: $("faucetNativeAmount"),
+    faucetCooldown: $("faucetCooldown"),
+    faucetNextClaim: $("faucetNextClaim"),
+    claimButton: $("claimButton"),
     tokenInDisplay: $("tokenInDisplay"),
     poolBaseReserve: $("poolBaseReserve"),
     poolQuoteReserve: $("poolQuoteReserve"),
@@ -397,9 +494,12 @@ async function boot() {
     poolAddress: $("poolAddress"),
     drwAddress: $("drwAddress"),
     wethAddress: $("wethAddress"),
+    faucetAddressRow: $("faucetAddressRow"),
+    faucetAddress: $("faucetAddress"),
     governanceAddress: $("governanceAddress"),
     liveStatusLink: $("liveStatusLink"),
     marketDocLink: $("marketDocLink"),
+    operatorQuickstartLink: $("operatorQuickstartLink"),
     artifactLink: $("artifactLink"),
     repoLink: $("repoLink"),
     messageKind: $("messageKind"),
@@ -435,6 +535,7 @@ async function boot() {
     refreshMarket(),
     refreshWallet(),
     refreshQuote(),
+    refreshFaucet(),
   ]).then(() => {
     setMessage("refresh", "Market state refreshed.");
   }).catch((error) => {
@@ -444,6 +545,7 @@ async function boot() {
   els.slippageBps.addEventListener("input", () => refreshQuote());
   els.swapButton.addEventListener("click", () => handleSwap());
   els.wrapButton.addEventListener("click", () => handleWrap());
+  els.claimButton?.addEventListener("click", () => handleClaim());
 
   setMessage("ready", "Portal ready. Connect a wallet to trade.");
 }

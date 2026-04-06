@@ -1,9 +1,20 @@
 {
-  "generated_at": "2026-04-06T19:20:44.522718Z",
+  "faucet": {
+    "address": "",
+    "claim_amount": "",
+    "claim_cooldown": 0,
+    "enabled": false,
+    "funded": false,
+    "initial_native_funding": "",
+    "initial_token_funding": "",
+    "native_drip_amount": ""
+  },
+  "generated_at": "2026-04-06T19:52:56.600517Z",
   "links": {
     "deployment_artifact": "https://github.com/darwin-protocol/darwin/blob/main/ops/deployments/base-sepolia.json",
     "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",
     "market_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md",
+    "operator_quickstart": "https://github.com/darwin-protocol/darwin/blob/main/docs/OPERATOR_QUICKSTART.md",
     "repo": "https://github.com/darwin-protocol/darwin"
   },
   "network": {

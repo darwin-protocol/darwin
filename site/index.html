@@ -150,6 +150,39 @@
           </p>
         </section>
 
+        <section id="faucetPanel" class="card panel" hidden>
+          <div class="section-heading">
+            <h2>Claim DRW</h2>
+            <span id="faucetBadge" class="badge">transparent faucet</span>
+          </div>
+          <div class="stat-grid">
+            <article class="metric">
+              <span class="label">Claim amount</span>
+              <strong id="faucetClaimAmount">-</strong>
+              <small>DRW</small>
+            </article>
+            <article class="metric">
+              <span class="label">Native drip</span>
+              <strong id="faucetNativeAmount">-</strong>
+              <small>ETH</small>
+            </article>
+            <article class="metric">
+              <span class="label">Cooldown</span>
+              <strong id="faucetCooldown">-</strong>
+              <small>between claims</small>
+            </article>
+            <article class="metric">
+              <span class="label">Next claim</span>
+              <strong id="faucetNextClaim">-</strong>
+              <small>connected wallet</small>
+            </article>
+          </div>
+          <button id="claimButton" class="button button-secondary button-wide">Claim DRW</button>
+          <p class="caption">
+            This is a public testnet faucet for third-party onboarding. It is not organic distribution or price discovery.
+          </p>
+        </section>
+
         <section class="card panel">
           <div class="section-heading">
             <h2>Connected wallet</h2>
@@ -193,6 +226,10 @@
               <span>WETH token</span>
               <code id="wethAddress"></code>
             </button>
+            <button id="faucetAddressRow" class="address-row" data-copy-target="faucetAddress" hidden>
+              <span>DRW faucet</span>
+              <code id="faucetAddress"></code>
+            </button>
             <button class="address-row" data-copy-target="governanceAddress">
               <span>Governance</span>
               <code id="governanceAddress"></code>
@@ -209,11 +246,13 @@
             <li>The pool is live and the portal talks to it directly.</li>
             <li>The pool is still DARWIN-owned reference infrastructure on Base Sepolia.</li>
             <li>Initial DARWIN-controlled demo trades have already been executed.</li>
+            <li>If the faucet is enabled, claims are transparent testnet onboarding, not demand signals.</li>
             <li>Real third-party usage is still the market milestone that matters next.</li>
           </ul>
           <div class="link-row">
             <a id="liveStatusLink" href="#" target="_blank" rel="noreferrer">Live status</a>
             <a id="marketDocLink" href="#" target="_blank" rel="noreferrer">Market runbook</a>
+            <a id="operatorQuickstartLink" href="#" target="_blank" rel="noreferrer">Operator quickstart</a>
             <a id="artifactLink" href="#" target="_blank" rel="noreferrer">Deployment artifact</a>
             <a id="repoLink" href="#" target="_blank" rel="noreferrer">Repository</a>
           </div>
