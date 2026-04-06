@@ -1,14 +1,5 @@
 # DARWIN
 
-<p align="center">
-  <img src="web/public/drw-logo.svg" alt="DRW logo" width="112" height="112" />
-</p>
-
-<p align="center">
-  <strong>Use Darwin</strong><br />
-  Live Base Sepolia DRW token, faucet, reference pool, and browser market portal.
-</p>
-
 A peer-to-peer system for evolving exchange microstructure.
 
 ## Start Here
@@ -118,6 +109,19 @@ Fast path:
 ```bash
 ./ops/init_demo_wallet.sh
 ```
+
+Peer-to-peer wallet fast path:
+
+```bash
+./ops/init_peer_wallet.sh
+```
+
+That emits:
+
+- encrypted wallet file
+- public account file
+- shareable DRW request URI
+- simple markdown share card for peer-to-peer onboarding
 
 ## DRW Genesis
 

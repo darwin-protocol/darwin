@@ -1,0 +1,37 @@
+name: pages-https
+
+"on":
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - pages
+    types:
+      - completed
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: read
+  pages: write
+
+jobs:
+  enforce:
+    if: ${{ vars.DARWIN_SITE_DOMAIN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce Pages HTTPS when certificate is ready
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DARWIN_SITE_DOMAIN: ${{ vars.DARWIN_SITE_DOMAIN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          WAIT_SECONDS: "600"
+        shell: bash
+        run: |
+          if ./ops/enforce_pages_https.sh "$DARWIN_SITE_DOMAIN"; then
+            echo "HTTPS enforced for $DARWIN_SITE_DOMAIN"
+          else
+            echo "Certificate still pending for $DARWIN_SITE_DOMAIN; leaving workflow green so schedule can retry."
+          fi

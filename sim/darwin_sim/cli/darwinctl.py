@@ -363,6 +363,58 @@ def cmd_wallet_export_public(args):
     print(f"  output:     {out}")
 
 
+def _encode_token_amount(amount_text: str, decimals: int) -> int:
+    amount = Decimal(str(amount_text))
+    if amount <= 0:
+        raise ValueError("amount must be positive")
+    scale = Decimal(10) ** decimals
+    return int((amount * scale).to_integral_value())
+
+
+def cmd_wallet_request(args):
+    from darwin_sim.sdk.wallets import load_wallet_metadata
+
+    deployment = _load_deployment_or_none(args)
+    if deployment is None or not deployment.drw:
+        print("[darwinctl] wallet-request requires a deployment artifact with DRW enabled")
+        sys.exit(1)
+
+    wallet = load_wallet_metadata(args.wallet_file)
+    public_account = wallet["public_account"]
+    recipient = args.recipient or public_account.get("evm_addr", "")
+    if not recipient:
+        print("[darwinctl] wallet-request could not resolve a recipient address")
+        sys.exit(1)
+
+    drw = deployment.drw or {}
+    contracts = drw.get("contracts", {})
+    token_address = contracts.get("drw_token", "")
+    if not token_address:
+        print("[darwinctl] wallet-request requires a DRW token address in the deployment artifact")
+        sys.exit(1)
+
+    decimals = int(drw.get("decimals", 18) or 18)
+    amount_text = str(args.amount).strip() if args.amount else ""
+    uri = f"ethereum:{token_address}@{deployment.chain_id}/transfer?address={recipient}"
+    if amount_text:
+        uri = f"{uri}&uint256={_encode_token_amount(amount_text, decimals)}"
+
+    if args.out:
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(uri + "\n")
+
+    print("[darwinctl] Wallet request")
+    print(f"  wallet:     {Path(args.wallet_file).resolve()}")
+    print(f"  recipient:  {recipient}")
+    print(f"  token:      {token_address}")
+    print(f"  chain_id:   {deployment.chain_id}")
+    print(f"  amount:     {amount_text or '-'}")
+    if args.out:
+        print(f"  output:     {Path(args.out).resolve()}")
+    print(f"  uri:        {uri}")
+
+
 def cmd_deployment_show(args):
     deployment = _load_deployment_or_none(args)
     if deployment is None:
@@ -1338,6 +1390,15 @@ def main():
     p.add_argument("wallet_file")
     p.add_argument("--out", default="darwin_account.json")
 
+    # wallet request
+    p = sub.add_parser("wallet-request", help="Build a shareable DRW transfer request URI for a wallet")
+    p.add_argument("wallet_file")
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
+    p.add_argument("--recipient", default="")
+    p.add_argument("--amount", default="")
+    p.add_argument("--out", default="")
+
     # deployment show
     p = sub.add_parser("deployment-show", help="Inspect a deployment artifact")
     p.add_argument("--deployment-file")
@@ -1433,6 +1494,8 @@ def main():
         cmd_wallet_show(args)
     elif args.command == "wallet-export-public":
         cmd_wallet_export_public(args)
+    elif args.command == "wallet-request":
+        cmd_wallet_request(args)
     elif args.command == "deployment-show":
         cmd_deployment_show(args)
     elif args.command == "config-lint":

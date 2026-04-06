@@ -1928,6 +1928,87 @@ class TestEndToEnd(unittest.TestCase):
             self.assertTrue(public_account["acct_id"])
             print("  CLI: wallet-init/show/export-public create and expose reusable wallet identity")
 
+    def test_28b_cli_wallet_request(self):
+        """CLI: wallet-request emits a shareable Base Sepolia DRW transfer URI."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            wallet_path = tmp / "darwin_wallet.json"
+            request_path = tmp / "request.txt"
+            deployment = tmp / "base-sepolia.json"
+            env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM)}
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+                "drw": {
+                    "enabled": True,
+                    "decimals": 18,
+                    "contracts": {
+                        "drw_token": "0x00000000000000000000000000000000000000d1",
+                    },
+                },
+            }))
+
+            init_result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "darwin_sim.cli.darwinctl",
+                    "wallet-init",
+                    "--deployment-file",
+                    str(deployment),
+                    "--label",
+                    "alpha-trader",
+                    "--passphrase",
+                    "test-passphrase",
+                    "--out",
+                    str(wallet_path),
+                ],
+                cwd=str(SIM),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(init_result.returncode, 0, msg=init_result.stdout + init_result.stderr)
+
+            request_result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "darwin_sim.cli.darwinctl",
+                    "wallet-request",
+                    str(wallet_path),
+                    "--deployment-file",
+                    str(deployment),
+                    "--amount",
+                    "25",
+                    "--out",
+                    str(request_path),
+                ],
+                cwd=str(SIM),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(request_result.returncode, 0, msg=request_result.stdout + request_result.stderr)
+            self.assertTrue(request_path.exists())
+            uri = request_path.read_text().strip()
+            self.assertIn("ethereum:0x00000000000000000000000000000000000000d1@84532/transfer", uri)
+            self.assertIn("uint256=25000000000000000000", uri)
+            print("  CLI: wallet-request emits a shareable DRW transfer URI for a saved wallet")
+
     def test_29_cli_intent_create_from_wallet(self):
         """CLI: intent-create can sign from a saved wallet instead of an ephemeral account."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2061,6 +2142,67 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(intent_payload["evm_leg"]["evm_addr"], public_account["evm_addr"])
             self.assertIn("[demo-wallet] Ready", result.stdout)
             print("  Ops: init_demo_wallet creates reusable wallet artifacts and a verified intent")
+
+    def test_30b_init_peer_wallet_script(self):
+        """Ops: init_peer_wallet creates a reusable wallet plus a shareable DRW request bundle."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            wallet_dir = tmp / "wallets"
+            wallet_dir.mkdir()
+            deployment = tmp / "base-sepolia.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+                "drw": {
+                    "enabled": True,
+                    "decimals": 18,
+                    "contracts": {
+                        "drw_token": "0x00000000000000000000000000000000000000d1",
+                    },
+                },
+            }))
+
+            env = {
+                **os.environ,
+                "DARWIN_WALLET_DIR": str(wallet_dir),
+                "DARWIN_WALLET_LABEL": "peer-user",
+                "DARWIN_WALLET_PASSPHRASE": "test-passphrase",
+                "DARWIN_DEPLOYMENT_FILE": str(deployment),
+                "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM),
+            }
+            result = subprocess.run(
+                ["bash", str(ROOT / "ops" / "init_peer_wallet.sh")],
+                cwd=str(ROOT),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            wallet_path = wallet_dir / "peer-user.wallet.json"
+            public_path = wallet_dir / "peer-user.account.json"
+            request_path = wallet_dir / "peer-user.request.txt"
+            share_path = wallet_dir / "peer-user.share.md"
+            self.assertTrue(wallet_path.exists())
+            self.assertTrue(public_path.exists())
+            self.assertTrue(request_path.exists())
+            self.assertTrue(share_path.exists())
+            self.assertIn("ethereum:0x00000000000000000000000000000000000000d1@84532/transfer", request_path.read_text())
+            self.assertIn("[peer-wallet] Ready", result.stdout)
+            print("  Ops: init_peer_wallet creates a shareable DRW peer-to-peer wallet bundle")
 
     def test_31_prepare_external_packets(self):
         """Ops: prepare_external_packets emits sendable operator and reviewer tarballs."""

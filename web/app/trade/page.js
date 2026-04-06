@@ -1,6 +1,4 @@
 import Script from "next/script";
-import BrandMark from "../../components/BrandMark";
-import SiteHeader from "../../components/SiteHeader";
 
 export const metadata = {
   title: "Trade DRW",
@@ -31,20 +29,28 @@ export default function TradePage() {
       </div>
 
       <div className="page-shell">
-        <SiteHeader compact />
+        <section className="card status-banner compact-banner">
+          <div>
+            <p className="eyebrow">DARWIN MARKET PORTAL</p>
+            <h1 className="plain-title">Trade DRW on Base Sepolia.</h1>
+            <p className="plain-note">
+              Canonical host: <code>usedarwin.xyz</code>. HTTPS certificate is still provisioning
+              through GitHub Pages, so the custom domain is currently live over HTTP.
+            </p>
+          </div>
+          <div className="status-banner-meta">
+            <span className="badge">DRW live</span>
+            <span className="badge">Pool live</span>
+            <span className="badge">Cert pending</span>
+          </div>
+        </section>
 
         <header className="hero card">
           <div className="hero-copy">
-            <div className="trade-title-row">
-              <BrandMark className="trade-mark" title="DRW market" />
-              <div>
-                <p className="eyebrow">DARWIN MARKET PORTAL</p>
-                <span className="trade-subtitle">Wallet-native Base Sepolia alpha market</span>
-              </div>
-            </div>
-            <h1>
-              Trade <span>DRW</span> on Base Sepolia
-            </h1>
+            <p className="eyebrow">LIVE TESTNET MARKET</p>
+            <h2 className="section-title">
+              Trade <span>DRW</span> directly from a wallet.
+            </h2>
             <p className="lede">
               This portal connects directly to the live DARWIN-owned reference pool. It is a real
               testnet market, not a mockup, but it is still alpha and still waiting on outside
@@ -269,12 +275,12 @@ export default function TradePage() {
 
           <section className="card panel qr-panel">
             <div className="section-heading">
-              <h2>Peer-to-peer QR</h2>
-              <span className="badge">scan to send DRW</span>
+              <h2>Peer-to-peer request</h2>
+              <span className="badge">wallet QR</span>
             </div>
             <div className="qr-layout">
               <div className="qr-stage">
-                <canvas id="qrCanvas" width="224" height="224"></canvas>
+                <canvas id="qrCanvas" width="176" height="176"></canvas>
               </div>
               <div className="qr-controls">
                 <label className="field">
@@ -298,8 +304,8 @@ export default function TradePage() {
                   <textarea id="qrUri" rows="4" readOnly></textarea>
                 </label>
                 <p className="caption">
-                  This QR encodes a Base Sepolia DRW transfer request. Another wallet can scan it
-                  and open a token transfer flow directly.
+                  This QR encodes a Base Sepolia DRW transfer request. Scan it from another wallet
+                  to open a direct token send.
                 </p>
               </div>
             </div>

@@ -95,78 +95,32 @@ a:hover {
   padding: 2rem 1.25rem 4rem;
 }
 
-.site-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.1rem;
-}
-
-.site-header.compact {
-  margin-bottom: 0.9rem;
-}
-
-.brand-lockup {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.85rem;
-  color: var(--text);
-}
-
-.brand-lockup:hover {
-  text-decoration: none;
-}
-
-.brand-lockup strong {
-  display: block;
-  font-size: 1rem;
-}
-
-.brand-lockup span {
-  display: block;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  letter-spacing: 0.04em;
-}
-
-.brand-mark {
-  width: 2.75rem;
-  height: 2.75rem;
-  flex: none;
-}
-
-.site-nav {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
-.nav-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.35rem;
-  padding: 0 0.85rem;
-  border-radius: 999px;
-  border: 1px solid rgba(20, 62, 108, 0.12);
-  background: rgba(255, 255, 255, 0.58);
-  color: var(--text);
-  font-family: var(--mono);
-  font-size: 0.77rem;
-  letter-spacing: 0.04em;
-}
-
-.nav-link:hover {
-  text-decoration: none;
-  transform: translateY(-1px);
-}
-
 .card {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   backdrop-filter: blur(16px);
   box-shadow: var(--shadow);
+}
+
+.status-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  border-radius: 1.4rem;
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.compact-banner {
+  margin-bottom: 1rem;
+}
+
+.status-banner-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .hero {
@@ -200,7 +154,18 @@ code {
   line-height: 0.95;
 }
 
+.section-title,
+.plain-title {
+  margin: 0 0 0.8rem;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1;
+}
+
 .hero h1 span {
+  color: var(--blue);
+}
+
+.section-title span {
   color: var(--blue);
 }
 
@@ -209,6 +174,13 @@ code {
   color: var(--muted);
   font-size: 1.05rem;
   line-height: 1.6;
+}
+
+.plain-note {
+  margin: 0;
+  max-width: 50rem;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .hero-actions,
@@ -403,13 +375,6 @@ code {
   margin-bottom: 0.8rem;
 }
 
-.eyebrow-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.7rem;
-}
-
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -490,8 +455,8 @@ code {
 }
 
 .qr-stage canvas {
-  width: 14rem;
-  height: 14rem;
+  width: 11rem;
+  height: 11rem;
   max-width: 100%;
   border-radius: 1rem;
   background: #f4efe5;
@@ -568,10 +533,8 @@ code {
 
   .hero-actions,
   .link-row,
-  .site-header,
-  .site-nav,
-  .trade-title-row,
-  .eyebrow-row {
+  .status-banner,
+  .status-banner-meta {
     flex-direction: column;
   }
 
@@ -581,18 +544,6 @@ code {
 
   .coin-panel {
     grid-template-columns: 1fr;
-  }
-
-  .brand-lockup {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .brand-mark,
-  .coin-mark,
-  .trade-mark {
-    width: 3.6rem;
-    height: 3.6rem;
   }
 }
 
@@ -642,47 +593,6 @@ code {
   padding: 1.25rem;
 }
 
-.coin-panel {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1rem;
-  align-items: center;
-  padding: 1rem;
-  border-radius: 1.2rem;
-  background: linear-gradient(145deg, rgba(21, 70, 160, 0.12), rgba(13, 123, 115, 0.08));
-  border: 1px solid rgba(20, 62, 108, 0.1);
-}
-
-.coin-mark {
-  width: 5rem;
-  height: 5rem;
-}
-
-.coin-stack {
-  display: grid;
-  gap: 0.3rem;
-}
-
-.coin-stack strong {
-  font-size: 1.45rem;
-}
-
-.coin-stack span:last-child {
-  color: var(--muted);
-  line-height: 1.55;
-}
-
-.coin-tag {
-  width: fit-content;
-  border-radius: 999px;
-  padding: 0.26rem 0.55rem;
-  background: rgba(247, 161, 84, 0.16);
-  color: var(--red);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
-}
-
 .hero-rail {
   display: grid;
   gap: 0.75rem;
@@ -722,27 +632,6 @@ code {
 .ladder-step span {
   color: var(--muted);
   line-height: 1.45;
-}
-
-.trade-title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  margin-bottom: 0.6rem;
-}
-
-.trade-mark {
-  width: 4rem;
-  height: 4rem;
-  flex: none;
-}
-
-.trade-subtitle {
-  display: block;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.05em;
 }
 
 .step-list {

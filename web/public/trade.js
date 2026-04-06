@@ -490,7 +490,7 @@ function drawQr(uri) {
     canvas,
     uri,
     {
-      width: 224,
+      width: 176,
       margin: 1,
       color: {
         dark: "#14202f",

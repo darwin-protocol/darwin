@@ -1,6 +1,4 @@
 import Link from "next/link";
-import BrandMark from "../components/BrandMark";
-import SiteHeader from "../components/SiteHeader";
 
 export const metadata = {
   title: "Use Darwin",
@@ -35,26 +33,33 @@ export default function HomePage() {
       />
 
       <main className="home-shell">
-        <SiteHeader />
+        <section className="card status-banner">
+          <div>
+            <p className="eyebrow">USE DARWIN</p>
+            <h1 className="plain-title">Live Base Sepolia DRW market.</h1>
+            <p className="plain-note">
+              Canonical host: <code>usedarwin.xyz</code>. HTTPS certificate is still provisioning
+              through GitHub Pages, so the live site is currently served over HTTP.
+            </p>
+          </div>
+          <div className="status-banner-meta">
+            <span className="badge">Base Sepolia</span>
+            <span className="badge">DRW live</span>
+            <span className="badge">Cert pending</span>
+          </div>
+        </section>
 
-        <section className="card home-hero">
+        <section className="card home-hero simple-hero">
           <div className="home-hero-copy">
-            <div className="eyebrow-row">
-              <p className="eyebrow">USE DARWIN</p>
-              <span className="status-chip">LIVE ON BASE SEPOLIA</span>
-            </div>
-            <h1>
-              A live market surface for <span>DRW</span>.
-            </h1>
+            <h2 className="section-title">Claim, wrap, and trade.</h2>
             <p className="lede">
-              Darwin Protocol now has a branded public entry point: a live testnet token, public
-              faucet, reference pool, and wallet-driven market portal. The next milestone is
-              straightforward: move from DARWIN-controlled bootstrapping to real outside claims,
-              swaps, and watchers.
+              DARWIN is live as a public testnet surface: token, faucet, reference pool, wallet
+              portal, and deployment artifact. The important next step is outside users, not more
+              internal churn.
             </p>
             <div className="hero-actions">
               <Link className="button button-primary" href="/trade/">
-                Open the market
+                Open market
               </Link>
               <a
                 className="button button-secondary"
@@ -70,50 +75,24 @@ export default function HomePage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                GitHub repo
+                GitHub
               </a>
-            </div>
-            <div className="hero-stat-grid">
-              <div className="metric">
-                <span className="label">Canonical host</span>
-                <strong>usedarwin.xyz</strong>
-                <small>GitHub Pages custom domain</small>
-              </div>
-              <div className="metric">
-                <span className="label">Market path</span>
-                <strong>/trade</strong>
-                <small>connect, claim, wrap, swap</small>
-              </div>
-              <div className="metric">
-                <span className="label">Current pool</span>
-                <strong>DRW / WETH</strong>
-                <small>Base Sepolia reference liquidity</small>
-              </div>
             </div>
           </div>
 
-          <aside className="home-hero-panel">
-            <div className="coin-panel">
-              <BrandMark className="coin-mark" title="DRW coin mark" />
-              <div className="coin-stack">
-                <span className="coin-tag">TOKEN</span>
-                <strong>DRW</strong>
-                <span>Darwin is the wallet-visible token layer for the live DARWIN alpha.</span>
-              </div>
+          <aside className="home-hero-panel simple-panel">
+            <div className="rail-card">
+              <span className="label">Token</span>
+              <strong>DRW</strong>
+              <small>Base Sepolia contract live</small>
             </div>
-            <div className="hero-rail">
-              <div className="rail-card">
-                <span className="label">Faucet</span>
-                <code>0x3DAa...bAe0</code>
-              </div>
-              <div className="rail-card">
-                <span className="label">Reference pool</span>
-                <code>0x9E1f...B891</code>
-              </div>
-              <div className="rail-card">
-                <span className="label">Token contract</span>
-                <code>0x9051...0FF2</code>
-              </div>
+            <div className="rail-card">
+              <span className="label">Faucet</span>
+              <code>0x3DAa...bAe0</code>
+            </div>
+            <div className="rail-card">
+              <span className="label">Reference pool</span>
+              <code>0x9E1f...B891</code>
             </div>
           </aside>
         </section>
@@ -121,8 +100,8 @@ export default function HomePage() {
         <section className="home-grid">
           <article className="card home-panel">
             <div className="section-heading">
-              <h2>What is live now</h2>
-              <span className="badge">real testnet surface</span>
+              <h2>What is live</h2>
+              <span className="badge">real surface</span>
             </div>
             <div className="stat-grid">
               <div className="metric">
@@ -133,69 +112,56 @@ export default function HomePage() {
               <div className="metric">
                 <span className="label">Faucet</span>
                 <strong>100 DRW</strong>
-                <small>plus 0.00001 ETH drip</small>
+                <small>plus native ETH drip</small>
               </div>
               <div className="metric">
-                <span className="label">Reference pool</span>
+                <span className="label">Pool</span>
                 <strong>DRW / WETH</strong>
-                <small>artifact-backed pool</small>
+                <small>reference liquidity</small>
               </div>
               <div className="metric">
                 <span className="label">Portal</span>
-                <strong>Wallet-driven</strong>
-                <small>claim, wrap, swap</small>
+                <strong>/trade</strong>
+                <small>wallet connect + swap</small>
               </div>
             </div>
           </article>
 
           <article className="card home-panel">
             <div className="section-heading">
-              <h2>How to use it</h2>
+              <h2>What to do</h2>
               <span className="badge">simple path</span>
             </div>
             <ol className="step-list">
-              <li>Connect a browser wallet on Base Sepolia.</li>
-              <li>Claim DRW from the public faucet.</li>
-              <li>Wrap a small amount of ETH into WETH if you want to buy from the pool.</li>
-              <li>Trade against the live DARWIN reference pool.</li>
-              <li>Share the market with outside testers instead of generating fake activity.</li>
+              <li>Open the market page.</li>
+              <li>Connect a wallet on Base Sepolia.</li>
+              <li>Claim DRW from the faucet.</li>
+              <li>Wrap ETH into WETH if you want to buy from the pool.</li>
+              <li>Use the QR request flow for direct peer-to-peer sends.</li>
             </ol>
           </article>
 
           <article className="card home-panel">
             <div className="section-heading">
-              <h2>Why bots will notice it</h2>
-              <span className="badge">but still alpha</span>
-            </div>
-            <ul className="truth-list">
-              <li>The token, pool, faucet, and portal are all public and machine-readable.</li>
-              <li>Wallets can import DRW directly from the portal using the token image and metadata.</li>
-              <li>Reference liquidity exists, but it is still DARWIN-owned bootstrap liquidity.</li>
-              <li>Real usage only starts counting once outside wallets claim and trade.</li>
-            </ul>
-          </article>
-
-          <article className="card home-panel">
-            <div className="section-heading">
-              <h2>What still needs to happen</h2>
-              <span className="badge">honest next steps</span>
+              <h2>What is still missing</h2>
+              <span className="badge">real blockers</span>
             </div>
             <div className="status-ladder">
               <div className="ladder-step">
                 <strong>Outside holders</strong>
-                <span>Get claims from wallets that are not DARWIN-controlled.</span>
+                <span>Claims from non-DARWIN wallets.</span>
               </div>
               <div className="ladder-step">
                 <strong>Outside trading</strong>
-                <span>Replace internal demo trades with third-party swaps.</span>
+                <span>Real third-party swaps through the live pool.</span>
               </div>
               <div className="ladder-step">
-                <strong>Outside watchers</strong>
-                <span>Run the canary with an external watcher and a real archive epoch.</span>
+                <strong>Outside watcher</strong>
+                <span>A genuine external watcher and archive epoch.</span>
               </div>
               <div className="ladder-step">
-                <strong>Review</strong>
-                <span>Land the independent audit/review response and close any findings.</span>
+                <strong>HTTPS cutover</strong>
+                <span>GitHub Pages certificate issuance for usedarwin.xyz.</span>
               </div>
             </div>
           </article>
@@ -207,7 +173,7 @@ export default function HomePage() {
             </div>
             <div className="link-row">
               <Link className="button button-secondary" href="/trade/">
-                Trade and claim
+                Market page
               </Link>
               <a
                 className="button button-secondary"
@@ -215,7 +181,7 @@ export default function HomePage() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Market bootstrap
+                Market runbook
               </a>
               <a
                 className="button button-secondary"
