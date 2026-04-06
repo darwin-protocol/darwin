@@ -14,7 +14,8 @@
 10. For watcher-specific operator work, use the standalone bootstrap path: `DARWIN_WATCHER_ARCHIVE_URL=http://archive-host:9447 ./ops/run_external_watcher.sh`
 11. To exercise the canary data path after boot, publish a local epoch through the running stack: `./ops/publish_canary_epoch.sh canary-2 "$PWD/sim/outputs/test_e2"`
 12. If you need to reproduce the testnet deploy, start from `ops/base_sepolia.env.example`, choose either `DARWIN_DEPLOY_BOND_ASSET_MOCK=1` or a real `DARWIN_BOND_ASSET`, and run `./ops/preflight_base_sepolia.sh`
-13. If you open a PR, expect GitHub Actions to run bootstrap, the Python self-check, the Foundry suite, the devnet flow, and the local deployment smoke flow.
+13. If you need to reproduce the DRW alpha genesis flow, use `.env.base-sepolia` plus `./ops/preflight_drw_genesis.sh` and `./ops/init_drw_genesis.sh`
+14. If you open a PR, expect GitHub Actions to run bootstrap, the Python self-check, the Foundry suite, the devnet flow, and the local deployment smoke flow.
 
 ## Code Style
 
@@ -33,14 +34,15 @@
 Priority contributions (in order):
 
 1. **External canary operations** — first outside watcher, first outside archive epoch, and real operator feedback against the live Base Sepolia artifact
-2. **Audit prep** — deepen cross-contract invariants, adversarial testing, and reviewer-facing threat/model evidence beyond the current auth + lifecycle coverage; use `ops/export_audit_bundle.py` to package the live artifact, readiness evidence, `docs/AUDIT_READINESS.md`, and `docs/THREAT_MODEL.md`
-3. **Watcher improvements** — more granular replay checks, better error reporting, long-run auto-sync recovery under real archive churn, better operator handoff material via `ops/export_external_watcher_bundle.py`, and cleaner incoming evidence verification via `ops/intake_external_watcher_report.py`
-4. **Canary data flow** — automate archive ingest, replay promotion, and external watcher onboarding around the live Base Sepolia artifact plus `run_external_watcher.sh`, `publish_canary_epoch.sh`, the operator bundle export, and the watcher-intake path
-5. **Documentation, handoff packets, and wallet ergonomics** — operator runbooks, API docs, audit-readiness materials, sendable outside-review packets, and safer local wallet workflows
+2. **Public DRW rollout** — once the signer is loaded, broadcast the Base Sepolia DRW genesis, verify the merged artifact, and then operate the DRW-enabled canary honestly
+3. **Audit prep** — deepen cross-contract invariants, adversarial testing, and reviewer-facing threat/model evidence beyond the current auth + lifecycle coverage; use `ops/export_audit_bundle.py` to package the live artifact, readiness evidence, `docs/AUDIT_READINESS.md`, and `docs/THREAT_MODEL.md`
+4. **Watcher improvements** — more granular replay checks, better error reporting, long-run auto-sync recovery under real archive churn, better operator handoff material via `ops/export_external_watcher_bundle.py`, and cleaner incoming evidence verification via `ops/intake_external_watcher_report.py`
+5. **Canary data flow** — automate archive ingest, replay promotion, and external watcher onboarding around the live Base Sepolia artifact plus `run_external_watcher.sh`, `publish_canary_epoch.sh`, the operator bundle export, and the watcher-intake path
+6. **Documentation, handoff packets, and wallet ergonomics** — operator runbooks, API docs, audit-readiness materials, sendable outside-review packets, and safer local wallet workflows
 
 ## What We Don't Need Yet
 
 - Chain client forks (v1 is an overlay)
-- DRW token contracts (activation gates not passed)
+- Mainnet DRW distribution and exchange-listing work
 - Marketing materials
 - Governance UI
