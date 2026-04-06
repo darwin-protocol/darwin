@@ -118,14 +118,14 @@ cp ops/base_sepolia.env.example .env.base-sepolia
 darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
 ```
 
-Default alpha genesis parameters:
+Default alpha genesis parameters (per launch annex):
 
-- total supply: `1,000,000,000 DRW`
-- treasury: `20%`
-- insurance: `20%`
-- sponsor rewards: `10%`
-- staking reserve: `30%`
-- community reserve: `20%`
+- total supply: `100,000,000 DRW` (100M fixed supply)
+- treasury: `20%` (20M DRW)
+- insurance: `20%` (20M DRW)
+- sponsor rewards: `10%` (10M DRW)
+- staking reserve: `30%` (30M DRW)
+- community reserve: `20%` (20M DRW)
 - staking duration: `31536000` seconds (`365 days`)
 
 `./ops/preflight_base_sepolia.sh`, `./ops/deploy_base_sepolia.sh`, `./ops/preflight_drw_genesis.sh`, and `./ops/init_drw_genesis.sh` now auto-load `.env.base-sepolia` or the file pointed to by `DARWIN_ENV_FILE`.
@@ -481,6 +481,85 @@ DRW should only activate after:
 5. canary operations run cleanly for the required window
 
 Until then, DRW is specified protocol stake, not a live public token.
+
+## Remaining Work
+
+### What is done
+
+| Layer | Status |
+|---|---|
+| Protocol spec (v0.1-v0.8) | Frozen |
+| Simulator (E1-E7, 50K swaps) | All pass |
+| SDK (real ML-DSA-65 PQ + secp256k1 EVM) | Working |
+| darwinctl CLI | Working |
+| 7 overlay services | Running, state-persistent |
+| 7 core contracts + DRWToken + DRWStaking | Deployed on Base Sepolia |
+| Contract tests (66 unit + 18 fuzz + 9 invariant) | 93 passing |
+| Python tests | 33 passing |
+| GitHub Actions CI | Running |
+| Wallet suite | Working |
+| Audit/operator export tooling | Working |
+
+### What is not done (in priority order)
+
+**Phase 1 — External validation (next)**
+
+1. First external watcher runs `ops/run_external_watcher.sh` and produces an independent replay report
+2. First external archive mirror serves artifacts that a third-party watcher can verify
+3. Public finalizer operated by someone outside the core team
+4. At least 3 independent watcher operators (G2 gate requirement)
+
+**Phase 2 — Security hardening**
+
+5. Contract fuzzing expanded (edge cases in SharedPairVault, cross-contract interactions)
+6. Formal threat model review against live testnet state
+7. External security audit of all 9 contracts (G3.5 gate requirement)
+8. Audit remediation and retest
+9. Bug bounty program launched
+
+**Phase 3 — Canary network (90 days)**
+
+10. Canary network with real flow on Base Sepolia (G3 gate requirement)
+11. At least one volatility event observed and handled
+12. Safe mode drill with external operators
+13. Incident response drill
+14. Public canary dashboard
+
+**Phase 4 — Legal and disclosure**
+
+15. Legal entity established (G4 gate requirement)
+16. Token distribution disclosure published (G5 gate requirement)
+17. Risk note published
+18. Vesting/treasury vault contracts audited
+
+**Phase 5 — DRW activation**
+
+19. All 6 gates pass with 14-day challenge windows
+20. Founding council signs activation notice
+21. Genesis mint: 100M DRW (treasury 20M, insurance 20M, sponsor rewards 10M, staking 30M, community 20M)
+22. DRW staking goes live
+
+**Phase 6 — Growth (post-activation)**
+
+23. Additional species (S3 patience lane, new templates)
+24. Additional pairs beyond ETH/USDC and BTC/USDC
+25. Solver program for S2 RFQ species
+26. Meta-vaults for LP convenience
+
+**Phase 7 — Sovereign execution (v1.5/v2)**
+
+27. Sovereign rollup with ML-DSA precompile
+28. Drop ECDSA envelope from dual-envelope intents
+29. Native PQ validator consensus
+30. Full end-to-end post-quantum trust
+
+### What will NOT be done
+
+- Chain client fork before overlay is stable
+- DRW minting before all 6 gates pass
+- Marketing v1 as a sovereign chain or "quantum-proof"
+- Public liquidity bootstrapping before audit
+- Governance UI before canary completes
 
 ## Deep Docs
 
