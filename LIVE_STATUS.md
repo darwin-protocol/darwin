@@ -19,6 +19,7 @@ Last repo update: `2026-04-06`
 - Public Base Sepolia core artifact: [ops/deployments/base-sepolia.json](/path/to/darwin/ops/deployments/base-sepolia.json)
 - Public Base Sepolia DRW token: `0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2`
 - Public Base Sepolia DRW staking: `0xC84090E74880a672C5273f6A454E208Fe114634e`
+- Latest warm canary report: `ready: true`, `onchain_drw: OK`, `tracked_supply: 1000000000000000000000000000/1000000000000000000000000000`
 
 ## What Is Live
 

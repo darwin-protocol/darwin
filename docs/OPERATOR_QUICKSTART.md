@@ -243,7 +243,7 @@ If you are booting a fresh watcher with no mirrored epochs yet, allow the expect
 darwinctl status-check --allow-cold-watcher
 ```
 
-The JSON report is intended for automation; the Markdown report is the operator-facing canary summary. When you pin `--deployment-file`, `status-check` also verifies on-chain bytecode, governance/operator wiring, settlement batch authorization, bond-asset linkage, and optional DRW token/staking wiring against the artifact.
+The JSON report is intended for automation; the Markdown report is the operator-facing canary summary. When you pin `--deployment-file`, `status-check` also verifies on-chain bytecode, governance/operator wiring, settlement batch authorization, bond-asset linkage, and optional DRW token/staking wiring plus live DRW holder balances against the artifact.
 
 To package the current deployment artifact plus readiness evidence for an outside reviewer:
 

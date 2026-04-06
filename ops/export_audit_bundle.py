@@ -35,6 +35,18 @@ def render_markdown(summary: dict) -> str:
         f"- Epoch operator: `{deployment['roles']['epoch_operator']}`",
         f"- Batch operator: `{deployment['roles']['batch_operator']}`",
         f"- Safe mode authority: `{deployment['roles']['safe_mode_authority']}`",
+    ]
+    drw = deployment.get("drw") or {}
+    if drw:
+        contracts = drw.get("contracts", {})
+        lines.extend([
+            f"- DRW token: `{contracts.get('drw_token', '')}`",
+            f"- DRW staking: `{contracts.get('drw_staking', '')}`",
+            f"- DRW total supply: `{drw.get('total_supply', '')}`",
+            f"- DRW duration: `{drw.get('staking_duration', '')}`",
+        ])
+
+    lines.extend([
         "",
         "## Readiness",
         "",
@@ -44,10 +56,14 @@ def render_markdown(summary: dict) -> str:
         f"{status['checks'].get('onchain', {}).get('detail', '')}".rstrip(),
         f"- On-chain auth: `{status['checks'].get('onchain_auth', {}).get('state', '')}` "
         f"{status['checks'].get('onchain_auth', {}).get('detail', '')}".rstrip(),
-        "",
-        "## Contracts",
-        "",
-    ]
+    ])
+    if status["checks"].get("onchain_drw"):
+        lines.append(
+            f"- On-chain DRW: `{status['checks'].get('onchain_drw', {}).get('state', '')}` "
+            f"{status['checks'].get('onchain_drw', {}).get('detail', '')}".rstrip()
+        )
+
+    lines.extend(["", "## Contracts", ""])
 
     for name, address in deployment["contracts"].items():
         lines.append(f"- `{name}`: `{address}`")
@@ -59,6 +75,20 @@ def render_markdown(summary: dict) -> str:
             lines.append(f"- `{name}`: `{'OK' if component.get('ok') else 'FAIL'}` {component.get('summary', '')}".rstrip())
     else:
         lines.append("- none")
+
+    onchain_drw = status.get("onchain_drw", {})
+    if onchain_drw:
+        lines.extend(["", "## DRW State", ""])
+        lines.append(
+            f"- Tracked holders: `{len(onchain_drw.get('holders', {}))}` "
+            f"tracked_supply=`{onchain_drw.get('tracked_total', 0)}`/"
+            f"`{onchain_drw.get('expected_total_supply', 0)}`"
+        )
+        for holder, detail in sorted(onchain_drw.get("holders", {}).items()):
+            lines.append(
+                f"- `{holder}`: expected=`{detail.get('expected', 0)}` "
+                f"observed=`{detail.get('observed', 0)}`"
+            )
 
     lines.extend(["", "## Blockers", ""])
     blockers = status.get("blockers", [])
@@ -130,6 +160,7 @@ def main() -> None:
             "bond_asset": deployment["contracts"].get("bond_asset", ""),
             "contracts": deployment["contracts"],
             "roles": roles,
+            "drw": deployment.get("drw"),
         },
         "status": status,
         "bundle_files": {

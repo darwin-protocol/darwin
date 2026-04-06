@@ -123,7 +123,7 @@ The Base Sepolia scripts auto-load `.env.base-sepolia` or the file named by `DAR
 | Overlay | 7 services run locally. Gateway admits real PQ-signed intents. |
 | Watcher replay | Works. Independent score reconstruction matches. |
 | Base Sepolia core | Deployed. Artifact published. |
-| DRW token | Live on Base Sepolia. Token + staking deployed; public artifact updated. |
+| DRW token | Live on Base Sepolia. Token + staking deployed; `status-check` now verifies live holder balances against the pinned allocation table. |
 | Audit | Not started. |
 | Canary | Not yet operated by genuine outside watchers. |
 

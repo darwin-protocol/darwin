@@ -388,12 +388,35 @@ class TestEndToEnd(unittest.TestCase):
                     "epoch_manager": "0x0000000000000000000000000000000000000006",
                     "score_registry": "0x0000000000000000000000000000000000000007",
                     "shared_pair_vault": "0x0000000000000000000000000000000000000008",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_staking": "0x0000000000000000000000000000000000000012",
                 },
                 "roles": {
                     "governance": "0x0000000000000000000000000000000000000009",
                     "epoch_operator": "0x000000000000000000000000000000000000000a",
                     "batch_operator": "0x000000000000000000000000000000000000000c",
                     "safe_mode_authority": "0x000000000000000000000000000000000000000b",
+                },
+                "drw": {
+                    "enabled": True,
+                    "total_supply": "1000",
+                    "staking_duration": 31536000,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000011",
+                        "drw_staking": "0x0000000000000000000000000000000000000012",
+                    },
+                    "allocations": {
+                        "treasury_recipient": "0x0000000000000000000000000000000000000009",
+                        "treasury_amount": "200",
+                        "insurance_recipient": "0x0000000000000000000000000000000000000009",
+                        "insurance_amount": "200",
+                        "sponsor_rewards_recipient": "0x0000000000000000000000000000000000000009",
+                        "sponsor_rewards_amount": "100",
+                        "community_recipient": "0x0000000000000000000000000000000000000009",
+                        "community_amount": "200",
+                        "staking_recipient": "0x0000000000000000000000000000000000000012",
+                        "staking_amount": "300",
+                    },
                 },
             }))
 
@@ -461,6 +484,9 @@ class TestEndToEnd(unittest.TestCase):
                     def encode_bool(value: bool) -> str:
                         return "0x" + ("1" if value else "0").rjust(64, "0")
 
+                    def encode_uint(value: int) -> str:
+                        return "0x" + hex(value)[2:].rjust(64, "0")
+
                     if method == "eth_chainId":
                         result = hex(84532)
                     elif method == "eth_getCode":
@@ -474,6 +500,8 @@ class TestEndToEnd(unittest.TestCase):
                             "0x0000000000000000000000000000000000000006",
                             "0x0000000000000000000000000000000000000007",
                             "0x0000000000000000000000000000000000000008",
+                            "0x0000000000000000000000000000000000000011",
+                            "0x0000000000000000000000000000000000000012",
                         } else "0x"
                     elif method == "eth_call":
                         call = params[0]
@@ -519,6 +547,28 @@ class TestEndToEnd(unittest.TestCase):
                                 result = encode_address("0x0000000000000000000000000000000000000009")
                             elif data == "0x1942c738":
                                 result = encode_address("0x000000000000000000000000000000000000000a")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000011":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x4421d5f5":
+                                result = encode_bool(True)
+                            elif data == "0x18160ddd":
+                                result = encode_uint(1000)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000009":
+                                result = encode_uint(700)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000012":
+                                result = encode_uint(300)
+                            else:
+                                result = encode_uint(0)
+                        elif to == "0x0000000000000000000000000000000000000012":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x6891e77c":
+                                result = encode_address("0x0000000000000000000000000000000000000011")
+                            elif data == "0xf520e7e5":
+                                result = encode_uint(31536000)
                             else:
                                 result = "0x"
                         else:
@@ -651,7 +701,14 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(status_report["deployment"]["network"], "base-sepolia")
             self.assertEqual(status_report["checks"]["onchain"]["state"], "OK")
             self.assertEqual(status_report["checks"]["onchain_auth"]["state"], "OK")
+            self.assertEqual(status_report["checks"]["onchain_drw"]["state"], "OK")
+            self.assertTrue(status_report["onchain_drw"]["ok"])
+            self.assertEqual(status_report["onchain_drw"]["tracked_total"], 1000)
+            self.assertEqual(status_report["onchain_drw"]["holders"]["0x0000000000000000000000000000000000000009"]["observed"], 700)
+            self.assertEqual(status_report["onchain_drw"]["holders"]["0x0000000000000000000000000000000000000012"]["observed"], 300)
             self.assertTrue(status_report["onchain_auth"]["ok"])
+            self.assertIn("onchain_drw", result.stdout)
+            self.assertIn("## On-Chain DRW", markdown_report.read_text())
             self.assertIn("Overall status: `READY`", markdown_report.read_text())
             print("  CLI: status-check summarizes full overlay readiness")
 
@@ -1338,6 +1395,21 @@ class TestEndToEnd(unittest.TestCase):
                     "batch_operator": "0x000000000000000000000000000000000000000b",
                     "safe_mode_authority": "0x000000000000000000000000000000000000000c",
                 },
+                "drw": {
+                    "enabled": True,
+                    "total_supply": "1000",
+                    "staking_duration": 31536000,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000011",
+                        "drw_staking": "0x0000000000000000000000000000000000000012",
+                    },
+                    "allocations": {
+                        "treasury_recipient": "0x0000000000000000000000000000000000000009",
+                        "treasury_amount": "700",
+                        "staking_recipient": "0x0000000000000000000000000000000000000012",
+                        "staking_amount": "300",
+                    },
+                },
             }))
 
             status_json.write_text(json.dumps({
@@ -1348,11 +1420,21 @@ class TestEndToEnd(unittest.TestCase):
                     "watcher_ready": {"state": "YES", "detail": "epochs=1 mirrored=seed-1"},
                     "onchain": {"state": "OK", "detail": "rpc_chain=84532 contracts=5/5"},
                     "onchain_auth": {"state": "OK", "detail": "components=4 batch_operator=0x000000000000000000000000000000000000000b"},
+                    "onchain_drw": {"state": "OK", "detail": "holders=2 tracked_supply=1000/1000"},
                 },
                 "onchain_auth": {
                     "components": {
                         "settlement_hub": {"ok": True, "summary": "governance=0x9 batch_operator=yes"}
                     }
+                },
+                "onchain_drw": {
+                    "ok": True,
+                    "tracked_total": 1000,
+                    "expected_total_supply": 1000,
+                    "holders": {
+                        "0x0000000000000000000000000000000000000009": {"expected": 700, "observed": 700},
+                        "0x0000000000000000000000000000000000000012": {"expected": 300, "observed": 300},
+                    },
                 },
             }, indent=2))
             status_md.write_text("# DARWIN Status Report\n\n- Overall status: `READY`\n")
@@ -1382,6 +1464,7 @@ class TestEndToEnd(unittest.TestCase):
             summary_json = json.loads((bundle / "audit-summary.json").read_text())
             self.assertTrue(summary_json["status"]["ready"])
             self.assertEqual(summary_json["deployment"]["roles"]["batch_operator"], "0x000000000000000000000000000000000000000b")
+            self.assertEqual(summary_json["deployment"]["drw"]["contracts"]["drw_token"], "0x0000000000000000000000000000000000000011")
             self.assertEqual(summary_json["bundle_files"]["audit_readiness"], "AUDIT_READINESS.md")
             self.assertEqual(summary_json["bundle_files"]["threat_model"], "THREAT_MODEL.md")
             self.assertTrue((bundle / "AUDIT_READINESS.md").exists())
@@ -1389,6 +1472,8 @@ class TestEndToEnd(unittest.TestCase):
             summary_md = (bundle / "audit-summary.md").read_text()
             self.assertIn("DARWIN Audit Bundle", summary_md)
             self.assertIn("settlement_hub", summary_md)
+            self.assertIn("On-chain DRW", summary_md)
+            self.assertIn("DRW State", summary_md)
             print("  Ops: audit bundle export packages deployment and readiness artifacts")
 
     def test_23_export_external_watcher_bundle(self):

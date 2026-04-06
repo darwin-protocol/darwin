@@ -144,6 +144,35 @@ def _rpc_call_uint(url: str, address: str, call_data: str) -> int:
     return _decode_uint(_rpc_call(url, address, call_data))
 
 
+def _rpc_call_erc20_balance(url: str, token: str, holder: str) -> int:
+    return _rpc_call_uint(url, token, "0x70a08231" + _abi_encode_address(holder))
+
+
+def _normalize_address(value: str) -> str:
+    from darwin_sim.sdk.accounts import normalize_evm_address
+
+    return normalize_evm_address(value)
+
+
+def _aggregate_expected_drw_balances(drw: dict | None) -> dict[str, int]:
+    allocations = (drw or {}).get("allocations", {})
+    expected: dict[str, int] = {}
+    for bucket in (
+        ("treasury_recipient", "treasury_amount"),
+        ("insurance_recipient", "insurance_amount"),
+        ("sponsor_rewards_recipient", "sponsor_rewards_amount"),
+        ("community_recipient", "community_amount"),
+        ("staking_recipient", "staking_amount"),
+    ):
+        recipient = allocations.get(bucket[0], "")
+        amount = int(allocations.get(bucket[1], 0) or 0)
+        if not recipient or amount <= 0:
+            continue
+        normalized = _normalize_address(recipient)
+        expected[normalized] = expected.get(normalized, 0) + amount
+    return expected
+
+
 def _wei_to_eth(wei: int) -> str:
     return f"{(Decimal(wei) / Decimal(10**18)):.8f}"
 
@@ -211,6 +240,21 @@ def _render_status_markdown(report: dict) -> str:
         for name, detail in onchain_auth.get("components", {}).items():
             state = "OK" if detail.get("ok") else "FAIL"
             lines.append(f"- `{name}`: `{state}` {detail.get('summary', '')}".rstrip())
+
+    onchain_drw = report.get("onchain_drw")
+    if onchain_drw:
+        lines.extend(["", "## On-Chain DRW", ""])
+        lines.append(
+            f"- Summary: `{'OK' if onchain_drw.get('ok') else 'FAIL'}` "
+            f"holders=`{len(onchain_drw.get('holders', {}))}` "
+            f"tracked_supply=`{onchain_drw.get('tracked_total', 0)}`/"
+            f"`{onchain_drw.get('expected_total_supply', 0)}`"
+        )
+        for holder, detail in sorted(onchain_drw.get("holders", {}).items()):
+            lines.append(
+                f"- `{holder}`: expected=`{detail.get('expected', 0)}` "
+                f"observed=`{detail.get('observed', 0)}`"
+            )
 
     blockers = report.get("blockers", [])
     lines.extend(["", "## Blockers", ""])
@@ -1058,6 +1102,40 @@ def cmd_status_check(args):
                 if expected_duration and observed_duration != expected_duration:
                     auth_failures.append("deployment_drw_staking_duration_mismatch")
 
+            drw_expected_balances = _aggregate_expected_drw_balances(deployment.drw)
+            if drw_token and drw_expected_balances:
+                expected_total_supply = int((deployment.drw or {}).get("total_supply", 0) or 0)
+                observed_holders: dict[str, dict[str, int]] = {}
+                tracked_total = 0
+                for holder, expected_amount in sorted(drw_expected_balances.items()):
+                    observed_amount = _rpc_call_erc20_balance(base_rpc_url, drw_token, holder)
+                    observed_holders[holder] = {
+                        "expected": expected_amount,
+                        "observed": observed_amount,
+                    }
+                    tracked_total += observed_amount
+
+                drw_balances_ok = all(
+                    detail["expected"] == detail["observed"] for detail in observed_holders.values()
+                ) and (expected_total_supply == 0 or tracked_total == expected_total_supply)
+                print(
+                    f"  {'onchain_drw':12} {'OK ' if drw_balances_ok else 'FAIL':4} "
+                    f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}"
+                )
+                report["checks"]["onchain_drw"] = {
+                    "state": "OK" if drw_balances_ok else "FAIL",
+                    "detail": f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}",
+                    "required": False,
+                }
+                report["onchain_drw"] = {
+                    "ok": drw_balances_ok,
+                    "holders": observed_holders,
+                    "tracked_total": tracked_total,
+                    "expected_total_supply": expected_total_supply,
+                }
+                if not drw_balances_ok:
+                    auth_failures.append("deployment_drw_allocation_mismatch")
+
             auth_ok = not auth_failures
             print(
                 f"  {'authz':12} {'OK ' if auth_ok else 'FAIL':4} "
@@ -1113,6 +1191,7 @@ def cmd_status_check(args):
         "deployment_drw_staking_governance_mismatch": "DRW staking governance does not match the pinned deployment",
         "deployment_drw_staking_token_mismatch": "DRW staking token does not match the pinned deployment",
         "deployment_drw_staking_duration_mismatch": "DRW staking reward duration does not match the pinned deployment",
+        "deployment_drw_allocation_mismatch": "DRW holder balances do not match the pinned deployment allocations",
     }
     report["blockers"] = [blocker_messages.get(name, name) for name in failures]
     watcher_state = report["checks"].get("watcher_ready", {}).get("state", "")

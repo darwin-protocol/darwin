@@ -141,24 +141,34 @@ run_status_check() {
   local latest_md="$REPORT_DIR/status-report.md"
   local phase_json="$REPORT_DIR/status-${phase}.json"
   local phase_md="$REPORT_DIR/status-${phase}.md"
-  local cold_flag=()
   if [[ "$phase" == "cold" ]]; then
-    cold_flag+=(--allow-cold-watcher)
+    "$PYTHON_BIN" -m darwin_sim.cli.darwinctl status-check \
+      --archive-url "http://127.0.0.1:9447" \
+      --gateway-url "http://127.0.0.1:9443" \
+      --router-url "http://127.0.0.1:9444" \
+      --scorer-url "http://127.0.0.1:9445" \
+      --watcher-url "http://127.0.0.1:9446" \
+      --finalizer-url "http://127.0.0.1:9448" \
+      --sentinel-url "http://127.0.0.1:9449" \
+      --deployment-file "$DEPLOYMENT_FILE" \
+      --base-rpc-url "$BASE_SEPOLIA_RPC_URL" \
+      --json-out "$phase_json" \
+      --markdown-out "$phase_md" \
+      --allow-cold-watcher
+  else
+    "$PYTHON_BIN" -m darwin_sim.cli.darwinctl status-check \
+      --archive-url "http://127.0.0.1:9447" \
+      --gateway-url "http://127.0.0.1:9443" \
+      --router-url "http://127.0.0.1:9444" \
+      --scorer-url "http://127.0.0.1:9445" \
+      --watcher-url "http://127.0.0.1:9446" \
+      --finalizer-url "http://127.0.0.1:9448" \
+      --sentinel-url "http://127.0.0.1:9449" \
+      --deployment-file "$DEPLOYMENT_FILE" \
+      --base-rpc-url "$BASE_SEPOLIA_RPC_URL" \
+      --json-out "$phase_json" \
+      --markdown-out "$phase_md"
   fi
-
-  "$PYTHON_BIN" -m darwin_sim.cli.darwinctl status-check \
-    --archive-url "http://127.0.0.1:9447" \
-    --gateway-url "http://127.0.0.1:9443" \
-    --router-url "http://127.0.0.1:9444" \
-    --scorer-url "http://127.0.0.1:9445" \
-    --watcher-url "http://127.0.0.1:9446" \
-    --finalizer-url "http://127.0.0.1:9448" \
-    --sentinel-url "http://127.0.0.1:9449" \
-    --deployment-file "$DEPLOYMENT_FILE" \
-    --base-rpc-url "$BASE_SEPOLIA_RPC_URL" \
-    --json-out "$phase_json" \
-    --markdown-out "$phase_md" \
-    "${cold_flag[@]}"
 
   cp "$phase_json" "$latest_json"
   cp "$phase_md" "$latest_md"
