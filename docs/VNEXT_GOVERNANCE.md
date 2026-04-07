@@ -78,6 +78,7 @@ Any new mutable DARWIN contract should inherit or replicate this pattern.
 vNext adds a Merkle-claim distribution primitive:
 
 - [`DRWMerkleDistributor.sol`](../contracts/src/DRWMerkleDistributor.sol)
+- [`DRWEpochDistributor.sol`](../contracts/src/DRWEpochDistributor.sol)
 
 Properties:
 
@@ -90,6 +91,10 @@ This is a better public distribution path than:
 - manual wallet sends
 - opaque spreadsheet allocations
 - ad hoc faucet-only growth
+
+For Darwin-native issuance design, the right model is fixed supply plus earned
+epoch emissions, not proof-of-work style mining. See
+[`DRW_ISSUANCE.md`](./DRW_ISSUANCE.md).
 
 ## Recommended vNext Architecture
 

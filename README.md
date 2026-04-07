@@ -17,6 +17,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Security reporting: [docs/SECURITY.md](docs/SECURITY.md)
 - Recovery runbook: [docs/GOVERNANCE_RECOVERY.md](docs/GOVERNANCE_RECOVERY.md)
 - vNext governance: [docs/VNEXT_GOVERNANCE.md](docs/VNEXT_GOVERNANCE.md)
+- DRW issuance: [docs/DRW_ISSUANCE.md](docs/DRW_ISSUANCE.md)
 - vNext deployment: [docs/VNEXT_DEPLOYMENT.md](docs/VNEXT_DEPLOYMENT.md)
 - vNext promotion: [docs/VNEXT_PROMOTION.md](docs/VNEXT_PROMOTION.md)
 
