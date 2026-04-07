@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--out",
-        default=str(REPO_ROOT / "site" / "market-config.json"),
+        default=str(REPO_ROOT / "web" / "public" / "market-config.json"),
         help="Static portal config output path",
     )
     parser.add_argument(

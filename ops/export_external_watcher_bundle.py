@@ -37,6 +37,7 @@ def render_handoff_markdown(summary: dict) -> str:
     deployment = summary["deployment"]
     status = summary["status"]
     files = summary["bundle_files"]
+    roles = deployment.get("roles", {})
     lines = [
         "# DARWIN External Watcher Handoff",
         "",
@@ -70,17 +71,18 @@ def render_handoff_markdown(summary: dict) -> str:
         "./ops/run_external_watcher.sh",
         "darwinctl status-check --allow-cold-watcher --deployment-file ./base-sepolia.json",
         "```",
-        "",
-        "## Role Snapshot",
-        "",
-        f"- Governance: `{deployment['roles']['governance']}`",
-        f"- Epoch operator: `{deployment['roles']['epoch_operator']}`",
-        f"- Batch operator: `{deployment['roles']['batch_operator']}`",
-        f"- Safe mode authority: `{deployment['roles']['safe_mode_authority']}`",
-        "",
-        "## Current Blockers",
-        "",
     ]
+    if roles.get("governance"):
+        lines.extend([
+            "",
+            "## Role Snapshot",
+            "",
+            f"- Governance: `{roles.get('governance', '')}`",
+            f"- Epoch operator: `{roles.get('epoch_operator', '')}`",
+            f"- Batch operator: `{roles.get('batch_operator', '')}`",
+            f"- Safe mode authority: `{roles.get('safe_mode_authority', '')}`",
+        ])
+    lines.extend(["", "## Current Blockers", ""])
     blockers = status.get("blockers", [])
     if blockers:
         lines.extend(f"- {blocker}" for blocker in blockers)

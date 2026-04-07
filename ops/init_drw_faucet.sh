@@ -13,16 +13,7 @@ if [[ ! -f "$DARWIN_DEPLOYMENT_FILE" ]]; then
 fi
 
 read_deployment_field() {
-  python3 - "$DARWIN_DEPLOYMENT_FILE" "$1" <<'PY'
-import json
-import sys
-
-data = json.loads(open(sys.argv[1]).read())
-cursor = data
-for part in sys.argv[2].split("."):
-    cursor = cursor[part]
-print(cursor)
-PY
+  python3 "$ROOT/ops/read_deployment_field.py" --deployment-file "$DARWIN_DEPLOYMENT_FILE" "$1"
 }
 
 if ! python3 - "$DARWIN_DEPLOYMENT_FILE" <<'PY' >/dev/null 2>&1

@@ -13,19 +13,7 @@ if [[ ! -f "$DARWIN_DEPLOYMENT_FILE" ]]; then
 fi
 
 read_deployment_field() {
-  python3 - "$DARWIN_DEPLOYMENT_FILE" "$1" <<'PY'
-import json
-import sys
-
-path = sys.argv[1]
-field = sys.argv[2]
-data = json.loads(open(path).read())
-
-cursor = data
-for part in field.split("."):
-    cursor = cursor[part]
-print(cursor)
-PY
+  python3 "$ROOT/ops/read_deployment_field.py" --deployment-file "$DARWIN_DEPLOYMENT_FILE" "$1"
 }
 
 export DARWIN_NETWORK="${DARWIN_NETWORK:-$(read_deployment_field network)}"

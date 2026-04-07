@@ -232,17 +232,17 @@ class TestEndToEnd(unittest.TestCase):
             report = build_role_audit_report(
                 deployment,
                 LiveRoleState(
-                    token_governance = "0x00000000000000000000000000000000000000b1",
-                    token_genesis_operator = "0x0000000000000000000000000000000000000000",
-                    token_genesis_finalized=True,
-                    staking_governance="0x00000000000000000000000000000000000000b1",
-                    staking_genesis_operator="0x0000000000000000000000000000000000000000",
-                    faucet_governance="0x00000000000000000000000000000000000000b1",
-                    pool_governance="0x00000000000000000000000000000000000000b1",
-                    pool_market_operator="0x00000000000000000000000000000000000000b5",
-                    hub_governance="0x00000000000000000000000000000000000000b1",
-                    hub_batch_operator_deployer=False,
-                    hub_batch_operator_governance=True,
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x0000000000000000000000000000000000000000",
+                    True,
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x0000000000000000000000000000000000000000",
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x00000000000000000000000000000000000000b5",
+                    "0x00000000000000000000000000000000000000b1",
+                    False,
+                    True,
                 ),
             )
 
@@ -252,6 +252,164 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("settlement_hub", report["governance_root_summary"]["immutable_core_contracts"])
             self.assertIn("reference_pool", report["governance_root_summary"]["rotatable_contracts"])
             print("  Role audit: deployer can be retired once no live roles remain")
+
+    def test_06c_load_deployment_merges_local_private_overlay(self):
+        """Deployment: public artifact can merge local private overlay data from config dir."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment_path = tmp / "base-sepolia.json"
+            config_dir = tmp / "config"
+            overlay_path = config_dir / "deployments" / "base-sepolia.private.json"
+            overlay_path.parent.mkdir(parents=True, exist_ok=True)
+
+            deployment_path.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000011",
+                    "drw_token": "0x0000000000000000000000000000000000000012",
+                },
+                "drw": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000012",
+                    },
+                    "allocations": {
+                        "treasury_amount": "100",
+                    },
+                },
+                "market": {
+                    "enabled": True,
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000013",
+                    },
+                },
+            }))
+            overlay_path.write_text(json.dumps({
+                "deployer": "0x00000000000000000000000000000000000000d1",
+                "roles": {
+                    "governance": "0x00000000000000000000000000000000000000b1",
+                    "epoch_operator": "0x00000000000000000000000000000000000000b2",
+                    "safe_mode_authority": "0x00000000000000000000000000000000000000b3",
+                },
+                "drw": {
+                    "allocations": {
+                        "treasury_recipient": "0x00000000000000000000000000000000000000c1",
+                    },
+                },
+                "market": {
+                    "market_operator": "0x00000000000000000000000000000000000000b4",
+                },
+            }))
+
+            previous = os.environ.get("DARWIN_CONFIG_DIR")
+            os.environ["DARWIN_CONFIG_DIR"] = str(config_dir)
+            try:
+                deployment = load_deployment(deployment_file=deployment_path)
+            finally:
+                if previous is None:
+                    os.environ.pop("DARWIN_CONFIG_DIR", None)
+                else:
+                    os.environ["DARWIN_CONFIG_DIR"] = previous
+
+            self.assertTrue(deployment.private_overlay_loaded)
+            self.assertTrue(deployment.has_private_operator_fields)
+            self.assertEqual(deployment.deployer, "0x00000000000000000000000000000000000000d1")
+            self.assertEqual(deployment.roles["governance"], "0x00000000000000000000000000000000000000b1")
+            self.assertEqual(
+                deployment.drw["allocations"]["treasury_recipient"],
+                "0x00000000000000000000000000000000000000c1",
+            )
+            self.assertEqual(deployment.market["market_operator"], "0x00000000000000000000000000000000000000b4")
+            print("  Deployment: public artifact merges a local private overlay")
+
+    def test_06d_split_deployment_artifact_redacts_public_fields(self):
+        """Ops: split_deployment_artifact writes a public-safe artifact and local private overlay."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            source = tmp / "base-sepolia.json"
+            public_out = tmp / "public.json"
+            private_out = tmp / "config" / "deployments" / "base-sepolia.private.json"
+
+            source.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x00000000000000000000000000000000000000d1",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000011",
+                    "drw_token": "0x0000000000000000000000000000000000000012",
+                    "drw_staking": "0x0000000000000000000000000000000000000013",
+                },
+                "roles": {
+                    "governance": "0x00000000000000000000000000000000000000b1",
+                    "epoch_operator": "0x00000000000000000000000000000000000000b2",
+                    "safe_mode_authority": "0x00000000000000000000000000000000000000b3",
+                },
+                "drw": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000012",
+                        "drw_staking": "0x0000000000000000000000000000000000000013",
+                    },
+                    "allocations": {
+                        "treasury_amount": "100",
+                        "treasury_recipient": "0x00000000000000000000000000000000000000c1",
+                        "staking_amount": "300",
+                        "staking_recipient": "0x0000000000000000000000000000000000000013",
+                    },
+                },
+                "market": {
+                    "enabled": True,
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000014",
+                    },
+                    "governance": "0x00000000000000000000000000000000000000b1",
+                    "market_operator": "0x00000000000000000000000000000000000000b4",
+                },
+                "faucet": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_faucet": "0x0000000000000000000000000000000000000015",
+                    },
+                    "governance": "0x00000000000000000000000000000000000000b1",
+                },
+            }))
+
+            proc = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "split_deployment_artifact.py"),
+                    "--deployment-file",
+                    str(source),
+                    "--public-out",
+                    str(public_out),
+                    "--private-out",
+                    str(private_out),
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            public = json.loads(public_out.read_text())
+            private = json.loads(private_out.read_text())
+            self.assertNotIn("deployer", public)
+            self.assertNotIn("roles", public)
+            self.assertNotIn("treasury_recipient", public["drw"]["allocations"])
+            self.assertNotIn("governance", public["market"])
+            self.assertEqual(private["deployer"], "0x00000000000000000000000000000000000000d1")
+            self.assertEqual(private["roles"]["governance"], "0x00000000000000000000000000000000000000b1")
+            self.assertEqual(
+                private["drw"]["allocations"]["treasury_recipient"],
+                "0x00000000000000000000000000000000000000c1",
+            )
+            self.assertIn("[deployment-split] ready", proc.stdout)
+            print("  Ops: split_deployment_artifact separates public and private deployment data")
 
     def test_07_config_validation(self):
         """Config: YAML loads and validates correctly."""

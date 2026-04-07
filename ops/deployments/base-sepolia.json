@@ -16,19 +16,13 @@
     "species_registry": "0xcaC5E4C711b4FfD9C76354FF8FfD4E236b1798AB"
   },
   "deployed_at": 1775408946,
-  "deployer": "0xBFf27f141250C1323431eDB1BfCbB7D550a168f6",
   "drw": {
     "allocations": {
       "community_amount": "200000000000000000000000000",
-      "community_recipient": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
       "insurance_amount": "200000000000000000000000000",
-      "insurance_recipient": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
       "sponsor_rewards_amount": "100000000000000000000000000",
-      "sponsor_rewards_recipient": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
       "staking_amount": "300000000000000000000000000",
-      "staking_recipient": "0xC84090E74880a672C5273f6A454E208Fe114634e",
-      "treasury_amount": "200000000000000000000000000",
-      "treasury_recipient": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d"
+      "treasury_amount": "200000000000000000000000000"
     },
     "contracts": {
       "drw_staking": "0xC84090E74880a672C5273f6A454E208Fe114634e",
@@ -46,7 +40,6 @@
     },
     "enabled": true,
     "funded": true,
-    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
     "initial_native_funding": "200000000000000",
     "initial_token_funding": "100000000000000000000000",
     "native_drip_amount": 10000000000000
@@ -58,20 +51,12 @@
     },
     "enabled": true,
     "fee_bps": 30,
-    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
     "initial_base_amount": "1000000000000000000000",
     "initial_quote_amount": "500000000000000",
-    "market_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
     "quote_token": "0x4200000000000000000000000000000000000006",
     "seeded": true,
     "venue_id": "darwin_reference_pool",
     "venue_type": "constant_product_bootstrap"
   },
-  "network": "base-sepolia",
-  "roles": {
-    "batch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-    "epoch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-    "safe_mode_authority": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d"
-  }
+  "network": "base-sepolia"
 }

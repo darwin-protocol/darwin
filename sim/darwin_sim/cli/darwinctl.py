@@ -428,11 +428,14 @@ def cmd_deployment_show(args):
     print(f"  Bond asset mode:  {deployment.bond_asset_mode}")
     print(f"  Bond asset:       {deployment.contracts.get('bond_asset', '')}")
     print(f"  Settlement hub:   {deployment.settlement_hub}")
-    print(f"  Governance:       {deployment.roles['governance']}")
-    print(f"  Epoch operator:   {deployment.roles['epoch_operator']}")
-    if deployment.roles.get("batch_operator"):
-        print(f"  Batch operator:   {deployment.roles['batch_operator']}")
-    print(f"  Safe mode auth:   {deployment.roles['safe_mode_authority']}")
+    if deployment.has_private_operator_fields:
+        print(f"  Governance:       {deployment.roles.get('governance', '')}")
+        print(f"  Epoch operator:   {deployment.roles.get('epoch_operator', '')}")
+        if deployment.roles.get("batch_operator"):
+            print(f"  Batch operator:   {deployment.roles['batch_operator']}")
+        print(f"  Safe mode auth:   {deployment.roles.get('safe_mode_authority', '')}")
+    else:
+        print("  Operator roles:   local private overlay not loaded")
     if deployment.drw:
         drw = deployment.drw
         contracts = drw.get("contracts", {})
@@ -442,14 +445,19 @@ def cmd_deployment_show(args):
         print(f"  DRW staking:      {contracts.get('drw_staking', '')}")
         print(f"  DRW supply:       {drw.get('total_supply', '')}")
         print(f"  DRW duration:     {drw.get('staking_duration', '')}")
-        print(f"  DRW treasury:     {allocations.get('treasury_recipient', '')} ({allocations.get('treasury_amount', '')})")
-        print(
-            f"  DRW insurance:    {allocations.get('insurance_recipient', '')} ({allocations.get('insurance_amount', '')})"
-        )
-        print(
-            "  DRW staking res:  "
-            f"{allocations.get('staking_recipient', '')} ({allocations.get('staking_amount', '')})"
-        )
+        if allocations.get("treasury_recipient"):
+            print(f"  DRW treasury:     {allocations.get('treasury_recipient', '')} ({allocations.get('treasury_amount', '')})")
+            print(
+                f"  DRW insurance:    {allocations.get('insurance_recipient', '')} ({allocations.get('insurance_amount', '')})"
+            )
+            print(
+                "  DRW staking res:  "
+                f"{allocations.get('staking_recipient', '')} ({allocations.get('staking_amount', '')})"
+            )
+        else:
+            print(f"  DRW treasury:     hidden ({allocations.get('treasury_amount', '')})")
+            print(f"  DRW insurance:    hidden ({allocations.get('insurance_amount', '')})")
+            print(f"  DRW staking res:  contract ({allocations.get('staking_amount', '')})")
     else:
         print("  DRW enabled:      no")
     if deployment.market:
@@ -459,7 +467,7 @@ def cmd_deployment_show(args):
         print(f"  Market venue:     {market.get('venue_id', '')}")
         print(f"  Market type:      {market.get('venue_type', '')}")
         print(f"  Market pool:      {contracts.get('reference_pool', '')}")
-        print(f"  Market operator:  {market.get('market_operator', '')}")
+        print(f"  Market operator:  {market.get('market_operator', 'hidden') or 'hidden'}")
         print(f"  Market base:      {market.get('base_token', '')}")
         print(f"  Market quote:     {market.get('quote_token', '')}")
         print(f"  Market fee bps:   {market.get('fee_bps', '')}")
@@ -483,6 +491,11 @@ def cmd_role_audit(args):
     deployment = _load_deployment_or_none(args)
     if deployment is None:
         print("[darwinctl] role-audit requires --deployment-file, --network, or DARWIN_DEPLOYMENT_FILE")
+        sys.exit(1)
+    if not deployment.has_private_operator_fields:
+        overlay = deployment.private_overlay_path or Path("~/.config/darwin/deployments").expanduser()
+        print("[darwinctl] role-audit requires a local private deployment overlay")
+        print(f"  expected_overlay:       {overlay}")
         sys.exit(1)
 
     base_rpc_url = args.base_rpc_url or _default_base_sepolia_rpc_url()
@@ -942,11 +955,12 @@ def cmd_status_check(args):
             "bond_asset_mode": deployment.bond_asset_mode,
             "bond_asset": deployment.contracts.get("bond_asset", ""),
             "settlement_hub": deployment.settlement_hub,
-            "deployer": deployment.deployer,
             "artifact": str(deployment.path),
-            "roles": deployment.roles,
             "drw": deployment.drw,
         }
+        if deployment.has_private_operator_fields:
+            report["deployment"]["deployer"] = deployment.deployer
+            report["deployment"]["roles"] = deployment.roles
         report["checks"]["deployment"] = {
             "state": "PIN",
             "detail": f"{deployment.network} chain={deployment.chain_id} mode={deployment.bond_asset_mode}",
@@ -1007,298 +1021,307 @@ def cmd_status_check(args):
             report["onchain"] = {"ok": False, "error": str(exc)}
             failures.append("deployment_rpc_unreachable")
 
-        try:
-            auth_failures: list[str] = []
-            auth_components: dict[str, dict] = {}
-            expected_governance = deployment.roles["governance"]
-            expected_safe_mode = deployment.roles["safe_mode_authority"]
-            expected_batch_operator = deployment.roles.get("batch_operator") or deployment.roles["epoch_operator"]
-            expected_epoch_operator = deployment.roles["epoch_operator"]
-            expected_bond_asset = deployment.contracts.get("bond_asset", "")
-            expected_challenge_escrow = deployment.contracts.get("challenge_escrow", "")
+        if not deployment.has_private_operator_fields:
+            print(f"  {'authz':12} SKIP private overlay not loaded")
+            report["checks"]["onchain_auth"] = {
+                "state": "SKIP",
+                "detail": "private overlay not loaded",
+                "required": False,
+            }
+            report["onchain_auth"] = {"ok": False, "skipped": True, "reason": "private overlay not loaded"}
+        else:
+            try:
+                auth_failures: list[str] = []
+                auth_components: dict[str, dict] = {}
+                expected_governance = deployment.roles["governance"]
+                expected_safe_mode = deployment.roles["safe_mode_authority"]
+                expected_batch_operator = deployment.roles.get("batch_operator") or deployment.roles["epoch_operator"]
+                expected_epoch_operator = deployment.roles["epoch_operator"]
+                expected_bond_asset = deployment.contracts.get("bond_asset", "")
+                expected_challenge_escrow = deployment.contracts.get("challenge_escrow", "")
 
-            settlement_hub = deployment.contracts.get("settlement_hub", "")
-            if settlement_hub:
-                observed_governance = _rpc_call_address(base_rpc_url, settlement_hub, "0x5aa6e675")
-                observed_safe_mode = _rpc_call_address(base_rpc_url, settlement_hub, "0x6900b3a3")
-                observed_batch_operator = _rpc_call_bool(
-                    base_rpc_url,
-                    settlement_hub,
-                    "0xd220935c" + _abi_encode_address(expected_batch_operator),
-                )
-                settlement_ok = (
-                    observed_governance == expected_governance
-                    and observed_safe_mode == expected_safe_mode
-                    and observed_batch_operator
-                )
-                auth_components["settlement_hub"] = {
-                    "ok": settlement_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "safe_mode_authority": expected_safe_mode,
-                        "batch_operator": expected_batch_operator,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "safe_mode_authority": observed_safe_mode,
-                        "batch_operator_allowed": observed_batch_operator,
-                    },
-                    "summary": (
-                        f"governance={observed_governance} safe_mode={observed_safe_mode} "
-                        f"batch_operator={'yes' if observed_batch_operator else 'no'}"
-                    ),
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_settlement_governance_mismatch")
-                if observed_safe_mode != expected_safe_mode:
-                    auth_failures.append("deployment_safe_mode_authority_mismatch")
-                if not observed_batch_operator:
-                    auth_failures.append("deployment_batch_operator_mismatch")
-
-            challenge_escrow = deployment.contracts.get("challenge_escrow", "")
-            if challenge_escrow:
-                observed_governance = _rpc_call_address(base_rpc_url, challenge_escrow, "0x5aa6e675")
-                observed_bond_asset = _rpc_call_address(base_rpc_url, challenge_escrow, "0xbabef33e")
-                escrow_ok = observed_governance == expected_governance and observed_bond_asset == expected_bond_asset
-                auth_components["challenge_escrow"] = {
-                    "ok": escrow_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "bond_asset": expected_bond_asset,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "bond_asset": observed_bond_asset,
-                    },
-                    "summary": f"governance={observed_governance} bond_asset={observed_bond_asset}",
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_challenge_escrow_governance_mismatch")
-                if expected_bond_asset and observed_bond_asset != expected_bond_asset:
-                    auth_failures.append("deployment_challenge_escrow_bond_asset_mismatch")
-
-            bond_vault = deployment.contracts.get("bond_vault", "")
-            if bond_vault:
-                observed_governance = _rpc_call_address(base_rpc_url, bond_vault, "0x5aa6e675")
-                observed_challenge_escrow = _rpc_call_address(base_rpc_url, bond_vault, "0x92433067")
-                observed_bond_asset = _rpc_call_address(base_rpc_url, bond_vault, "0xbabef33e")
-                vault_ok = (
-                    observed_governance == expected_governance
-                    and observed_challenge_escrow == expected_challenge_escrow
-                    and observed_bond_asset == expected_bond_asset
-                )
-                auth_components["bond_vault"] = {
-                    "ok": vault_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "challenge_escrow": expected_challenge_escrow,
-                        "bond_asset": expected_bond_asset,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "challenge_escrow": observed_challenge_escrow,
-                        "bond_asset": observed_bond_asset,
-                    },
-                    "summary": (
-                        f"governance={observed_governance} escrow={observed_challenge_escrow} "
-                        f"bond_asset={observed_bond_asset}"
-                    ),
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_bond_vault_governance_mismatch")
-                if expected_challenge_escrow and observed_challenge_escrow != expected_challenge_escrow:
-                    auth_failures.append("deployment_bond_vault_challenge_escrow_mismatch")
-                if expected_bond_asset and observed_bond_asset != expected_bond_asset:
-                    auth_failures.append("deployment_bond_vault_bond_asset_mismatch")
-
-            species_registry = deployment.contracts.get("species_registry", "")
-            if species_registry:
-                observed_governance = _rpc_call_address(base_rpc_url, species_registry, "0x5aa6e675")
-                observed_epoch_operator = _rpc_call_address(base_rpc_url, species_registry, "0x1942c738")
-                observed_challenge_escrow = _rpc_call_address(base_rpc_url, species_registry, "0x92433067")
-                registry_ok = (
-                    observed_governance == expected_governance
-                    and observed_epoch_operator == expected_epoch_operator
-                    and observed_challenge_escrow == expected_challenge_escrow
-                )
-                auth_components["species_registry"] = {
-                    "ok": registry_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "epoch_operator": expected_epoch_operator,
-                        "challenge_escrow": expected_challenge_escrow,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "epoch_operator": observed_epoch_operator,
-                        "challenge_escrow": observed_challenge_escrow,
-                    },
-                    "summary": (
-                        f"governance={observed_governance} epoch_operator={observed_epoch_operator} "
-                        f"escrow={observed_challenge_escrow}"
-                    ),
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_species_registry_governance_mismatch")
-                if observed_epoch_operator != expected_epoch_operator:
-                    auth_failures.append("deployment_species_registry_epoch_operator_mismatch")
-                if expected_challenge_escrow and observed_challenge_escrow != expected_challenge_escrow:
-                    auth_failures.append("deployment_species_registry_challenge_escrow_mismatch")
-
-            score_registry = deployment.contracts.get("score_registry", "")
-            if score_registry:
-                observed_governance = _rpc_call_address(base_rpc_url, score_registry, "0x5aa6e675")
-                observed_epoch_operator = _rpc_call_address(base_rpc_url, score_registry, "0x1942c738")
-                score_ok = observed_governance == expected_governance and observed_epoch_operator == expected_epoch_operator
-                auth_components["score_registry"] = {
-                    "ok": score_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "epoch_operator": expected_epoch_operator,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "epoch_operator": observed_epoch_operator,
-                    },
-                    "summary": (
-                        f"governance={observed_governance} "
-                        f"epoch_operator={observed_epoch_operator}"
-                    ),
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_score_registry_governance_mismatch")
-                if observed_epoch_operator != expected_epoch_operator:
-                    auth_failures.append("deployment_score_registry_epoch_operator_mismatch")
-
-            drw_token = deployment.contracts.get("drw_token", "")
-            if drw_token:
-                observed_governance = _rpc_call_address(base_rpc_url, drw_token, "0x5aa6e675")
-                observed_finalized = _rpc_call_bool(base_rpc_url, drw_token, "0x4421d5f5")
-                observed_total_supply = _rpc_call_uint(base_rpc_url, drw_token, "0x18160ddd")
-                expected_total_supply = int((deployment.drw or {}).get("total_supply", 0))
-                token_ok = (
-                    observed_governance == expected_governance
-                    and observed_finalized
-                    and (expected_total_supply == 0 or observed_total_supply == expected_total_supply)
-                )
-                auth_components["drw_token"] = {
-                    "ok": token_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "genesis_finalized": True,
-                        "total_supply": expected_total_supply,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "genesis_finalized": observed_finalized,
-                        "total_supply": observed_total_supply,
-                    },
-                    "summary": (
-                        f"governance={observed_governance} "
-                        f"genesis_finalized={'yes' if observed_finalized else 'no'} "
-                        f"total_supply={observed_total_supply}"
-                    ),
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_drw_token_governance_mismatch")
-                if not observed_finalized:
-                    auth_failures.append("deployment_drw_token_genesis_open")
-                if expected_total_supply and observed_total_supply != expected_total_supply:
-                    auth_failures.append("deployment_drw_token_supply_mismatch")
-
-            drw_staking = deployment.contracts.get("drw_staking", "")
-            if drw_staking:
-                observed_governance = _rpc_call_address(base_rpc_url, drw_staking, "0x5aa6e675")
-                observed_token = _rpc_call_address(base_rpc_url, drw_staking, "0x6891e77c")
-                observed_duration = _rpc_call_uint(base_rpc_url, drw_staking, "0xf520e7e5")
-                expected_duration = int((deployment.drw or {}).get("staking_duration", 0))
-                staking_ok = (
-                    observed_governance == expected_governance
-                    and (not drw_token or observed_token == drw_token)
-                    and (expected_duration == 0 or observed_duration == expected_duration)
-                )
-                auth_components["drw_staking"] = {
-                    "ok": staking_ok,
-                    "expected": {
-                        "governance": expected_governance,
-                        "drw_token": drw_token,
-                        "reward_duration": expected_duration,
-                    },
-                    "observed": {
-                        "governance": observed_governance,
-                        "drw_token": observed_token,
-                        "reward_duration": observed_duration,
-                    },
-                    "summary": (
-                        f"governance={observed_governance} "
-                        f"token={observed_token} duration={observed_duration}"
-                    ),
-                }
-                if observed_governance != expected_governance:
-                    auth_failures.append("deployment_drw_staking_governance_mismatch")
-                if drw_token and observed_token != drw_token:
-                    auth_failures.append("deployment_drw_staking_token_mismatch")
-                if expected_duration and observed_duration != expected_duration:
-                    auth_failures.append("deployment_drw_staking_duration_mismatch")
-
-            drw_expected_balances = _aggregate_expected_drw_balances(deployment.drw)
-            if drw_token and drw_expected_balances:
-                expected_total_supply = int((deployment.drw or {}).get("total_supply", 0) or 0)
-                observed_holders: dict[str, dict[str, int]] = {}
-                tracked_total = 0
-                for holder, expected_amount in sorted(drw_expected_balances.items()):
-                    observed_amount = _rpc_call_erc20_balance(base_rpc_url, drw_token, holder)
-                    observed_holders[holder] = {
-                        "expected": expected_amount,
-                        "observed": observed_amount,
+                settlement_hub = deployment.contracts.get("settlement_hub", "")
+                if settlement_hub:
+                    observed_governance = _rpc_call_address(base_rpc_url, settlement_hub, "0x5aa6e675")
+                    observed_safe_mode = _rpc_call_address(base_rpc_url, settlement_hub, "0x6900b3a3")
+                    observed_batch_operator = _rpc_call_bool(
+                        base_rpc_url,
+                        settlement_hub,
+                        "0xd220935c" + _abi_encode_address(expected_batch_operator),
+                    )
+                    settlement_ok = (
+                        observed_governance == expected_governance
+                        and observed_safe_mode == expected_safe_mode
+                        and observed_batch_operator
+                    )
+                    auth_components["settlement_hub"] = {
+                        "ok": settlement_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "safe_mode_authority": expected_safe_mode,
+                            "batch_operator": expected_batch_operator,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "safe_mode_authority": observed_safe_mode,
+                            "batch_operator_allowed": observed_batch_operator,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} safe_mode={observed_safe_mode} "
+                            f"batch_operator={'yes' if observed_batch_operator else 'no'}"
+                        ),
                     }
-                    tracked_total += observed_amount
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_settlement_governance_mismatch")
+                    if observed_safe_mode != expected_safe_mode:
+                        auth_failures.append("deployment_safe_mode_authority_mismatch")
+                    if not observed_batch_operator:
+                        auth_failures.append("deployment_batch_operator_mismatch")
 
-                drw_balances_ok = all(
-                    detail["expected"] == detail["observed"] for detail in observed_holders.values()
-                ) and (expected_total_supply == 0 or tracked_total == expected_total_supply)
+                challenge_escrow = deployment.contracts.get("challenge_escrow", "")
+                if challenge_escrow:
+                    observed_governance = _rpc_call_address(base_rpc_url, challenge_escrow, "0x5aa6e675")
+                    observed_bond_asset = _rpc_call_address(base_rpc_url, challenge_escrow, "0xbabef33e")
+                    escrow_ok = observed_governance == expected_governance and observed_bond_asset == expected_bond_asset
+                    auth_components["challenge_escrow"] = {
+                        "ok": escrow_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "bond_asset": expected_bond_asset,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "bond_asset": observed_bond_asset,
+                        },
+                        "summary": f"governance={observed_governance} bond_asset={observed_bond_asset}",
+                    }
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_challenge_escrow_governance_mismatch")
+                    if expected_bond_asset and observed_bond_asset != expected_bond_asset:
+                        auth_failures.append("deployment_challenge_escrow_bond_asset_mismatch")
+
+                bond_vault = deployment.contracts.get("bond_vault", "")
+                if bond_vault:
+                    observed_governance = _rpc_call_address(base_rpc_url, bond_vault, "0x5aa6e675")
+                    observed_challenge_escrow = _rpc_call_address(base_rpc_url, bond_vault, "0x92433067")
+                    observed_bond_asset = _rpc_call_address(base_rpc_url, bond_vault, "0xbabef33e")
+                    vault_ok = (
+                        observed_governance == expected_governance
+                        and observed_challenge_escrow == expected_challenge_escrow
+                        and observed_bond_asset == expected_bond_asset
+                    )
+                    auth_components["bond_vault"] = {
+                        "ok": vault_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "challenge_escrow": expected_challenge_escrow,
+                            "bond_asset": expected_bond_asset,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "challenge_escrow": observed_challenge_escrow,
+                            "bond_asset": observed_bond_asset,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} escrow={observed_challenge_escrow} "
+                            f"bond_asset={observed_bond_asset}"
+                        ),
+                    }
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_bond_vault_governance_mismatch")
+                    if expected_challenge_escrow and observed_challenge_escrow != expected_challenge_escrow:
+                        auth_failures.append("deployment_bond_vault_challenge_escrow_mismatch")
+                    if expected_bond_asset and observed_bond_asset != expected_bond_asset:
+                        auth_failures.append("deployment_bond_vault_bond_asset_mismatch")
+
+                species_registry = deployment.contracts.get("species_registry", "")
+                if species_registry:
+                    observed_governance = _rpc_call_address(base_rpc_url, species_registry, "0x5aa6e675")
+                    observed_epoch_operator = _rpc_call_address(base_rpc_url, species_registry, "0x1942c738")
+                    observed_challenge_escrow = _rpc_call_address(base_rpc_url, species_registry, "0x92433067")
+                    registry_ok = (
+                        observed_governance == expected_governance
+                        and observed_epoch_operator == expected_epoch_operator
+                        and observed_challenge_escrow == expected_challenge_escrow
+                    )
+                    auth_components["species_registry"] = {
+                        "ok": registry_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "epoch_operator": expected_epoch_operator,
+                            "challenge_escrow": expected_challenge_escrow,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "epoch_operator": observed_epoch_operator,
+                            "challenge_escrow": observed_challenge_escrow,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} epoch_operator={observed_epoch_operator} "
+                            f"escrow={observed_challenge_escrow}"
+                        ),
+                    }
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_species_registry_governance_mismatch")
+                    if observed_epoch_operator != expected_epoch_operator:
+                        auth_failures.append("deployment_species_registry_epoch_operator_mismatch")
+                    if expected_challenge_escrow and observed_challenge_escrow != expected_challenge_escrow:
+                        auth_failures.append("deployment_species_registry_challenge_escrow_mismatch")
+
+                score_registry = deployment.contracts.get("score_registry", "")
+                if score_registry:
+                    observed_governance = _rpc_call_address(base_rpc_url, score_registry, "0x5aa6e675")
+                    observed_epoch_operator = _rpc_call_address(base_rpc_url, score_registry, "0x1942c738")
+                    score_ok = observed_governance == expected_governance and observed_epoch_operator == expected_epoch_operator
+                    auth_components["score_registry"] = {
+                        "ok": score_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "epoch_operator": expected_epoch_operator,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "epoch_operator": observed_epoch_operator,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} "
+                            f"epoch_operator={observed_epoch_operator}"
+                        ),
+                    }
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_score_registry_governance_mismatch")
+                    if observed_epoch_operator != expected_epoch_operator:
+                        auth_failures.append("deployment_score_registry_epoch_operator_mismatch")
+
+                drw_token = deployment.contracts.get("drw_token", "")
+                if drw_token:
+                    observed_governance = _rpc_call_address(base_rpc_url, drw_token, "0x5aa6e675")
+                    observed_finalized = _rpc_call_bool(base_rpc_url, drw_token, "0x4421d5f5")
+                    observed_total_supply = _rpc_call_uint(base_rpc_url, drw_token, "0x18160ddd")
+                    expected_total_supply = int((deployment.drw or {}).get("total_supply", 0))
+                    token_ok = (
+                        observed_governance == expected_governance
+                        and observed_finalized
+                        and (expected_total_supply == 0 or observed_total_supply == expected_total_supply)
+                    )
+                    auth_components["drw_token"] = {
+                        "ok": token_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "genesis_finalized": True,
+                            "total_supply": expected_total_supply,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "genesis_finalized": observed_finalized,
+                            "total_supply": observed_total_supply,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} "
+                            f"genesis_finalized={'yes' if observed_finalized else 'no'} "
+                            f"total_supply={observed_total_supply}"
+                        ),
+                    }
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_drw_token_governance_mismatch")
+                    if not observed_finalized:
+                        auth_failures.append("deployment_drw_token_genesis_open")
+                    if expected_total_supply and observed_total_supply != expected_total_supply:
+                        auth_failures.append("deployment_drw_token_supply_mismatch")
+
+                drw_staking = deployment.contracts.get("drw_staking", "")
+                if drw_staking:
+                    observed_governance = _rpc_call_address(base_rpc_url, drw_staking, "0x5aa6e675")
+                    observed_token = _rpc_call_address(base_rpc_url, drw_staking, "0x6891e77c")
+                    observed_duration = _rpc_call_uint(base_rpc_url, drw_staking, "0xf520e7e5")
+                    expected_duration = int((deployment.drw or {}).get("staking_duration", 0))
+                    staking_ok = (
+                        observed_governance == expected_governance
+                        and (not drw_token or observed_token == drw_token)
+                        and (expected_duration == 0 or observed_duration == expected_duration)
+                    )
+                    auth_components["drw_staking"] = {
+                        "ok": staking_ok,
+                        "expected": {
+                            "governance": expected_governance,
+                            "drw_token": drw_token,
+                            "reward_duration": expected_duration,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "drw_token": observed_token,
+                            "reward_duration": observed_duration,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} "
+                            f"token={observed_token} duration={observed_duration}"
+                        ),
+                    }
+                    if observed_governance != expected_governance:
+                        auth_failures.append("deployment_drw_staking_governance_mismatch")
+                    if drw_token and observed_token != drw_token:
+                        auth_failures.append("deployment_drw_staking_token_mismatch")
+                    if expected_duration and observed_duration != expected_duration:
+                        auth_failures.append("deployment_drw_staking_duration_mismatch")
+
+                drw_expected_balances = _aggregate_expected_drw_balances(deployment.drw)
+                if drw_token and drw_expected_balances:
+                    expected_total_supply = int((deployment.drw or {}).get("total_supply", 0) or 0)
+                    observed_holders: dict[str, dict[str, int]] = {}
+                    tracked_total = 0
+                    for holder, expected_amount in sorted(drw_expected_balances.items()):
+                        observed_amount = _rpc_call_erc20_balance(base_rpc_url, drw_token, holder)
+                        observed_holders[holder] = {
+                            "expected": expected_amount,
+                            "observed": observed_amount,
+                        }
+                        tracked_total += observed_amount
+
+                    drw_balances_ok = all(
+                        detail["expected"] == detail["observed"] for detail in observed_holders.values()
+                    ) and (expected_total_supply == 0 or tracked_total == expected_total_supply)
+                    print(
+                        f"  {'onchain_drw':12} {'OK ' if drw_balances_ok else 'FAIL':4} "
+                        f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}"
+                    )
+                    report["checks"]["onchain_drw"] = {
+                        "state": "OK" if drw_balances_ok else "FAIL",
+                        "detail": f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}",
+                        "required": False,
+                    }
+                    report["onchain_drw"] = {
+                        "ok": drw_balances_ok,
+                        "holders": observed_holders,
+                        "tracked_total": tracked_total,
+                        "expected_total_supply": expected_total_supply,
+                    }
+                    if not drw_balances_ok:
+                        auth_failures.append("deployment_drw_allocation_mismatch")
+
+                auth_ok = not auth_failures
                 print(
-                    f"  {'onchain_drw':12} {'OK ' if drw_balances_ok else 'FAIL':4} "
-                    f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}"
+                    f"  {'authz':12} {'OK ' if auth_ok else 'FAIL':4} "
+                    f"components={len(auth_components)} batch_operator={expected_batch_operator}"
                 )
-                report["checks"]["onchain_drw"] = {
-                    "state": "OK" if drw_balances_ok else "FAIL",
-                    "detail": f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}",
+                report["checks"]["onchain_auth"] = {
+                    "state": "OK" if auth_ok else "FAIL",
+                    "detail": f"components={len(auth_components)} batch_operator={expected_batch_operator}",
                     "required": False,
                 }
-                report["onchain_drw"] = {
-                    "ok": drw_balances_ok,
-                    "holders": observed_holders,
-                    "tracked_total": tracked_total,
-                    "expected_total_supply": expected_total_supply,
+                report["onchain_auth"] = {
+                    "ok": auth_ok,
+                    "components": auth_components,
                 }
-                if not drw_balances_ok:
-                    auth_failures.append("deployment_drw_allocation_mismatch")
-
-            auth_ok = not auth_failures
-            print(
-                f"  {'authz':12} {'OK ' if auth_ok else 'FAIL':4} "
-                f"components={len(auth_components)} batch_operator={expected_batch_operator}"
-            )
-            report["checks"]["onchain_auth"] = {
-                "state": "OK" if auth_ok else "FAIL",
-                "detail": f"components={len(auth_components)} batch_operator={expected_batch_operator}",
-                "required": False,
-            }
-            report["onchain_auth"] = {
-                "ok": auth_ok,
-                "components": auth_components,
-            }
-            failures.extend(auth_failures)
-        except Exception as exc:  # noqa: BLE001
-            print(f"  {'authz':12} DOWN {exc}")
-            report["checks"]["onchain_auth"] = {
-                "state": "DOWN",
-                "detail": str(exc),
-                "required": False,
-            }
-            report["onchain_auth"] = {"ok": False, "error": str(exc)}
-            failures.append("deployment_auth_unverifiable")
+                failures.extend(auth_failures)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  {'authz':12} DOWN {exc}")
+                report["checks"]["onchain_auth"] = {
+                    "state": "DOWN",
+                    "detail": str(exc),
+                    "required": False,
+                }
+                report["onchain_auth"] = {"ok": False, "error": str(exc)}
+                failures.append("deployment_auth_unverifiable")
 
     blocker_messages = {
         "watcher_ready": "watcher has not replayed an epoch yet",

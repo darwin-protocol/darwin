@@ -22,6 +22,7 @@ def render_markdown(summary: dict) -> str:
     deployment = summary["deployment"]
     status = summary["status"]
     bundle_files = summary["bundle_files"]
+    roles = deployment.get("roles", {})
     lines = [
         "# DARWIN Audit Bundle",
         "",
@@ -31,11 +32,14 @@ def render_markdown(summary: dict) -> str:
         f"- Ready: `{status['ready']}`",
         f"- Settlement hub: `{deployment['settlement_hub']}`",
         f"- Bond asset: `{deployment['bond_asset']}`",
-        f"- Governance: `{deployment['roles']['governance']}`",
-        f"- Epoch operator: `{deployment['roles']['epoch_operator']}`",
-        f"- Batch operator: `{deployment['roles']['batch_operator']}`",
-        f"- Safe mode authority: `{deployment['roles']['safe_mode_authority']}`",
     ]
+    if roles.get("governance"):
+        lines.extend([
+            f"- Governance: `{roles.get('governance', '')}`",
+            f"- Epoch operator: `{roles.get('epoch_operator', '')}`",
+            f"- Batch operator: `{roles.get('batch_operator', '')}`",
+            f"- Safe mode authority: `{roles.get('safe_mode_authority', '')}`",
+        ])
     drw = deployment.get("drw") or {}
     if drw:
         contracts = drw.get("contracts", {})

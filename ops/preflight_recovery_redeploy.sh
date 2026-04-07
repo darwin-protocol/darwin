@@ -43,14 +43,7 @@ PY
 }
 
 read_artifact_field() {
-  python3 - "$DARWIN_SOURCE_DEPLOYMENT_FILE" "$1" <<'PY'
-import json, sys
-data = json.loads(open(sys.argv[1]).read())
-cursor = data
-for part in sys.argv[2].split("."):
-    cursor = cursor[part]
-print(cursor)
-PY
+  python3 "$ROOT/ops/read_deployment_field.py" --deployment-file "$DARWIN_SOURCE_DEPLOYMENT_FILE" "$1"
 }
 
 require_cmd cast
