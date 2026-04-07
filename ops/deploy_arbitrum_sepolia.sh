@@ -15,4 +15,5 @@ if [[ "${DARWIN_SKIP_PREFLIGHT:-0}" != "1" ]]; then
   "$ROOT/ops/preflight_arbitrum_sepolia.sh"
 fi
 
-exec "$ROOT/ops/deploy_contracts.sh"
+"$ROOT/ops/deploy_contracts.sh"
+python3 "$ROOT/ops/split_deployment_artifact.py" --deployment-file "$DARWIN_DEPLOYMENT_FILE"

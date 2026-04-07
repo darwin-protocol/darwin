@@ -1,0 +1,16 @@
+{
+  "bond_asset_mode": "mock",
+  "chain_id": 421614,
+  "contracts": {
+    "bond_asset": "0x850aa4f15b5c7fD8C4a8a136825e1fa971e321e6",
+    "bond_vault": "0x39e5dd0e72FcaD2fE8F1314c092F465cf13A7281",
+    "challenge_escrow": "0xeaf818cA9EF4C09a18cfF15A612419Df58AE4dbe",
+    "epoch_manager": "0x0903177dCe98F0b4379174433E35A86C6A132d99",
+    "score_registry": "0xC7d6B2b55fe3f81b356de94Ecacc831597e6C0Dd",
+    "settlement_hub": "0x7B62a0048B38f45599C21bF02Bfed0025E0Ff812",
+    "shared_pair_vault": "0xF78662d4Cb70143730cc19c71bD968a73C504da9",
+    "species_registry": "0xEb839ED3543B61EAc79A22B47353e0a6b03EAF5B"
+  },
+  "deployed_at": 1775601053,
+  "network": "arbitrum-sepolia"
+}

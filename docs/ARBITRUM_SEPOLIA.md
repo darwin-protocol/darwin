@@ -42,6 +42,11 @@ Expected artifact:
 
 - `ops/deployments/arbitrum-sepolia.json`
 
+The deploy wrapper immediately splits private operator fields back into the
+local overlay path:
+
+- `~/.config/darwin/deployments/arbitrum-sepolia.private.json`
+
 ## Run The Node
 
 ```bash
@@ -50,6 +55,11 @@ Expected artifact:
 
 That starts the generic DARWIN overlay node against the Arbitrum Sepolia
 deployment artifact.
+
+The Arbitrum lane defaults to its own overlay ports so it can run in parallel
+with the Base recovery node:
+
+- `9543-9549`
 
 ## Current Boundary
 
