@@ -14,7 +14,7 @@ const mono = IBM_Plex_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://usedarwin.xyz";
 const siteDescription =
-  "Claim testnet DRW, wrap Base Sepolia ETH, and trade against the live DARWIN reference pool.";
+  "Claim testnet DRW and start with a tiny first swap on the live Base Sepolia DARWIN reference pool.";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),

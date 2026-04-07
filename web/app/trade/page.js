@@ -3,13 +3,13 @@ import Script from "next/script";
 export const metadata = {
   title: "Trade DRW",
   description:
-    "Connect a wallet, claim DRW from the live Base Sepolia faucet, wrap ETH, and trade against the live DARWIN reference pool.",
+    "Connect a wallet, claim DRW from the live Base Sepolia faucet, and start with a tiny DRW swap against the live DARWIN reference pool.",
   alternates: {
     canonical: "/trade/",
   },
 };
 
-const tradeScriptVersion = "20260406-portal3";
+const tradeScriptVersion = "20260407-portal5";
 
 export default function TradePage() {
   return (
@@ -38,7 +38,8 @@ export default function TradePage() {
             </h2>
             <p className="lede">
               Claim testnet DRW, wrap Base Sepolia ETH into WETH, swap against the live pool, or
-              open a direct peer-to-peer transfer request.
+              open a direct peer-to-peer transfer request. The easiest public first move is a tiny
+              DRW sell after claiming from the faucet.
             </p>
             <p className="hero-status-line">
               <span id="runtimeHostStatus">
@@ -70,7 +71,7 @@ export default function TradePage() {
               </div>
               <div className="ladder-step">
                 <strong>Swap</strong>
-                <span>Buy or sell against the live pool.</span>
+                <span>Start with a tiny DRW swap against the live pool.</span>
               </div>
             </div>
             <div className="hero-stat">
@@ -139,6 +140,34 @@ export default function TradePage() {
                   Sell DRW
                 </button>
               </div>
+            </div>
+
+            <div className="tiny-strip">
+              <div className="tiny-strip-copy">
+                <span className="label">Community start</span>
+                <strong>Tiny swap path</strong>
+                <p className="caption">
+                  Claim 100 DRW, then use <code>tiny sell</code> for a first public swap. If you
+                  already hold Base Sepolia ETH, <code>tiny buy</code> uses a minimal WETH input.
+                </p>
+              </div>
+              <div className="tiny-actions">
+                <button className="button button-secondary tiny-button" data-tiny-preset="tiny-sell">
+                  Tiny sell 10 DRW
+                </button>
+                <button className="button button-secondary tiny-button" data-tiny-preset="tiny-buy">
+                  Tiny buy 0.00001 WETH
+                </button>
+                <button className="button button-secondary tiny-button" data-tiny-preset="tiny-wrap">
+                  Tiny wrap 0.00002 ETH
+                </button>
+                <button id="copyTinySwapLinkButton" className="button button-secondary tiny-button">
+                  Copy share link
+                </button>
+              </div>
+              <p id="tinySwapHint" className="tiny-hint">
+                Load a preset to prefill a small first action.
+              </p>
             </div>
 
             <label className="field">

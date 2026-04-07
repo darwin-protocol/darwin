@@ -122,6 +122,25 @@ The portal supports:
 - live reserve reads
 - direct `WETH -> DRW` and `DRW -> WETH` swaps
 - direct `ETH -> WETH` wrapping for the quote side
+- tiny-swap presets and shareable `?preset=` links for community onboarding
+
+## Tiny Swap Path
+
+The best public first action is a tiny swap, not a project-controlled large trade.
+
+Recommended first path for outside users:
+
+1. connect a Base Sepolia wallet
+2. claim `100 DRW` from the faucet
+3. use the `tiny sell 10 DRW` preset in the portal
+
+Shareable community link:
+
+```text
+https://usedarwin.xyz/trade/?preset=tiny-sell
+```
+
+That path works better than `tiny buy` because faucet claimants already receive DRW and a small native gas drip. `tiny buy` is still available for users who already hold extra Base Sepolia ETH and want to wrap a minimal amount into WETH.
 
 ## Transparent Distribution
 

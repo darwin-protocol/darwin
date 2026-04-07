@@ -38,10 +38,35 @@ const state = {
   signer: null,
   account: "",
   mode: "buy",
+  tinyPreset: "",
   token: null,
   quoteToken: null,
   pool: null,
   faucet: null,
+};
+
+const TINY_SWAP_PRESETS = {
+  "tiny-sell": {
+    mode: "sell",
+    amount: "10",
+    slippageBps: "150",
+    wrapAmount: "0.00002",
+    note: "Tiny sell loaded: claim 100 DRW, then sell 10 DRW for a first public market action.",
+  },
+  "tiny-buy": {
+    mode: "buy",
+    amount: "0.00001",
+    slippageBps: "150",
+    wrapAmount: "0.00002",
+    note: "Tiny buy loaded: use 0.00001 WETH to buy a small DRW amount from the live pool.",
+  },
+  "tiny-wrap": {
+    mode: "buy",
+    amount: "0.00001",
+    slippageBps: "150",
+    wrapAmount: "0.00002",
+    note: "Tiny wrap loaded: wrap 0.00002 ETH first, then use the tiny buy path if you want to enter from WETH.",
+  },
 };
 
 const els = {};
@@ -111,6 +136,12 @@ function buildDrwTransferUri(recipient, amountText) {
 
   const amount = ethers.parseUnits(trimmedAmount, state.config.token.decimals).toString();
   return `ethereum:${state.config.token.address}@${chainId}/transfer?address=${recipient}&uint256=${amount}`;
+}
+
+function buildTinySwapUrl(presetName) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("preset", presetName || "tiny-sell");
+  return url.toString();
 }
 
 function setMessage(kind, text, txHash = "") {
@@ -210,6 +241,12 @@ function syncModeButtons() {
   const buyMode = state.mode === "buy";
   els.tokenInDisplay.value = buyMode ? state.config.quote_token.symbol : state.config.token.symbol;
   els.swapButton.textContent = buyMode ? "Buy DRW" : "Sell DRW";
+}
+
+function syncTinyPresetButtons() {
+  for (const button of document.querySelectorAll("[data-tiny-preset]")) {
+    button.classList.toggle("is-active", button.dataset.tinyPreset === state.tinyPreset);
+  }
 }
 
 async function loadConfig() {
@@ -349,6 +386,51 @@ async function refreshQuote() {
     els.quotedOutput.textContent = "quote failed";
     els.minOutput.textContent = "-";
   }
+}
+
+async function applyTinyPreset(presetName, { announce = true, persist = true } = {}) {
+  const preset = TINY_SWAP_PRESETS[presetName];
+  if (!preset) {
+    return;
+  }
+
+  state.tinyPreset = presetName;
+  if (preset.mode) {
+    state.mode = preset.mode;
+    syncModeButtons();
+  }
+  if (preset.amount) {
+    els.swapAmount.value = preset.amount;
+  }
+  if (preset.slippageBps) {
+    els.slippageBps.value = preset.slippageBps;
+  }
+  if (preset.wrapAmount) {
+    els.wrapAmount.value = preset.wrapAmount;
+  }
+  if (els.tinySwapHint) {
+    els.tinySwapHint.textContent = preset.note;
+  }
+  syncTinyPresetButtons();
+  if (persist && window.history?.replaceState) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("preset", presetName);
+    window.history.replaceState({}, "", url);
+  }
+  await refreshQuote();
+  if (announce) {
+    setMessage("tiny-swap", preset.note);
+  }
+}
+
+async function loadTinyPresetFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const presetName = params.get("preset");
+  if (!presetName || !TINY_SWAP_PRESETS[presetName]) {
+    syncTinyPresetButtons();
+    return;
+  }
+  await applyTinyPreset(presetName, { announce: false, persist: false });
 }
 
 async function maybeApprove(tokenContract, amount, spender) {
@@ -545,6 +627,7 @@ async function boot() {
     qrAmount: $("qrAmount"),
     qrUri: $("qrUri"),
     copyQrUriButton: $("copyQrUriButton"),
+    copyTinySwapLinkButton: $("copyTinySwapLinkButton"),
     useConnectedWalletButton: $("useConnectedWalletButton"),
     faucetPanel: $("faucetPanel"),
     faucetBadge: $("faucetBadge"),
@@ -571,6 +654,7 @@ async function boot() {
     chainBadge: $("chainBadge"),
     feeBadge: $("feeBadge"),
     runtimeHostStatus: $("runtimeHostStatus"),
+    tinySwapHint: $("tinySwapHint"),
     poolAddress: $("poolAddress"),
     drwAddress: $("drwAddress"),
     wethAddress: $("wethAddress"),
@@ -588,8 +672,10 @@ async function boot() {
   await loadRuntimeStatus();
   bindStaticConfig();
   syncModeButtons();
+  syncTinyPresetButtons();
   installCopyHandlers();
   updateQrState();
+  await loadTinyPresetFromUrl();
   await refreshMarket();
   await refreshQuote();
 
@@ -599,6 +685,12 @@ async function boot() {
       syncModeButtons();
       await refreshQuote();
     });
+  });
+
+  document.querySelectorAll("[data-tiny-preset]").forEach((button) => {
+    button.addEventListener("click", () => applyTinyPreset(button.dataset.tinyPreset).catch((error) => {
+      setMessage("error", error?.message || "Tiny preset failed.");
+    }));
   });
 
   els.connectButton.addEventListener("click", () => connectWallet().catch((error) => {
@@ -632,6 +724,11 @@ async function boot() {
       await navigator.clipboard.writeText(els.qrUri.value);
       setMessage("copy", "Copied DRW transfer request URI.");
     }
+  });
+  els.copyTinySwapLinkButton.addEventListener("click", async () => {
+    const url = buildTinySwapUrl(state.tinyPreset || "tiny-sell");
+    await navigator.clipboard.writeText(url);
+    setMessage("share", `Copied ${state.tinyPreset || "tiny-sell"} link.`);
   });
   els.useConnectedWalletButton.addEventListener("click", async () => {
     if (!state.account) {

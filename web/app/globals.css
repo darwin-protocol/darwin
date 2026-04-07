@@ -344,6 +344,49 @@ code {
   border: 1px solid rgba(20, 62, 108, 0.08);
 }
 
+.tiny-strip {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(13, 123, 115, 0.08), rgba(21, 70, 160, 0.08));
+  border: 1px solid rgba(20, 62, 108, 0.08);
+}
+
+.tiny-strip-copy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.tiny-strip-copy strong {
+  font-size: 1rem;
+}
+
+.tiny-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.tiny-button {
+  padding-inline: 0.9rem;
+}
+
+.tiny-button.is-active {
+  background: var(--teal);
+  color: #fff;
+  border-color: rgba(13, 123, 115, 0.22);
+}
+
+.tiny-hint {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
 .button {
   border: 0;
   border-radius: 999px;

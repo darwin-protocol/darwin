@@ -3,7 +3,7 @@ import Link from "next/link";
 export const metadata = {
   title: "Use Darwin",
   description:
-    "Claim testnet DRW, wrap Base Sepolia ETH, and trade against the live DARWIN reference pool.",
+    "Claim testnet DRW and use a tiny first swap on the live Base Sepolia DARWIN reference pool.",
   alternates: {
     canonical: "/",
   },
@@ -15,7 +15,7 @@ const structuredData = {
   name: "Use Darwin",
   url: "https://usedarwin.xyz",
   description:
-    "Claim testnet DRW, wrap Base Sepolia ETH, and trade against the live DARWIN reference pool.",
+    "Claim testnet DRW and use a tiny first swap on the live Base Sepolia DARWIN reference pool.",
 };
 
 export default function HomePage() {
@@ -54,12 +54,15 @@ export default function HomePage() {
             <h2 className="section-title">Claim, wrap, and trade.</h2>
             <p className="lede">
               DARWIN is live as a public testnet surface: token, faucet, reference pool, wallet
-              portal, and deployment artifact. The important next step is outside users, not more
-              internal churn.
+              portal, and deployment artifact. The first outside action should be small and
+              obvious: claim DRW, then use a tiny swap.
             </p>
             <div className="hero-actions">
               <Link className="button button-primary" href="/trade/">
                 Open market
+              </Link>
+              <Link className="button button-secondary" href="/trade/?preset=tiny-sell">
+                Try tiny swap
               </Link>
               <a
                 className="button button-secondary"
@@ -110,7 +113,7 @@ export default function HomePage() {
                 <small>live on Base Sepolia</small>
               </div>
               <div className="metric">
-                <span className="label">Faucet</span>
+                <span className="label">Faucet claim</span>
                 <strong>100 DRW</strong>
                 <small>plus native ETH drip</small>
               </div>
@@ -120,9 +123,9 @@ export default function HomePage() {
                 <small>reference liquidity</small>
               </div>
               <div className="metric">
-                <span className="label">Portal</span>
-                <strong>/trade</strong>
-                <small>wallet connect + swap</small>
+                <span className="label">First action</span>
+                <strong>Tiny swap</strong>
+                <small>claim then sell 10 DRW</small>
               </div>
             </div>
           </article>
@@ -136,8 +139,8 @@ export default function HomePage() {
               <li>Open the market page.</li>
               <li>Connect a wallet on Base Sepolia.</li>
               <li>Claim DRW from the faucet.</li>
-              <li>Wrap ETH into WETH if you want to buy from the pool.</li>
-              <li>Use the QR request flow for direct peer-to-peer sends.</li>
+              <li>Use the `tiny sell` preset for a first public swap.</li>
+              <li>Wrap ETH later if you want to buy from the pool.</li>
             </ol>
           </article>
 
