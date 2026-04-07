@@ -158,13 +158,15 @@ That page shows recent DARWIN-related Base Sepolia events:
 Operator-side external tracking should stay local, not public. Use:
 
 ```bash
+python3 ops/build_project_wallet_allowlist.py
 ./.venv/bin/python ops/report_external_activity.py \
   --deployment-file ops/deployments/base-sepolia-recovery.json \
   --json-out ops/state/activity/external-activity.json \
   --markdown-out ops/state/activity/external-activity.md
 ```
 
-If you want genuine third-party activity separated from project-controlled wallets, keep a local allowlist in:
+The allowlist generator builds the local project-wallet classification from gitignored wallet bundles
+and local deployment overlays. The allowlist itself lives outside the repo in:
 
 ```text
 ~/.config/darwin/project-wallets.json
