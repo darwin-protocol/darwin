@@ -249,7 +249,6 @@ function bindStaticConfig() {
   els.poolAddress.textContent = state.config.pool.address;
   els.drwAddress.textContent = state.config.token.address;
   els.wethAddress.textContent = state.config.quote_token.address;
-  els.governanceAddress.textContent = state.config.roles.governance;
   if (state.config.faucet?.enabled && state.config.faucet.address) {
     els.faucetPanel.hidden = false;
     els.faucetAddressRow.hidden = false;
@@ -266,23 +265,20 @@ function bindStaticConfig() {
   els.tokenLink.textContent = shortAddress(state.config.token.address);
   els.liveStatusLink.href = state.config.links.live_status;
   els.marketDocLink.href = state.config.links.market_bootstrap;
-  els.operatorQuickstartLink.href = state.config.links.operator_quickstart;
-  els.artifactLink.href = state.config.links.deployment_artifact;
   els.repoLink.href = state.config.links.repo;
+  els.tokenSupply.textContent = formatUnits(state.config.token.total_supply || 0, state.config.token.decimals, 3);
 }
 
 async function refreshMarket() {
-  const [baseReserve, quoteReserve, governanceBalance] = await Promise.all([
+  const [baseReserve, quoteReserve] = await Promise.all([
     state.pool.baseReserve(),
     state.pool.quoteReserve(),
-    state.token.balanceOf(state.config.roles.governance),
   ]);
 
   els.poolBaseReserve.textContent = formatUnits(baseReserve, state.config.token.decimals, 9);
   els.poolQuoteReserve.textContent = formatUnits(quoteReserve, state.config.quote_token.decimals, 12);
-  els.governanceDrw.textContent = formatUnits(governanceBalance, state.config.token.decimals, 3);
   els.portalState.textContent = "Live";
-  els.portalSubstate.textContent = "Artifact-backed Base Sepolia pool";
+  els.portalSubstate.textContent = "Public Base Sepolia pool";
 }
 
 async function refreshWallet() {
@@ -560,7 +556,7 @@ async function boot() {
     tokenInDisplay: $("tokenInDisplay"),
     poolBaseReserve: $("poolBaseReserve"),
     poolQuoteReserve: $("poolQuoteReserve"),
-    governanceDrw: $("governanceDrw"),
+    tokenSupply: $("tokenSupply"),
     portalState: $("portalState"),
     portalSubstate: $("portalSubstate"),
     quotedOutput: $("quotedOutput"),
@@ -580,11 +576,8 @@ async function boot() {
     wethAddress: $("wethAddress"),
     faucetAddressRow: $("faucetAddressRow"),
     faucetAddress: $("faucetAddress"),
-    governanceAddress: $("governanceAddress"),
     liveStatusLink: $("liveStatusLink"),
     marketDocLink: $("marketDocLink"),
-    operatorQuickstartLink: $("operatorQuickstartLink"),
-    artifactLink: $("artifactLink"),
     repoLink: $("repoLink"),
     messageKind: $("messageKind"),
     messageText: $("messageText"),

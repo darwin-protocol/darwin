@@ -9,12 +9,10 @@
     "initial_token_funding": "100000000000000000000000",
     "native_drip_amount": "10000000000000"
   },
-  "generated_at": "2026-04-06T21:55:44.147883Z",
+  "generated_at": "2026-04-07T03:47:23.678691Z",
   "links": {
-    "deployment_artifact": "https://github.com/darwin-protocol/darwin/blob/main/ops/deployments/base-sepolia.json",
     "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",
     "market_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md",
-    "operator_quickstart": "https://github.com/darwin-protocol/darwin/blob/main/docs/OPERATOR_QUICKSTART.md",
     "repo": "https://github.com/darwin-protocol/darwin"
   },
   "network": {
@@ -49,10 +47,6 @@
     "address": "0x4200000000000000000000000000000000000006",
     "decimals": 18,
     "symbol": "WETH"
-  },
-  "roles": {
-    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-    "market_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d"
   },
   "source": {
     "deployment_file": "ops/deployments/base-sepolia.json",

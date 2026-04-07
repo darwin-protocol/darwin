@@ -38,14 +38,14 @@ export default function HomePage() {
             <p className="eyebrow">USE DARWIN</p>
             <h1 className="plain-title">Live Base Sepolia DRW market.</h1>
             <p className="plain-note">
-              Canonical host: <code>usedarwin.xyz</code>. HTTPS certificate is still provisioning
-              through GitHub Pages, so the live site is currently served over HTTP.
+              Public host: <code>usedarwin.xyz</code>. The public testnet market, faucet, and trade
+              portal are live.
             </p>
           </div>
           <div className="status-banner-meta">
             <span className="badge">Base Sepolia</span>
             <span className="badge">DRW live</span>
-            <span className="badge">Cert pending</span>
+            <span className="badge">Testnet alpha</span>
           </div>
         </section>
 
@@ -148,20 +148,16 @@ export default function HomePage() {
             </div>
             <div className="status-ladder">
               <div className="ladder-step">
-                <strong>Outside holders</strong>
-                <span>Claims from non-DARWIN wallets.</span>
+                <strong>Testnet only</strong>
+                <span>Everything here runs on Base Sepolia, not mainnet.</span>
               </div>
               <div className="ladder-step">
-                <strong>Outside trading</strong>
-                <span>Real third-party swaps through the live pool.</span>
+                <strong>Reference liquidity</strong>
+                <span>The pool is live, but liquidity is still thin and experimental.</span>
               </div>
               <div className="ladder-step">
-                <strong>Outside watcher</strong>
-                <span>A genuine external watcher and archive epoch.</span>
-              </div>
-              <div className="ladder-step">
-                <strong>HTTPS cutover</strong>
-                <span>GitHub Pages certificate issuance for usedarwin.xyz.</span>
+                <strong>Small amounts</strong>
+                <span>Use the faucet and trade conservatively.</span>
               </div>
             </div>
           </article>
@@ -182,22 +178,6 @@ export default function HomePage() {
                 rel="noreferrer"
               >
                 Market runbook
-              </a>
-              <a
-                className="button button-secondary"
-                href="https://github.com/darwin-protocol/darwin/blob/main/docs/OPERATOR_QUICKSTART.md"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Operator quickstart
-              </a>
-              <a
-                className="button button-secondary"
-                href="https://github.com/darwin-protocol/darwin/blob/main/ops/deployments/base-sepolia.json"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Deployment artifact
               </a>
             </div>
           </article>

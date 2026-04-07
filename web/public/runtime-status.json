@@ -1,16 +1,8 @@
 {
-  "certificate_ready": false,
-  "details": {
-    "cname": "usedarwin.xyz",
-    "hosting_mode": "github-pages",
-    "pending_domain_unverified_at": null,
-    "protected_domain_state": null
-  },
-  "generated_at": "2026-04-07T03:37:01.680411Z",
-  "html_url": "http://usedarwin.xyz/",
-  "https_enforced": false,
-  "repo": "darwin-protocol/darwin",
+  "available": true,
+  "generated_at": "2026-04-07T03:47:23.738230Z",
   "site_domain": "usedarwin.xyz",
-  "summary": "usedarwin.xyz is live over HTTP. GitHub Pages TLS is still pending.",
-  "transport": "http"
+  "site_url": "https://usedarwin.xyz/",
+  "summary": "usedarwin.xyz is live over HTTPS.",
+  "transport": "https"
 }

@@ -42,7 +42,7 @@ export default function TradePage() {
             </p>
             <p className="hero-status-line">
               <span id="runtimeHostStatus">
-                <code>usedarwin.xyz</code> is live now. Checking certificate status.
+                <code>usedarwin.xyz</code> is live now.
               </span>
             </p>
             <div className="hero-actions">
@@ -116,9 +116,9 @@ export default function TradePage() {
                 <small>WETH</small>
               </article>
               <article className="metric">
-                <span className="label">Governance-held DRW</span>
-                <strong id="governanceDrw">-</strong>
-                <small>still project-controlled</small>
+                <span className="label">Token supply</span>
+                <strong id="tokenSupply">-</strong>
+                <small>Base Sepolia testnet</small>
               </article>
               <article className="metric">
                 <span className="label">Portal state</span>
@@ -322,10 +322,6 @@ export default function TradePage() {
                 <span>DRW faucet</span>
                 <code id="faucetAddress"></code>
               </button>
-              <button className="address-row" data-copy-target="governanceAddress">
-                <span>Governance</span>
-                <code id="governanceAddress"></code>
-              </button>
             </div>
           </section>
 
@@ -336,10 +332,10 @@ export default function TradePage() {
             </div>
             <ul className="truth-list">
               <li>The pool is live and the portal talks to it directly.</li>
-              <li>The pool is still DARWIN-owned reference infrastructure on Base Sepolia.</li>
-              <li>Initial DARWIN-controlled demo trades have already been executed.</li>
-              <li>If the faucet is enabled, claims are transparent testnet onboarding, not demand signals.</li>
-              <li>Real third-party usage is still the market milestone that matters next.</li>
+              <li>This is public testnet alpha infrastructure on Base Sepolia.</li>
+              <li>Liquidity is limited, so use small amounts.</li>
+              <li>If the faucet is enabled, it is there for simple onboarding.</li>
+              <li>The public milestone is straightforward usage: claim, wrap, and trade.</li>
             </ul>
             <div className="link-row">
               <a id="liveStatusLink" href="#" target="_blank" rel="noreferrer">
@@ -347,12 +343,6 @@ export default function TradePage() {
               </a>
               <a id="marketDocLink" href="#" target="_blank" rel="noreferrer">
                 Market runbook
-              </a>
-              <a id="operatorQuickstartLink" href="#" target="_blank" rel="noreferrer">
-                Operator quickstart
-              </a>
-              <a id="artifactLink" href="#" target="_blank" rel="noreferrer">
-                Deployment artifact
               </a>
               <a id="repoLink" href="#" target="_blank" rel="noreferrer">
                 Repository

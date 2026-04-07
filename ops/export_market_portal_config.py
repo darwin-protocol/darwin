@@ -71,7 +71,6 @@ def main() -> int:
     deployment = load_json(deployment_path)
     market = deployment.get("market") or {}
     contracts = deployment.get("contracts") or {}
-    roles = deployment.get("roles") or {}
     drw = deployment.get("drw") or {}
     faucet = deployment.get("faucet") or {}
 
@@ -135,16 +134,10 @@ def main() -> int:
             "initial_token_funding": str(faucet.get("initial_token_funding", "")),
             "initial_native_funding": str(faucet.get("initial_native_funding", "")),
         },
-        "roles": {
-            "governance": roles["governance"],
-            "market_operator": market["market_operator"],
-        },
         "links": {
             "repo": args.repo_url,
             "live_status": f"{args.repo_url}/blob/main/LIVE_STATUS.md",
             "market_bootstrap": f"{args.repo_url}/blob/main/docs/MARKET_BOOTSTRAP.md",
-            "operator_quickstart": f"{args.repo_url}/blob/main/docs/OPERATOR_QUICKSTART.md",
-            "deployment_artifact": f"{args.repo_url}/blob/main/ops/deployments/{deployment_path.name}",
         },
         "notes": {
             "alpha_stage": True,

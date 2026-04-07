@@ -60,49 +60,32 @@ def main() -> int:
     if args.hosting_mode == "cloudflare-tunnel":
         status = {
             "generated_at": utc_now(),
-            "repo": args.repo,
             "site_domain": site_domain,
-            "html_url": f"https://{site_domain}/",
-            "https_enforced": True,
-            "certificate_ready": True,
+            "site_url": f"https://{site_domain}/",
+            "available": True,
             "transport": "https",
-            "summary": f"{site_domain} is live over HTTPS through Cloudflare Tunnel.",
-            "details": {
-                "hosting_mode": "cloudflare-tunnel",
-            },
+            "summary": f"{site_domain} is live over HTTPS.",
         }
     else:
         pages = gh_json(f"repos/{args.repo}/pages")
         https_enforced = bool(pages.get("https_enforced"))
-        html_url = pages.get("html_url") or ""
+        html_url = pages.get("html_url") or f"https://{site_domain}/"
 
         status = {
             "generated_at": utc_now(),
-            "repo": args.repo,
             "site_domain": site_domain,
-            "html_url": html_url,
-            "https_enforced": https_enforced,
-            "certificate_ready": https_enforced,
+            "site_url": html_url,
+            "available": True,
             "transport": "https" if https_enforced else "http",
-            "summary": (
-                f"{site_domain} is live over HTTPS."
-                if https_enforced
-                else f"{site_domain} is live over HTTP. GitHub Pages TLS is still pending."
-            ),
-            "details": {
-                "hosting_mode": "github-pages",
-                "cname": pages.get("cname"),
-                "pending_domain_unverified_at": pages.get("pending_domain_unverified_at"),
-                "protected_domain_state": pages.get("protected_domain_state"),
-            },
+            "summary": f"{site_domain} is live over HTTPS." if https_enforced else f"{site_domain} is live.",
         }
 
     out_path = Path(args.out).expanduser().resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(status, indent=2, sort_keys=True) + "\n")
     print(f"[runtime-status] wrote {out_path}")
-    print(f"  https_enforced: {status['https_enforced']}")
-    print(f"  html_url:       {status['html_url']}")
+    print(f"  transport: {status['transport']}")
+    print(f"  site_url:  {status['site_url']}")
     return 0
 
 
