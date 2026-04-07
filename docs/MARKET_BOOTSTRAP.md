@@ -14,13 +14,11 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - The canary still uses Base Sepolia `WETH9` as its bond asset.
 - The simplest demo market is `DRW/WETH`.
 - DARWIN now ships a first-party `ReferenceMarketPool` deployment path for Base Sepolia and local smoke tests.
-- The live reference pool is `0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891`.
 - The live seeded reserves are `1000 DRW` and `0.0005 WETH`.
 - Initial DARWIN-controlled demo trades have now executed against the live pool.
 - Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
 - A first-party Next.js portal now exists in `web/` for direct wallet-driven pool trading.
 - A first-party faucet contract + portal claim path now exists for transparent third-party DRW distribution.
-- The live public Base Sepolia faucet is `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`.
 - Live faucet funding is `100,000 DRW` + `0.0002 ETH`.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
@@ -31,7 +29,7 @@ Run:
 ```bash
 ./.venv/bin/python ops/preflight_market_bootstrap.py \
   --deployment-file ops/deployments/base-sepolia.json \
-  --wallet-address 0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
+  --wallet-address <wallet-address> \
   --json-out ops/state/market-bootstrap/preflight.json \
   --markdown-out ops/state/market-bootstrap/preflight.md
 ```
@@ -67,7 +65,7 @@ On the current live artifact, the market path is already active:
 - venue preflight for `darwin_reference_pool` should now pass
 - the governance wallet no longer holds spare `WETH` because it was used to seed the pool
 
-That wrap helper auto-loads `.env.base-sepolia`, uses the pinned deployment artifact bond asset as the WETH address, and can run in `--dry-run` mode if you only want the exact calldata / readiness output first.
+That wrap helper auto-loads `~/.config/darwin/base-sepolia.env` unless `DARWIN_ENV_FILE` is set, uses the pinned deployment artifact bond asset as the WETH address, and can run in `--dry-run` mode if you only want the exact calldata / readiness output first.
 
 ## Recommended Base Sepolia Path
 
@@ -102,7 +100,7 @@ Those example amounts are `1000 DRW` and `0.0005 WETH`. That is the current live
 To quote a contract-level swap against the live pool without broadcasting:
 
 ```bash
-DARWIN_DEPLOYER_ADDRESS=0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d \
+DARWIN_DEPLOYER_ADDRESS=<wallet-address> \
 ./ops/swap_reference_market.sh --token-in base --amount 1 --dry-run
 ```
 
@@ -145,9 +143,8 @@ Suggested Base Sepolia defaults:
 - cooldown: `86400` seconds
 - initial funding: `100000 DRW` + `0.0002 ETH`
 
-Current live Base Sepolia faucet:
+Current live Base Sepolia faucet defaults:
 
-- address: `0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0`
 - claim amount: `100 DRW`
 - native drip: `0.00001 ETH`
 - cooldown: `86400` seconds
@@ -169,16 +166,7 @@ export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="0x..."
 
 ## Initial Demo Activity
 
-On `2026-04-06`, DARWIN-controlled demo traders executed the first live Base Sepolia swaps against the reference pool to prove the end-to-end trading path.
-
-- trader A wrap: `0x23774b08711a83580c2ed65670edad4bb6646c9ff6e97adb788c6f6a8d06bb82`
-- trader B wrap: `0x14191a73a6a460f08bf00c8350f5156ad6d5a52e056ccede1863281647e308a4`
-- trader A `10 DRW -> WETH`: `0xb21331c770bf490ee6cdc43e36e637ff56b3af999e41a4ef44a768671256535c`
-- trader B `0.00001 WETH -> DRW`: `0x5c1871bb64ca40b92d0d85f122773f51b3965a14dff32c3654a011ad42307e34`
-- trader A `0.000005 WETH -> DRW`: `0xfe32916d7a4c0a0552166d9308e28be607a971fa5b454157ded74280e63ef5da`
-- trader B `5 DRW -> WETH`: `0xb089cab4bf185d92393a6efaf0e378533a98941964c0f8a3e70a370adf79bd6e`
-
-Those transactions prove the pool is tradeable today on Base Sepolia. They do not count as third-party market validation.
+On `2026-04-06`, DARWIN-controlled demo traders executed the first live Base Sepolia swaps against the reference pool to prove the end-to-end trading path. Those transactions proved the pool is tradeable. They do not count as third-party market validation.
 
 ## Demo Market Path
 

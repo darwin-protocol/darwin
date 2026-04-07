@@ -10,6 +10,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Market runbook: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
 - Security reporting: [docs/SECURITY.md](docs/SECURITY.md)
 - Recovery runbook: [docs/GOVERNANCE_RECOVERY.md](docs/GOVERNANCE_RECOVERY.md)
+- vNext governance: [docs/VNEXT_GOVERNANCE.md](docs/VNEXT_GOVERNANCE.md)
 
 ## What Is Live
 

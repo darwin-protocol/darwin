@@ -22,7 +22,7 @@ Usage:
   ./ops/wrap_base_sepolia_weth.sh --dry-run --amount-eth 0.0005
 
 Notes:
-  - Loads .env.base-sepolia automatically unless DARWIN_ENV_FILE is set
+  - Loads ~/.config/darwin/base-sepolia.env automatically unless DARWIN_ENV_FILE is set
   - Uses the deployment artifact bond asset as the WETH address by default
   - Accepts DARWIN_WRAP_PRIVATE_KEY / DARWIN_WRAP_ADDRESS for a dedicated wrapper wallet
   - Falls back to DARWIN_DEPLOYER_PRIVATE_KEY / DARWIN_DEPLOYER_ADDRESS if unset

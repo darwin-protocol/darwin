@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG_DIR="${DARWIN_CONFIG_DIR:-$HOME/.config/darwin}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -34,7 +35,7 @@ DEPLOYER_WALLET_FILE="${DARWIN_FUTURE_DEPLOYER_WALLET_FILE:-$WALLET_DIR/darwin-f
 GOV_PASSPHRASE_FILE="${DARWIN_FUTURE_GOVERNANCE_PASSPHRASE_FILE:-$WALLET_DIR/darwin-future-governance.passphrase}"
 DEPLOYER_PASSPHRASE_FILE="${DARWIN_FUTURE_DEPLOYER_PASSPHRASE_FILE:-$WALLET_DIR/darwin-future-deployer.passphrase}"
 SOURCE_DEPLOYMENT_FILE="${DARWIN_SOURCE_DEPLOYMENT_FILE:-$ROOT/ops/deployments/base-sepolia.json}"
-OUT_ENV_FILE="${DARWIN_RECOVERY_ENV_FILE:-$ROOT/.env.recovery}"
+OUT_ENV_FILE="${DARWIN_RECOVERY_ENV_FILE:-$CONFIG_DIR/recovery.env}"
 RECOVERY_DEPLOYMENT_FILE="${DARWIN_RECOVERY_DEPLOYMENT_FILE:-$ROOT/ops/deployments/base-sepolia-recovery.json}"
 
 for path in "$GOV_WALLET_FILE" "$DEPLOYER_WALLET_FILE" "$GOV_PASSPHRASE_FILE" "$DEPLOYER_PASSPHRASE_FILE" "$SOURCE_DEPLOYMENT_FILE"; do
@@ -126,6 +127,7 @@ lines = [
     "",
 ]
 
+out_env_file.parent.mkdir(parents=True, exist_ok=True)
 out_env_file.write_text("\n".join(lines) + "\n")
 PY
 

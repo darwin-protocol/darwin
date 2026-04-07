@@ -205,14 +205,14 @@ class TestEndToEnd(unittest.TestCase):
                 "network": "base-sepolia",
                 "chain_id": 84532,
                 "bond_asset_mode": "external",
-                "deployer": "0xBFf27f141250C1323431eDB1BfCbB7D550a168f6",
+                "deployer": "0x00000000000000000000000000000000000000d1",
                 "deployed_at": 1,
                 "contracts": {
                     "settlement_hub": "0x556d75f4455cf3f0D7c5F9c6e7ea49447f66D8d2",
-                    "drw_token": "0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2",
-                    "drw_staking": "0xC84090E74880a672C5273f6A454E208Fe114634e",
-                    "drw_faucet": "0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0",
-                    "reference_pool": "0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891",
+                    "drw_token": "0x00000000000000000000000000000000000000a1",
+                    "drw_staking": "0x00000000000000000000000000000000000000a2",
+                    "drw_faucet": "0x00000000000000000000000000000000000000a3",
+                    "reference_pool": "0x00000000000000000000000000000000000000a4",
                     "bond_vault": "0xa842Dc4BF4CA3e1f1CA07714867145038D5e0ab4",
                     "challenge_escrow": "0xd71e90F784f45FeC0b6b36454186CD88eaD126a7",
                     "epoch_manager": "0xE53A27DA8e3C2c69495a97C3AcD6E484AbD7892B",
@@ -221,10 +221,10 @@ class TestEndToEnd(unittest.TestCase):
                     "species_registry": "0xcaC5E4C711b4FfD9C76354FF8FfD4E236b1798AB",
                 },
                 "roles": {
-                    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-                    "epoch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-                    "batch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
-                    "safe_mode_authority": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+                    "governance": "0x00000000000000000000000000000000000000b1",
+                    "epoch_operator": "0x00000000000000000000000000000000000000b2",
+                    "batch_operator": "0x00000000000000000000000000000000000000b3",
+                    "safe_mode_authority": "0x00000000000000000000000000000000000000b4",
                 },
             }))
 
@@ -232,17 +232,17 @@ class TestEndToEnd(unittest.TestCase):
             report = build_role_audit_report(
                 deployment,
                 LiveRoleState(
-                    "0x00000000000000000000000000000000000000b1",
-                    "0x0000000000000000000000000000000000000000",
-                    True,
-                    "0x00000000000000000000000000000000000000b1",
-                    "0x0000000000000000000000000000000000000000",
-                    "0x00000000000000000000000000000000000000b1",
-                    "0x00000000000000000000000000000000000000b1",
-                    "0x00000000000000000000000000000000000000b5",
-                    "0x00000000000000000000000000000000000000b1",
-                    False,
-                    True,
+                    token_governance = "0x00000000000000000000000000000000000000b1",
+                    token_genesis_operator = "0x0000000000000000000000000000000000000000",
+                    token_genesis_finalized=True,
+                    staking_governance="0x00000000000000000000000000000000000000b1",
+                    staking_genesis_operator="0x0000000000000000000000000000000000000000",
+                    faucet_governance="0x00000000000000000000000000000000000000b1",
+                    pool_governance="0x00000000000000000000000000000000000000b1",
+                    pool_market_operator="0x00000000000000000000000000000000000000b5",
+                    hub_governance="0x00000000000000000000000000000000000000b1",
+                    hub_batch_operator_deployer=False,
+                    hub_batch_operator_governance=True,
                 ),
             )
 
@@ -3499,7 +3499,7 @@ exit 1
                     'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
                     'export DARWIN_NETWORK="base-sepolia"',
                     f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
-                    'export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="0xabc123"',
+                    'export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="placeholder-private-key"',
                 ]) + "\n"
             )
 

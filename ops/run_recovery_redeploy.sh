@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/load_env_defaults.sh"
 
-RECOVERY_ENV_FILE="${DARWIN_RECOVERY_ENV_FILE:-$ROOT/.env.recovery}"
+CONFIG_DIR="$(darwin_config_dir)"
+RECOVERY_ENV_FILE="${DARWIN_RECOVERY_ENV_FILE:-$(resolve_darwin_env_file "$CONFIG_DIR/recovery.env" "$ROOT/.env.recovery")}"
 load_env_defaults "$RECOVERY_ENV_FILE"
 
 DARWIN_NETWORK="${DARWIN_NETWORK:-base-sepolia}"

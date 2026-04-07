@@ -73,6 +73,8 @@ Prepare a local-only recovery env from those wallets with:
 ./ops/prepare_recovery_env.sh
 ```
 
+By default that writes to `~/.config/darwin/recovery.env` instead of the repository root.
+
 Check whether the fresh wallets are funded and safe to use with:
 
 ```bash

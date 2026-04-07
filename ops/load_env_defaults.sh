@@ -26,9 +26,31 @@ load_env_defaults() {
   done < "$env_file"
 }
 
+darwin_config_dir() {
+  echo "${DARWIN_CONFIG_DIR:-$HOME/.config/darwin}"
+}
+
+resolve_darwin_env_file() {
+  local preferred="$1"
+  local legacy="${2:-}"
+
+  if [[ -f "$preferred" ]]; then
+    echo "$preferred"
+    return 0
+  fi
+  if [[ -n "$legacy" && -f "$legacy" ]]; then
+    echo "$legacy"
+    return 0
+  fi
+  echo "$preferred"
+}
 
 load_base_sepolia_env() {
   local root="$1"
-  local env_file="${DARWIN_ENV_FILE:-$root/.env.base-sepolia}"
+  local config_dir
+  local env_file
+
+  config_dir="$(darwin_config_dir)"
+  env_file="${DARWIN_ENV_FILE:-$(resolve_darwin_env_file "$config_dir/base-sepolia.env" "$root/.env.base-sepolia")}"
   load_env_defaults "$env_file"
 }
