@@ -3698,6 +3698,128 @@ exit 0
             self.assertIn("0x0000000000000000000000000000000000000045", log)
             print("  Ops: faucet funding helper updates the deployment artifact after funding")
 
+    def test_47_build_drw_merkle_distribution_outputs_claim_manifest(self):
+        """Ops: vNext Merkle builder emits a root plus proofs for each DRW claim."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            claims = tmp / "claims.json"
+            out = tmp / "merkle.json"
+            claims.write_text(json.dumps([
+                {"account": "0x00000000000000000000000000000000000000a1", "amount": "100000000000000000000"},
+                {"account": "0x00000000000000000000000000000000000000b2", "amount": "200000000000000000000"},
+                {"account": "0x00000000000000000000000000000000000000c3", "amount": "300000000000000000000"},
+            ]))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "build_drw_merkle_distribution.py"),
+                    "--claims-file",
+                    str(claims),
+                    "--out",
+                    str(out),
+                    "--network",
+                    "base-sepolia",
+                    "--claim-deadline",
+                    "1777777777",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            manifest = json.loads(out.read_text())
+            self.assertEqual(manifest["claims_count"], 3)
+            self.assertEqual(manifest["total_amount"], "600000000000000000000")
+            self.assertEqual(manifest["network"], "base-sepolia")
+            self.assertEqual(manifest["claim_deadline"], 1777777777)
+            self.assertTrue(manifest["merkle_root"].startswith("0x"))
+            self.assertEqual(len(manifest["merkle_root"]), 66)
+            self.assertEqual(manifest["claims"][0]["index"], 0)
+            self.assertTrue(manifest["claims"][0]["proof"])
+            print("  Ops: vNext Merkle builder emits a public claim manifest with proofs")
+
+    def test_48_preflight_vnext_governance_uses_manifest_and_public_artifact(self):
+        """Ops: vNext governance preflight resolves token and Merkle metadata without re-exposing private fields."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            manifest = tmp / "base-sepolia-drw-merkle.json"
+            env_file = tmp / ".env.base-sepolia"
+            fake_bin = tmp / "bin"
+            fake_cast = fake_bin / "cast"
+            fake_forge = fake_bin / "forge"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "contracts": {
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "settlement_hub": "0x0000000000000000000000000000000000000022",
+                },
+            }))
+            manifest.write_text(json.dumps({
+                "merkle_root": "0x" + ("11" * 32),
+                "claims_count": 2,
+                "total_amount": "300000000000000000000",
+                "claim_deadline": 1777777777,
+                "claims": [],
+            }))
+            env_file.write_text(
+                "\n".join([
+                    'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
+                    'export DARWIN_NETWORK="base-sepolia"',
+                    'export DARWIN_DEPLOYER_PRIVATE_KEY="test-private-key"',
+                    f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
+                    f'export DARWIN_VNEXT_DISTRIBUTION_FILE="{manifest}"',
+                    'export DARWIN_VNEXT_COUNCIL="0x00000000000000000000000000000000000000aa"',
+                    'export DARWIN_VNEXT_GUARDIAN="0x00000000000000000000000000000000000000bb"',
+                ]) + "\n"
+            )
+
+            fake_bin.mkdir(parents=True, exist_ok=True)
+            fake_cast.write_text(
+                """#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-}" == "chain-id" ]]; then
+  echo "84532"
+  exit 0
+fi
+echo "unexpected cast call: $*" >&2
+exit 1
+"""
+            )
+            fake_forge.write_text(
+                """#!/usr/bin/env bash
+set -euo pipefail
+exit 0
+"""
+            )
+            fake_cast.chmod(0o755)
+            fake_forge.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "ops" / "preflight_vnext_governance.sh"),
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("ready_to_deploy: yes", result.stdout)
+            self.assertIn("0x0000000000000000000000000000000000000011", result.stdout)
+            self.assertIn("0x" + ("11" * 32), result.stdout)
+            print("  Ops: vNext governance preflight resolves a public-safe artifact plus local manifest")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

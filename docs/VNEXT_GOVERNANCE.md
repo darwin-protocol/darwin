@@ -12,6 +12,16 @@ The current implementation still has one central weakness:
 
 - several core contracts hard-wire governance in the constructor and require redeploy on governance compromise
 
+## First Deployable Layer
+
+The first operational vNext path now exists:
+
+- Merkle manifest builder: [`ops/build_drw_merkle_distribution.py`](../ops/build_drw_merkle_distribution.py)
+- preflight: [`ops/preflight_vnext_governance.sh`](../ops/preflight_vnext_governance.sh)
+- deploy wrapper: [`ops/deploy_vnext_governance.sh`](../ops/deploy_vnext_governance.sh)
+- deploy script: [`contracts/script/DeployVNextGovernance.s.sol`](../contracts/script/DeployVNextGovernance.s.sol)
+- runbook: [`docs/VNEXT_DEPLOYMENT.md`](./VNEXT_DEPLOYMENT.md)
+
 ## What vNext Changes
 
 ### 1. Progressive decentralization instead of vague democratization

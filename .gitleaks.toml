@@ -9,5 +9,4 @@ regexTarget = "match"
 regexes = [
   '''(?i)[a-z_]*token[a-z_]*["'` ]*:\s*["'`]0x[a-f0-9]{40}["'`]?''',
   '''(?i)[a-z_]*authority[a-z_]*["'` ]*:\s*["'`]0x[a-f0-9]{40}["'`]?''',
-  '''token_governance=["'`]0x[a-f0-9]{40}["'`]''',
 ]
