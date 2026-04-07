@@ -64,6 +64,9 @@ export default function HomePage() {
               <Link className="button button-secondary" href="/trade/?preset=tiny-sell">
                 Try tiny swap
               </Link>
+              <Link className="button button-secondary" href="/activity/">
+                Live activity
+              </Link>
               <a
                 className="button button-secondary"
                 href="https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md"
@@ -173,6 +176,9 @@ export default function HomePage() {
             <div className="link-row">
               <Link className="button button-secondary" href="/trade/">
                 Market page
+              </Link>
+              <Link className="button button-secondary" href="/activity/">
+                Activity page
               </Link>
               <a
                 className="button button-secondary"

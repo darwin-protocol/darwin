@@ -123,6 +123,7 @@ The portal supports:
 - direct `WETH -> DRW` and `DRW -> WETH` swaps
 - direct `ETH -> WETH` wrapping for the quote side
 - tiny-swap presets and shareable `?preset=` links for community onboarding
+- public `/activity` view for recent DARWIN onchain events
 
 ## Tiny Swap Path
 
@@ -141,6 +142,35 @@ https://usedarwin.xyz/trade/?preset=tiny-sell
 ```
 
 That path works better than `tiny buy` because faucet claimants already receive DRW and a small native gas drip. `tiny buy` is still available for users who already hold extra Base Sepolia ETH and want to wrap a minimal amount into WETH.
+
+## Activity Tracking
+
+Public community surface:
+
+- `https://usedarwin.xyz/activity/`
+
+That page shows recent DARWIN-related Base Sepolia events:
+
+- reference-pool swaps
+- faucet claims
+- Merkle distributor claims
+
+Operator-side external tracking should stay local, not public. Use:
+
+```bash
+./.venv/bin/python ops/report_external_activity.py \
+  --deployment-file ops/deployments/base-sepolia-recovery.json \
+  --json-out ops/state/activity/external-activity.json \
+  --markdown-out ops/state/activity/external-activity.md
+```
+
+If you want genuine third-party activity separated from project-controlled wallets, keep a local allowlist in:
+
+```text
+~/.config/darwin/project-wallets.json
+```
+
+That file should remain local-only.
 
 ## Transparent Distribution
 

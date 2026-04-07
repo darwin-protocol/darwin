@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Script from "next/script";
 
 export const metadata = {
@@ -56,6 +57,9 @@ export default function TradePage() {
               <button id="watchAssetButton" className="button button-secondary">
                 Add DRW to wallet
               </button>
+              <Link className="button button-secondary" href="/activity/">
+                View activity
+              </Link>
             </div>
           </div>
 

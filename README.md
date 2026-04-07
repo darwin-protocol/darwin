@@ -6,6 +6,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 
 - Site: `https://usedarwin.xyz/`
 - Market: `https://usedarwin.xyz/trade/`
+- Activity: `https://usedarwin.xyz/activity/`
 - Public status: [LIVE_STATUS.md](LIVE_STATUS.md)
 - Market runbook: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
 - Security reporting: [docs/SECURITY.md](docs/SECURITY.md)
@@ -20,6 +21,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Public `DRW` faucet
 - Public `DRW / WETH` reference pool
 - Public browser trade portal
+- Public activity feed
 
 ## Public Notes
 

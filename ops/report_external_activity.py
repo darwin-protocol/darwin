@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""Report recent DARWIN activity and separate project-controlled vs outside wallets."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterable
+from urllib.request import Request, urlopen
+
+from Crypto.Hash import keccak
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DEPLOYMENT = REPO_ROOT / "ops" / "deployments" / "base-sepolia-recovery.json"
+DEFAULT_PROJECT_WALLETS = Path.home() / ".config" / "darwin" / "project-wallets.json"
+
+NETWORK_DEFAULTS = {
+    84532: "https://sepolia.base.org",
+    8453: "https://mainnet.base.org",
+}
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--deployment-file", default=str(DEFAULT_DEPLOYMENT))
+    parser.add_argument("--vnext-file", default="")
+    parser.add_argument("--project-wallets-file", default=str(DEFAULT_PROJECT_WALLETS))
+    parser.add_argument("--rpc-url", default="")
+    parser.add_argument("--lookback-blocks", type=int, default=200000)
+    parser.add_argument("--max-log-range", type=int, default=10000)
+    parser.add_argument("--json-out", default="")
+    parser.add_argument("--markdown-out", default="")
+    return parser.parse_args()
+
+
+def load_json(path: Path) -> dict:
+    return json.loads(path.read_text())
+
+
+def normalize_address(value: str) -> str:
+    if not value:
+        return ""
+    value = value.lower()
+    if not value.startswith("0x"):
+        value = "0x" + value
+    if len(value) != 42:
+        raise ValueError(f"invalid address: {value}")
+    return value
+
+
+def topic_hash(signature: str) -> str:
+    digest = keccak.new(digest_bits=256)
+    digest.update(signature.encode())
+    return "0x" + digest.hexdigest()
+
+
+def address_from_topic(topic: str) -> str:
+    return normalize_address("0x" + topic[-40:])
+
+
+def words_from_data(data: str) -> list[int]:
+    payload = data.removeprefix("0x")
+    return [int(payload[i : i + 64], 16) for i in range(0, len(payload), 64) if payload[i : i + 64]]
+
+
+def rpc_json(url: str, method: str, params: list) -> dict:
+    request = Request(
+        url,
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "darwin-activity/1"},
+        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
+    )
+    return json.loads(urlopen(request, timeout=20).read().decode())
+
+
+def rpc_block_number(url: str) -> int:
+    return int(rpc_json(url, "eth_blockNumber", [])["result"], 16)
+
+
+def rpc_get_logs(
+    url: str,
+    *,
+    address: str,
+    from_block: int,
+    to_block: int,
+    topic0: str,
+    max_log_range: int,
+) -> list[dict]:
+    if max_log_range <= 0:
+        raise ValueError("max_log_range must be positive")
+
+    logs: list[dict] = []
+    chunk_start = from_block
+    while chunk_start <= to_block:
+        chunk_end = min(to_block, chunk_start + max_log_range - 1)
+        payload = {
+            "address": address,
+            "fromBlock": hex(chunk_start),
+            "toBlock": hex(chunk_end),
+            "topics": [topic0],
+        }
+        logs.extend(rpc_json(url, "eth_getLogs", [payload]).get("result", []))
+        chunk_start = chunk_end + 1
+    return logs
+
+
+def collect_addresses(node: object) -> set[str]:
+    found: set[str] = set()
+    if isinstance(node, dict):
+        for value in node.values():
+            found.update(collect_addresses(value))
+    elif isinstance(node, list):
+        for value in node:
+            found.update(collect_addresses(value))
+    elif isinstance(node, str) and node.startswith("0x") and len(node) == 42:
+        found.add(normalize_address(node))
+    return found
+
+
+def parse_project_wallets(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    return collect_addresses(load_json(path))
+
+
+def format_units(value: int, decimals: int = 18, precision: int = 6) -> str:
+    scaled = value / (10**decimals)
+    text = f"{scaled:.{precision}f}"
+    return text.rstrip("0").rstrip(".")
+
+
+def parse_swap(log: dict, token_address: str, quote_address: str) -> dict:
+    words = words_from_data(log["data"])
+    amount_in, amount_out, recipient_word = words
+    trader = address_from_topic(log["topics"][1])
+    token_in = address_from_topic(log["topics"][2])
+    token_out = address_from_topic(log["topics"][3])
+    recipient = normalize_address("0x" + hex(recipient_word)[2:].rjust(40, "0")[-40:])
+    sold_token = token_in == normalize_address(token_address)
+    title = "swap_sell" if sold_token else "swap_buy"
+    detail = f"{format_units(amount_in)} {'DRW' if token_in == normalize_address(token_address) else 'WETH'} -> {format_units(amount_out, 18, 12)} {'DRW' if token_out == normalize_address(token_address) else 'WETH'}"
+    return {
+        "type": "swap",
+        "title": title,
+        "actor": trader,
+        "counterparty": recipient,
+        "detail": detail,
+        "tx_hash": log["transactionHash"],
+        "block_number": int(log["blockNumber"], 16),
+    }
+
+
+def parse_faucet_claim(log: dict) -> dict:
+    words = words_from_data(log["data"])
+    token_amount, native_amount, _next_eligible = words
+    claimer = address_from_topic(log["topics"][1])
+    recipient = address_from_topic(log["topics"][2])
+    return {
+        "type": "faucet",
+        "title": "faucet_claim",
+        "actor": claimer,
+        "counterparty": recipient,
+        "detail": f"{format_units(token_amount)} DRW + {format_units(native_amount, 18, 6)} ETH",
+        "tx_hash": log["transactionHash"],
+        "block_number": int(log["blockNumber"], 16),
+    }
+
+
+def parse_distributor_claim(log: dict) -> dict:
+    words = words_from_data(log["data"])
+    amount = words[0]
+    account = address_from_topic(log["topics"][2])
+    return {
+        "type": "distributor",
+        "title": "distribution_claim",
+        "actor": account,
+        "counterparty": account,
+        "detail": f"{format_units(amount)} DRW",
+        "tx_hash": log["transactionHash"],
+        "block_number": int(log["blockNumber"], 16),
+    }
+
+
+def render_markdown(report: dict) -> str:
+    lines = [
+        "# DARWIN External Activity",
+        "",
+        f"- Generated at: `{report['generated_at']}`",
+        f"- Network: `{report['network']}`",
+        f"- Lookback blocks: `{report['lookback_blocks']}`",
+        f"- Total events: `{report['summary']['total_events']}`",
+        f"- External events: `{report['summary']['external_events']}`",
+        f"- External wallets: `{report['summary']['external_wallets']}`",
+        "",
+        "## Recent External Activity",
+        "",
+    ]
+
+    if not report["recent_external"]:
+        lines.append("- none in current lookback window")
+    else:
+        for event in report["recent_external"][:25]:
+            lines.append(
+                f"- `{event['type']}` `{event['actor']}` {event['detail']} tx `{event['tx_hash']}`"
+            )
+    return "\n".join(lines) + "\n"
+
+
+def write_report(path_value: str, content: str) -> None:
+    path = Path(path_value).expanduser()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
+def main() -> int:
+    args = parse_args()
+    deployment_path = Path(args.deployment_file).expanduser().resolve()
+    deployment = load_json(deployment_path)
+    vnext_path = Path(args.vnext_file).expanduser().resolve() if args.vnext_file else deployment_path.with_suffix(".vnext.json")
+    vnext = load_json(vnext_path) if vnext_path.exists() else {}
+
+    rpc_url = args.rpc_url or os.environ.get("DARWIN_RPC_URL") or os.environ.get("BASE_SEPOLIA_RPC_URL") or NETWORK_DEFAULTS[int(deployment["chain_id"])]
+    latest_block = rpc_block_number(rpc_url)
+    from_block = max(0, latest_block - args.lookback_blocks)
+
+    pool_address = deployment["market"]["contracts"]["reference_pool"]
+    token_address = deployment["contracts"]["drw_token"]
+    quote_address = deployment["market"]["quote_token"]
+    faucet_address = ((deployment.get("faucet") or {}).get("contracts") or {}).get("drw_faucet", "")
+    distributor_address = ((vnext.get("vnext") or {}).get("contracts") or {}).get("drw_merkle_distributor", "")
+
+    events = [
+        *(
+            parse_swap(log, token_address, quote_address)
+            for log in rpc_get_logs(
+                rpc_url,
+                address=pool_address,
+                from_block=from_block,
+                to_block=latest_block,
+                topic0=topic_hash("SwapExecuted(address,address,uint256,address,uint256,address)"),
+                max_log_range=args.max_log_range,
+            )
+        ),
+    ]
+
+    if faucet_address:
+        events.extend(
+            parse_faucet_claim(log)
+            for log in rpc_get_logs(
+                rpc_url,
+                address=faucet_address,
+                from_block=from_block,
+                to_block=latest_block,
+                topic0=topic_hash("Claimed(address,address,uint256,uint256,uint256)"),
+                max_log_range=args.max_log_range,
+            )
+        )
+
+    if distributor_address:
+        events.extend(
+            parse_distributor_claim(log)
+            for log in rpc_get_logs(
+                rpc_url,
+                address=distributor_address,
+                from_block=from_block,
+                to_block=latest_block,
+                topic0=topic_hash("Claimed(uint256,address,uint256)"),
+                max_log_range=args.max_log_range,
+            )
+        )
+
+    events.sort(key=lambda item: (item["block_number"], item["tx_hash"]), reverse=True)
+
+    project_wallets = collect_addresses(deployment) | collect_addresses(vnext) | parse_project_wallets(Path(args.project_wallets_file))
+    external_events = [event for event in events if normalize_address(event["actor"]) not in project_wallets]
+    external_wallets = sorted({normalize_address(event["actor"]) for event in external_events})
+
+    report = {
+        "generated_at": utc_now(),
+        "network": deployment["network"],
+        "rpc_url": rpc_url,
+        "lookback_blocks": args.lookback_blocks,
+        "summary": {
+            "total_events": len(events),
+            "external_events": len(external_events),
+            "external_wallets": len(external_wallets),
+        },
+        "recent_events": events[:50],
+        "recent_external": external_events[:50],
+    }
+
+    rendered = json.dumps(report, indent=2) + "\n"
+    print(rendered)
+
+    if args.json_out:
+        write_report(args.json_out, rendered)
+    if args.markdown_out:
+        write_report(args.markdown_out, render_markdown(report))
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

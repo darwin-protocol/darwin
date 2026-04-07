@@ -73,6 +73,8 @@ def main() -> int:
     contracts = deployment.get("contracts") or {}
     drw = deployment.get("drw") or {}
     faucet = deployment.get("faucet") or {}
+    vnext_path = deployment_path.with_suffix(".vnext.json")
+    vnext = load_json(vnext_path) if vnext_path.exists() else {}
 
     if not market.get("enabled"):
         raise SystemExit("deployment artifact does not enable market mode")
@@ -139,6 +141,9 @@ def main() -> int:
             "live_status": f"{args.repo_url}/blob/main/LIVE_STATUS.md",
             "market_bootstrap": f"{args.repo_url}/blob/main/docs/MARKET_BOOTSTRAP.md",
         },
+        "activity": {
+            "lookback_blocks": 200_000,
+        },
         "notes": {
             "alpha_stage": True,
             "bond_asset_mode": deployment.get("bond_asset_mode", "external"),
@@ -147,6 +152,14 @@ def main() -> int:
             "warning": "This is a DARWIN-owned Base Sepolia reference pool. It is live and tradeable, but it is still testnet alpha infrastructure.",
         },
     }
+
+    vnext_contracts = ((vnext.get("vnext") or {}).get("contracts") or {})
+    if vnext_contracts.get("drw_merkle_distributor"):
+        config["vnext"] = {
+            "enabled": bool((vnext.get("vnext") or {}).get("enabled", False)),
+            "distributor": vnext_contracts["drw_merkle_distributor"],
+            "timelock": vnext_contracts.get("darwin_timelock", ""),
+        }
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")

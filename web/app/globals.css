@@ -490,6 +490,10 @@ code {
   grid-column: span 2;
 }
 
+.activity-panel {
+  grid-column: span 2;
+}
+
 .qr-layout {
   display: grid;
   grid-template-columns: 16rem minmax(0, 1fr);
@@ -567,6 +571,29 @@ code {
   line-height: 1.55;
 }
 
+.activity-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.activity-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(20, 62, 108, 0.08);
+}
+
+.activity-top,
+.activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.55rem;
+  align-items: center;
+}
+
 @media (max-width: 900px) {
   .hero,
   .layout {
@@ -586,7 +613,8 @@ code {
 
   .swap-panel,
   .message-panel,
-  .qr-panel {
+  .qr-panel,
+  .activity-panel {
     grid-row: auto;
     grid-column: span 1;
   }
