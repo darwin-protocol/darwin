@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Script from "next/script";
 
 const siteUrl = "https://usedarwin.xyz";
 const miniAppEmbed = JSON.stringify({
@@ -43,6 +44,8 @@ export const metadata = {
   },
 };
 
+const homeScriptVersion = "20260407-home1";
+
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -55,6 +58,8 @@ const structuredData = {
 export default function HomePage() {
   return (
     <div className="background-shell">
+      <Script src={`./home.js?v=${homeScriptVersion}`} strategy="afterInteractive" />
+
       <div className="background">
         <div className="orb orb-a"></div>
         <div className="orb orb-b"></div>
@@ -141,6 +146,61 @@ export default function HomePage() {
         </section>
 
         <section className="home-grid">
+          <article className="card home-panel">
+            <div className="section-heading">
+              <h2>Current epoch</h2>
+              <span id="homeEpochBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <strong id="homeEpochTitle">Loading epoch.</strong>
+            <p id="homeEpochSummary" className="caption">
+              Waiting for the live Darwin community loop.
+            </p>
+            <div className="stat-grid">
+              <div className="metric">
+                <span className="label">Outside wallets</span>
+                <strong id="homeExternalWallets">-</strong>
+                <small>recent non-project participants</small>
+              </div>
+              <div className="metric">
+                <span className="label">Outside swaps</span>
+                <strong id="homeExternalSwaps">-</strong>
+                <small>recent non-project swaps</small>
+              </div>
+              <div className="metric">
+                <span className="label">Total events</span>
+                <strong id="homeTotalEvents">-</strong>
+                <small>recent Darwin contract events</small>
+              </div>
+              <div className="metric">
+                <span className="label">Community state</span>
+                <strong id="homeCommunityStatus">loading</strong>
+                <small id="homeCommunityUpdatedAt">Waiting for a live community snapshot.</small>
+              </div>
+            </div>
+            <div className="hero-actions">
+              <a id="homeEpochLink" className="button button-secondary" href="/epoch/">
+                Epoch page
+              </a>
+              <a id="homeTinySwapLink" className="button button-secondary" href="/trade/?preset=tiny-sell">
+                Tiny swap
+              </a>
+              <a id="homeActivityLink" className="button button-secondary" href="/activity/">
+                Public proof
+              </a>
+              <button id="copyInviteButton" className="button button-secondary">
+                Copy invite text
+              </button>
+              <button id="copyTinySwapHomeButton" className="button button-secondary">
+                Copy tiny-swap link
+              </button>
+              <button id="copyActivityHomeButton" className="button button-secondary">
+                Copy activity link
+              </button>
+            </div>
+          </article>
+
           <article className="card home-panel">
             <div className="section-heading">
               <h2>What is live</h2>

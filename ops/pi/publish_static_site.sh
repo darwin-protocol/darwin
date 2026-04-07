@@ -16,6 +16,7 @@ PYTHON_BIN="${DARWIN_PYTHON:-$REPO_ROOT/.venv/bin/python}"
 MARKET_CONFIG_PATH="$REPO_ROOT/web/public/market-config.json"
 RUNTIME_STATUS_PATH="$REPO_ROOT/web/public/runtime-status.json"
 ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary.json"
+COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share.json"
 TMP_DIR="$(mktemp -d)"
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
@@ -32,6 +33,9 @@ restore_files() {
   if [[ -f "$TMP_DIR/activity-summary.json" ]]; then
     cp "$TMP_DIR/activity-summary.json" "$ACTIVITY_SUMMARY_PATH"
   fi
+  if [[ -f "$TMP_DIR/community-share.json" ]]; then
+    cp "$TMP_DIR/community-share.json" "$COMMUNITY_SHARE_PATH"
+  fi
   rm -rf "$TMP_DIR"
 }
 
@@ -45,6 +49,7 @@ fi
 cp "$MARKET_CONFIG_PATH" "$TMP_DIR/market-config.json"
 cp "$RUNTIME_STATUS_PATH" "$TMP_DIR/runtime-status.json"
 cp "$ACTIVITY_SUMMARY_PATH" "$TMP_DIR/activity-summary.json"
+cp "$COMMUNITY_SHARE_PATH" "$TMP_DIR/community-share.json"
 
 pushd "$REPO_ROOT" >/dev/null
 if "$PYTHON_BIN" ops/build_project_wallet_allowlist.py >/dev/null && \
@@ -65,6 +70,15 @@ fi
   --hosting-mode cloudflare-tunnel \
   --site-domain "$SITE_DOMAIN" \
   --out web/public/runtime-status.json
+if "$PYTHON_BIN" ops/export_community_share_bundle.py \
+  --market-config web/public/market-config.json \
+  --activity-summary web/public/activity-summary.json \
+  --site-url "https://${SITE_DOMAIN}" \
+  --out web/public/community-share.json >/dev/null; then
+  echo "[darwin-pi] community share bundle exported"
+else
+  echo "[darwin-pi] warning: failed to refresh community share bundle; keeping existing file" >&2
+fi
 DARWIN_SITE_DOMAIN="$SITE_DOMAIN" DARWIN_SITE_BASE_PATH="" npm --prefix web run build
 rsync -az --delete web/out/ "${PI_USER}@${PI_HOST}:${DEST_DIR}/"
 popd >/dev/null

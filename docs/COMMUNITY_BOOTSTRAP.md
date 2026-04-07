@@ -15,6 +15,7 @@ Do not manufacture volume with project bots or self-generated optics. That creat
 - Epoch: `https://usedarwin.xyz/epoch/`
 - Tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell`
 - Activity portal: `https://usedarwin.xyz/activity/`
+- Share bundle: `https://usedarwin.xyz/community-share.json`
 
 ## Best Current Distribution Path
 
@@ -54,6 +55,8 @@ Then generate the local outside-activity report:
 That report is the honest operator view of whether any activity is genuinely third-party.
 
 The publish path now also exports a public-safe summary to `web/public/activity-summary.json` so the live site can show outside-wallet counts without exposing the local allowlist or operator notes.
+
+It also exports a public-safe outreach bundle to `web/public/community-share.json`. That bundle includes the current epoch, public links, and honest invite text derived from the live outside-activity snapshot. It is safe for operators or external agents to consume because it contains only public campaign data and public URLs.
 
 ## Farcaster and Base App
 

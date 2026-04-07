@@ -1,0 +1,47 @@
+{
+  "epoch": {
+    "activity_path": "/activity/",
+    "cta_label": "Start with tiny sell",
+    "cta_path": "/trade/?preset=tiny-sell",
+    "focus": "The first outside Darwin actions should be small, legible, and repeatable.",
+    "goals": [
+      "Claim 100 DRW from the public faucet.",
+      "Use the tiny sell or tiny buy preset for one first swap.",
+      "Share the public activity link and bring one more wallet."
+    ],
+    "id": "epoch-alpha",
+    "milestones": {
+      "external_swaps_target": 40,
+      "external_wallets_target": 25
+    },
+    "share_path": "/epoch/",
+    "share_text": "I claimed DRW and made a tiny Darwin swap on Base Sepolia.",
+    "status": "live",
+    "summary": "Claim DRW, make one tiny swap, and share the public proof surface.",
+    "title": "Epoch Alpha"
+  },
+  "generated_at": "2026-04-07T18:59:05.063004Z",
+  "links": {
+    "activity": "https://usedarwin.xyz/activity/",
+    "epoch": "https://usedarwin.xyz/epoch/",
+    "site": "https://usedarwin.xyz",
+    "tiny_swap": "https://usedarwin.xyz/trade/?preset=tiny-sell"
+  },
+  "messages": {
+    "invite_long": "Claim DRW, make one tiny swap, and share the public proof surface. No outside wallets have appeared in the current Darwin window yet. Epoch progress: 0/25 outside wallets, 0/40 outside swaps, 0 total Darwin events. Start at https://usedarwin.xyz/epoch/ or jump directly to the tiny swap: https://usedarwin.xyz/trade/?preset=tiny-sell Public proof: https://usedarwin.xyz/activity/",
+    "invite_short": "Be one of the first outside wallets to try Darwin on Base Sepolia: https://usedarwin.xyz/trade/?preset=tiny-sell",
+    "progress_line": "Epoch progress: 0/25 outside wallets, 0/40 outside swaps, 0 total Darwin events.",
+    "status_line": "No outside wallets have appeared in the current Darwin window yet."
+  },
+  "site_url": "https://usedarwin.xyz",
+  "stats": {
+    "external_claims": 0,
+    "external_events": 0,
+    "external_swaps": 0,
+    "external_wallets": 0,
+    "project_events": 0,
+    "project_wallets": 0,
+    "total_events": 0,
+    "total_wallets": 0
+  }
+}
