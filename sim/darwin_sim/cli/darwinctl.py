@@ -506,17 +506,17 @@ def cmd_role_audit(args):
     live = LiveRoleState(
         token_governance = _rpc_call_address(base_rpc_url, contracts["drw_token"], "0x5aa6e675"),
         token_genesis_operator = _rpc_call_address(base_rpc_url, contracts["drw_token"], "0x018b2a45"),
-        token_genesis_finalized=_rpc_call_bool(base_rpc_url, contracts["drw_token"], "0x4421d5f5"),
-        staking_governance=_rpc_call_address(base_rpc_url, contracts["drw_staking"], "0x5aa6e675"),
-        staking_genesis_operator=_rpc_call_address(base_rpc_url, contracts["drw_staking"], "0x018b2a45"),
-        faucet_governance=_rpc_call_address(base_rpc_url, contracts["drw_faucet"], "0x5aa6e675"),
-        pool_governance=_rpc_call_address(base_rpc_url, contracts["reference_pool"], "0x5aa6e675"),
-        pool_market_operator=_rpc_call_address(base_rpc_url, contracts["reference_pool"], "0xb1ae3471"),
-        hub_governance=_rpc_call_address(base_rpc_url, contracts["settlement_hub"], "0x5aa6e675"),
-        hub_batch_operator_deployer=_rpc_call_bool(
+        token_genesis_finalized = _rpc_call_bool(base_rpc_url, contracts["drw_token"], "0x4421d5f5"),
+        staking_governance = _rpc_call_address(base_rpc_url, contracts["drw_staking"], "0x5aa6e675"),
+        staking_genesis_operator = _rpc_call_address(base_rpc_url, contracts["drw_staking"], "0x018b2a45"),
+        faucet_governance = _rpc_call_address(base_rpc_url, contracts["drw_faucet"], "0x5aa6e675"),
+        pool_governance = _rpc_call_address(base_rpc_url, contracts["reference_pool"], "0x5aa6e675"),
+        pool_market_operator = _rpc_call_address(base_rpc_url, contracts["reference_pool"], "0xb1ae3471"),
+        hub_governance = _rpc_call_address(base_rpc_url, contracts["settlement_hub"], "0x5aa6e675"),
+        hub_batch_operator_deployer = _rpc_call_bool(
             base_rpc_url, contracts["settlement_hub"], "0xd220935c" + _abi_encode_address(deployment.deployer)
         ),
-        hub_batch_operator_governance=_rpc_call_bool(
+        hub_batch_operator_governance = _rpc_call_bool(
             base_rpc_url,
             contracts["settlement_hub"],
             "0xd220935c" + _abi_encode_address(deployment.roles["governance"]),
