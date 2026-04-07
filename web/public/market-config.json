@@ -1,6 +1,34 @@
 {
   "activity": {
-    "lookback_blocks": 50000
+    "lookback_blocks": 50000,
+    "summary_path": "/activity-summary.json"
+  },
+  "community": {
+    "activity_path": "/activity/",
+    "epoch": {
+      "activity_path": "/activity/",
+      "cta_label": "Start with tiny sell",
+      "cta_path": "/trade/?preset=tiny-sell",
+      "focus": "The first outside Darwin actions should be small, legible, and repeatable.",
+      "goals": [
+        "Claim 100 DRW from the public faucet.",
+        "Use the tiny sell or tiny buy preset for one first swap.",
+        "Share the public activity link and bring one more wallet."
+      ],
+      "id": "epoch-alpha",
+      "milestones": {
+        "external_swaps_target": 40,
+        "external_wallets_target": 25
+      },
+      "share_path": "/epoch/",
+      "share_text": "I claimed DRW and made a tiny Darwin swap on Base Sepolia.",
+      "status": "live",
+      "summary": "Claim DRW, make one tiny swap, and share the public proof surface.",
+      "title": "Epoch Alpha"
+    },
+    "epoch_path": "/epoch/",
+    "share_text": "Claim DRW, make one tiny swap, and share the Darwin activity page.",
+    "tiny_swap_path": "/trade/?preset=tiny-sell"
   },
   "faucet": {
     "address": "0xB08e9dfaD5C64CC29DA82D2d4a42AaA64Fe1E9c1",
@@ -12,8 +40,9 @@
     "initial_token_funding": "123000000000000000000",
     "native_drip_amount": "10000000000000"
   },
-  "generated_at": "2026-04-07T16:04:09.448772Z",
+  "generated_at": "2026-04-07T16:38:23.243764Z",
   "links": {
+    "community_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/COMMUNITY_BOOTSTRAP.md",
     "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",
     "market_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md",
     "repo": "https://github.com/darwin-protocol/darwin"

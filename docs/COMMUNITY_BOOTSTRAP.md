@@ -12,6 +12,7 @@ Do not manufacture volume with project bots or self-generated optics. That creat
 ## Public Surface
 
 - Site: `https://usedarwin.xyz/`
+- Epoch: `https://usedarwin.xyz/epoch/`
 - Tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell`
 - Activity portal: `https://usedarwin.xyz/activity/`
 
@@ -25,8 +26,10 @@ For real outside onboarding, use:
 
 The public portal now exposes:
 
+- a shareable epoch landing page
 - a shareable tiny-swap preset
 - live DARWIN contract activity
+- a public-safe outside-activity counter
 - public contract explorer links for token, pool, faucet, distributor, and timelock
 
 ## Tracking Real Outside Activity
@@ -50,6 +53,8 @@ Then generate the local outside-activity report:
 
 That report is the honest operator view of whether any activity is genuinely third-party.
 
+The publish path now also exports a public-safe summary to `web/public/activity-summary.json` so the live site can show outside-wallet counts without exposing the local allowlist or operator notes.
+
 ## Farcaster and Base App
 
 The repo now emits page-level Farcaster embed metadata on the main public pages so shared DARWIN links can launch the web app cleanly in Farcaster-compatible clients.
@@ -60,7 +65,8 @@ That means the next promotion path is:
 
 1. keep the public site working as a normal web app
 2. keep page-level embeds on the shareable URLs
-3. register the app in Base.dev when you are ready for Base App distribution
+3. keep the standard web app manifest live
+4. register the app in Base.dev when you are ready for Base App distribution
 
 ## Useful Official References
 
@@ -72,4 +78,3 @@ That means the next promotion path is:
   `https://docs.base.org/mini-apps/core-concepts/manifest`
 - Base network information:
   `https://docs.base.org/base-chain/network-information`
-

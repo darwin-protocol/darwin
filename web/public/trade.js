@@ -32,6 +32,7 @@ const FAUCET_ABI = [
 const state = {
   config: null,
   runtimeStatus: null,
+  activitySummary: null,
   rpcProvider: null,
   browserProvider: null,
   injectedProvider: null,
@@ -39,6 +40,7 @@ const state = {
   account: "",
   mode: "buy",
   tinyPreset: "",
+  sharePayload: null,
   token: null,
   quoteToken: null,
   pool: null,
@@ -144,6 +146,10 @@ function buildTinySwapUrl(presetName) {
   return url.toString();
 }
 
+function absoluteUrl(path) {
+  return new URL(path, window.location.origin).toString();
+}
+
 function setMessage(kind, text, txHash = "") {
   els.messageKind.textContent = kind;
   els.messageText.textContent = text;
@@ -156,6 +162,60 @@ function setMessage(kind, text, txHash = "") {
     els.messageLink.href = "#";
     els.messageLink.textContent = "";
   }
+}
+
+function setSharePayload(payload = null, prompt = "") {
+  state.sharePayload = payload;
+  const enabled = Boolean(payload?.url);
+  els.shareActionButton.disabled = !enabled;
+  els.copyActionLinkButton.disabled = !enabled;
+  els.sharePrompt.textContent =
+    prompt || (enabled ? `${payload.text} ${payload.url}` : "Complete a claim, wrap, or swap to create a shareable Darwin proof link.");
+}
+
+async function shareCurrentPayload() {
+  if (!state.sharePayload?.url) return;
+  if (navigator.share) {
+    await navigator.share(state.sharePayload);
+    setMessage("share", "Shared Darwin progress.");
+    return;
+  }
+  await navigator.clipboard.writeText(`${state.sharePayload.text}\n${state.sharePayload.url}`);
+  setMessage("share", "Share text copied.");
+}
+
+function actionSharePayload(kind, txHash = "") {
+  const epoch = state.config.community?.epoch || {};
+  const tinySwapUrl = absoluteUrl(state.config.community?.tiny_swap_path || "/trade/?preset=tiny-sell");
+  const epochUrl = absoluteUrl(epoch.share_path || state.config.community?.epoch_path || "/epoch/");
+  const activityUrl = absoluteUrl(state.config.community?.activity_path || "/activity/");
+
+  if (kind === "faucet") {
+    return {
+      title: "Claimed DRW",
+      text: `I claimed DRW on Base Sepolia and the next Darwin move is a tiny swap. ${shortAddress(txHash)}`,
+      url: epochUrl,
+    };
+  }
+  if (kind === "wrap") {
+    return {
+      title: "Wrapped for Darwin",
+      text: `I wrapped a small amount of Base Sepolia ETH to get ready for a Darwin tiny swap. ${shortAddress(txHash)}`,
+      url: tinySwapUrl,
+    };
+  }
+  if (kind === "swap") {
+    return {
+      title: "Tiny Darwin swap",
+      text: `I just used the Darwin tiny-swap path on Base Sepolia. Public proof is on the activity page. ${shortAddress(txHash)}`,
+      url: activityUrl,
+    };
+  }
+  return {
+    title: "Use Darwin",
+    text: epoch.share_text || state.config.community?.share_text || "Claim DRW, make one tiny swap, and share the Darwin activity page.",
+    url: epochUrl,
+  };
 }
 
 async function discoverInjectedProvider() {
@@ -281,6 +341,18 @@ async function loadRuntimeStatus() {
   }
 }
 
+async function loadActivitySummary() {
+  try {
+    const response = await fetch(`../activity-summary.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    state.activitySummary = await response.json();
+  } catch {
+    state.activitySummary = null;
+  }
+}
+
 function bindStaticConfig() {
   els.chainBadge.textContent = state.config.network.name;
   els.feeBadge.textContent = `${state.config.pool.fee_bps} bps`;
@@ -306,6 +378,21 @@ function bindStaticConfig() {
   els.marketDocLink.href = state.config.links.market_bootstrap;
   els.repoLink.href = state.config.links.repo;
   els.tokenSupply.textContent = formatUnits(state.config.token.total_supply || 0, state.config.token.decimals, 3);
+
+  const epoch = state.config.community?.epoch;
+  if (epoch) {
+    els.tradeEpochBadge.textContent = epoch.status || "live";
+    els.tradeEpochTitle.textContent = epoch.title || "Darwin epoch";
+    els.tradeEpochSummary.textContent = epoch.summary || "";
+    els.tradeEpochLink.href = epoch.share_path || state.config.community?.epoch_path || "/epoch/";
+    els.tradeCommunityHint.textContent = epoch.focus || els.tradeCommunityHint.textContent;
+  }
+
+  const summary = state.activitySummary?.summary;
+  if (summary) {
+    els.tradeExternalWalletCount.textContent = String(summary.external_wallets ?? 0);
+    els.tradeExternalSwapCount.textContent = String(summary.external_swaps ?? 0);
+  }
 }
 
 async function refreshMarket() {
@@ -484,6 +571,10 @@ async function handleSwap() {
     );
     await tx.wait();
     setMessage("swap", "Swap confirmed on Base Sepolia.", tx.hash);
+    setSharePayload(
+      actionSharePayload("swap", tx.hash),
+      "Swap confirmed. Share the Darwin activity page so another wallet can follow the same tiny path.",
+    );
     await Promise.all([refreshMarket(), refreshWallet(), refreshQuote()]);
   } catch (error) {
     setMessage("error", error?.shortMessage || error?.message || "Swap failed.");
@@ -512,6 +603,10 @@ async function handleWrap() {
     setMessage("wrap", `Wrap submitted for ${rawAmount} ETH.`, tx.hash);
     await tx.wait();
     setMessage("wrap", "Wrap confirmed on Base Sepolia.", tx.hash);
+    setSharePayload(
+      actionSharePayload("wrap", tx.hash),
+      "Wrap confirmed. You can share the tiny-buy path or continue into a tiny swap.",
+    );
     await Promise.all([refreshWallet(), refreshQuote(), refreshMarket()]);
   } catch (error) {
     setMessage("error", error?.shortMessage || error?.message || "Wrap failed.");
@@ -537,6 +632,11 @@ async function handleClaim() {
     setMessage("faucet", "Faucet claim submitted.", tx.hash);
     await tx.wait();
     setMessage("faucet", "Faucet claim confirmed.", tx.hash);
+    await applyTinyPreset("tiny-sell", { announce: false, persist: true });
+    setSharePayload(
+      actionSharePayload("faucet", tx.hash),
+      "Claim confirmed. The recommended next move is a tiny sell, then share the public activity page.",
+    );
     await Promise.all([refreshWallet(), refreshMarket(), refreshQuote()]);
   } catch (error) {
     setMessage("error", error?.shortMessage || error?.message || "Faucet claim failed.");
@@ -668,10 +768,22 @@ async function boot() {
     messageKind: $("messageKind"),
     messageText: $("messageText"),
     messageLink: $("messageLink"),
+    tradeEpochBadge: $("tradeEpochBadge"),
+    tradeEpochTitle: $("tradeEpochTitle"),
+    tradeEpochSummary: $("tradeEpochSummary"),
+    tradeExternalWalletCount: $("tradeExternalWalletCount"),
+    tradeExternalSwapCount: $("tradeExternalSwapCount"),
+    tradeEpochLink: $("tradeEpochLink"),
+    shareEpochButton: $("shareEpochButton"),
+    tradeCommunityHint: $("tradeCommunityHint"),
+    shareActionButton: $("shareActionButton"),
+    copyActionLinkButton: $("copyActionLinkButton"),
+    sharePrompt: $("sharePrompt"),
   });
 
   await loadConfig();
   await loadRuntimeStatus();
+  await loadActivitySummary();
   bindStaticConfig();
   syncModeButtons();
   syncTinyPresetButtons();
@@ -732,6 +844,24 @@ async function boot() {
     await navigator.clipboard.writeText(url);
     setMessage("share", `Copied ${state.tinyPreset || "tiny-sell"} link.`);
   });
+  els.shareEpochButton?.addEventListener("click", async () => {
+    const payload = actionSharePayload("epoch");
+    if (navigator.share) {
+      await navigator.share(payload);
+      setMessage("share", "Epoch shared.");
+      return;
+    }
+    await navigator.clipboard.writeText(`${payload.text}\n${payload.url}`);
+    setMessage("share", "Epoch share text copied.");
+  });
+  els.shareActionButton?.addEventListener("click", () => shareCurrentPayload().catch((error) => {
+    setMessage("error", error?.message || "Share failed.");
+  }));
+  els.copyActionLinkButton?.addEventListener("click", async () => {
+    if (!state.sharePayload?.url) return;
+    await navigator.clipboard.writeText(state.sharePayload.url);
+    setMessage("share", "Copied proof link.");
+  });
   els.useConnectedWalletButton.addEventListener("click", async () => {
     if (!state.account) {
       await connectWallet();
@@ -741,6 +871,10 @@ async function boot() {
     setMessage("wallet", "QR request updated for the connected wallet.");
   });
 
+  setSharePayload(
+    actionSharePayload("epoch"),
+    "Epoch share is ready. Complete a claim or swap to generate a more specific proof link.",
+  );
   setMessage("ready", "Portal ready. Connect a wallet to trade.");
 }
 

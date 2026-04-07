@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_COMMUNITY_EPOCH_FILE = REPO_ROOT / "ops" / "community_epoch.json"
 
 
 NETWORK_DEFAULTS = {
@@ -51,11 +52,22 @@ def parse_args() -> argparse.Namespace:
         default="https://github.com/darwin-protocol/darwin",
         help="Public repository URL",
     )
+    parser.add_argument(
+        "--community-epoch-file",
+        default=str(DEFAULT_COMMUNITY_EPOCH_FILE),
+        help="Public community epoch config",
+    )
     return parser.parse_args()
 
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def load_optional_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return load_json(path)
 
 
 def repo_relative_or_absolute(path: Path) -> str:
@@ -69,6 +81,7 @@ def main() -> int:
     args = parse_args()
     deployment_path = Path(args.deployment_file).expanduser().resolve()
     out_path = Path(args.out).expanduser().resolve()
+    community_epoch_path = Path(args.community_epoch_file).expanduser().resolve()
 
     deployment = load_json(deployment_path)
     market = deployment.get("market") or {}
@@ -77,6 +90,7 @@ def main() -> int:
     faucet = deployment.get("faucet") or {}
     vnext_path = deployment_path.with_suffix(".vnext.json")
     vnext = load_json(vnext_path) if vnext_path.exists() else {}
+    community_epoch = load_optional_json(community_epoch_path)
 
     if not market.get("enabled"):
         raise SystemExit("deployment artifact does not enable market mode")
@@ -143,9 +157,17 @@ def main() -> int:
             "repo": args.repo_url,
             "live_status": f"{args.repo_url}/blob/main/LIVE_STATUS.md",
             "market_bootstrap": f"{args.repo_url}/blob/main/docs/MARKET_BOOTSTRAP.md",
+            "community_bootstrap": f"{args.repo_url}/blob/main/docs/COMMUNITY_BOOTSTRAP.md",
         },
         "activity": {
             "lookback_blocks": 50_000,
+            "summary_path": "/activity-summary.json",
+        },
+        "community": {
+            "tiny_swap_path": "/trade/?preset=tiny-sell",
+            "activity_path": "/activity/",
+            "epoch_path": "/epoch/",
+            "share_text": "Claim DRW, make one tiny swap, and share the Darwin activity page.",
         },
         "notes": {
             "alpha_stage": True,
@@ -163,6 +185,9 @@ def main() -> int:
             "distributor": vnext_contracts["drw_merkle_distributor"],
             "timelock": vnext_contracts.get("darwin_timelock", ""),
         }
+
+    if community_epoch:
+        config["community"]["epoch"] = community_epoch
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")

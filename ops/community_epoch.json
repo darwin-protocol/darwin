@@ -1,0 +1,21 @@
+{
+  "id": "epoch-alpha",
+  "status": "live",
+  "title": "Epoch Alpha",
+  "summary": "Claim DRW, make one tiny swap, and share the public proof surface.",
+  "focus": "The first outside Darwin actions should be small, legible, and repeatable.",
+  "cta_label": "Start with tiny sell",
+  "cta_path": "/trade/?preset=tiny-sell",
+  "activity_path": "/activity/",
+  "share_path": "/epoch/",
+  "share_text": "I claimed DRW and made a tiny Darwin swap on Base Sepolia.",
+  "goals": [
+    "Claim 100 DRW from the public faucet.",
+    "Use the tiny sell or tiny buy preset for one first swap.",
+    "Share the public activity link and bring one more wallet."
+  ],
+  "milestones": {
+    "external_wallets_target": 25,
+    "external_swaps_target": 40
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "generated_at": "",
+  "lookback_blocks": 50000,
+  "network": "base-sepolia-recovery",
+  "summary": {
+    "total_events": 0,
+    "total_wallets": 0,
+    "external_events": 0,
+    "external_wallets": 0,
+    "external_swaps": 0,
+    "external_claims": 0,
+    "project_events": 0,
+    "project_wallets": 0
+  },
+  "recent_external": []
+}

@@ -12,9 +12,15 @@ DEST_DIR="${DARWIN_PI_SITE_DIR:-/srv/usedarwin/site/current}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DOMAIN="${DARWIN_SITE_DOMAIN:-usedarwin.xyz}"
 PORTAL_DEPLOYMENT_FILE="${DARWIN_PORTAL_DEPLOYMENT_FILE:-$REPO_ROOT/ops/deployments/base-sepolia-recovery.json}"
+PYTHON_BIN="${DARWIN_PYTHON:-$REPO_ROOT/.venv/bin/python}"
 MARKET_CONFIG_PATH="$REPO_ROOT/web/public/market-config.json"
 RUNTIME_STATUS_PATH="$REPO_ROOT/web/public/runtime-status.json"
+ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary.json"
 TMP_DIR="$(mktemp -d)"
+
+if [[ ! -x "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="$(command -v python3)"
+fi
 
 restore_files() {
   if [[ -f "$TMP_DIR/market-config.json" ]]; then
@@ -22,6 +28,9 @@ restore_files() {
   fi
   if [[ -f "$TMP_DIR/runtime-status.json" ]]; then
     cp "$TMP_DIR/runtime-status.json" "$RUNTIME_STATUS_PATH"
+  fi
+  if [[ -f "$TMP_DIR/activity-summary.json" ]]; then
+    cp "$TMP_DIR/activity-summary.json" "$ACTIVITY_SUMMARY_PATH"
   fi
   rm -rf "$TMP_DIR"
 }
@@ -35,12 +44,24 @@ fi
 
 cp "$MARKET_CONFIG_PATH" "$TMP_DIR/market-config.json"
 cp "$RUNTIME_STATUS_PATH" "$TMP_DIR/runtime-status.json"
+cp "$ACTIVITY_SUMMARY_PATH" "$TMP_DIR/activity-summary.json"
 
 pushd "$REPO_ROOT" >/dev/null
-python3 ops/export_market_portal_config.py \
+if "$PYTHON_BIN" ops/build_project_wallet_allowlist.py >/dev/null && \
+  "$PYTHON_BIN" ops/report_external_activity.py \
+    --deployment-file "$PORTAL_DEPLOYMENT_FILE" \
+    --json-out ops/state/activity/external-activity.json \
+    --markdown-out ops/state/activity/external-activity.md \
+    --public-json-out web/public/activity-summary.json >/dev/null; then
+  echo "[darwin-pi] public activity summary exported"
+else
+  echo "[darwin-pi] warning: failed to refresh public activity summary; keeping existing file" >&2
+fi
+
+"$PYTHON_BIN" ops/export_market_portal_config.py \
   --deployment-file "$PORTAL_DEPLOYMENT_FILE" \
   --out web/public/market-config.json
-python3 ops/export_runtime_status.py \
+"$PYTHON_BIN" ops/export_runtime_status.py \
   --hosting-mode cloudflare-tunnel \
   --site-domain "$SITE_DOMAIN" \
   --out web/public/runtime-status.json

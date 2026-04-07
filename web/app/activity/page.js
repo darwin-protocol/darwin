@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const activityScriptVersion = "20260407-activity3";
+const activityScriptVersion = "20260407-activity4";
 
 export default function ActivityPage() {
   return (
@@ -81,6 +81,9 @@ export default function ActivityPage() {
             <div className="hero-actions">
               <Link className="button button-primary" href="/trade/?preset=tiny-sell">
                 Open tiny swap
+              </Link>
+              <Link className="button button-secondary" href="/epoch/">
+                Open epoch
               </Link>
               <Link className="button button-secondary" href="/trade/">
                 Open market
@@ -145,6 +148,70 @@ export default function ActivityPage() {
 
           <section className="card panel">
             <div className="section-heading">
+              <h2>Outside activity</h2>
+              <span id="communityStatusBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <div className="stat-grid">
+              <article className="metric">
+                <span className="label">External events</span>
+                <strong id="externalEventCount">-</strong>
+                <small>outside-vs-project classified locally</small>
+              </article>
+              <article className="metric">
+                <span className="label">External wallets</span>
+                <strong id="externalWalletCount">-</strong>
+                <small>outside actors in the current window</small>
+              </article>
+              <article className="metric">
+                <span className="label">External swaps</span>
+                <strong id="externalSwapCount">-</strong>
+                <small>non-project swap activity</small>
+              </article>
+              <article className="metric">
+                <span className="label">External claims</span>
+                <strong id="externalClaimCount">-</strong>
+                <small>faucet + distributor claims</small>
+              </article>
+            </div>
+            <p id="communityUpdatedAt" className="tiny-hint">
+              Waiting for the public activity snapshot.
+            </p>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
+              <h2>Current epoch</h2>
+              <span id="epochBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <strong id="epochTitle">Loading epoch.</strong>
+            <p id="epochSummary" className="caption">
+              Waiting for the live Darwin campaign surface.
+            </p>
+            <p id="epochFocus" className="tiny-hint">
+              Public onboarding should stay small, visible, and easy to repeat.
+            </p>
+            <ul id="epochGoals" className="truth-list">
+              <li>Loading epoch goals.</li>
+            </ul>
+            <div className="tiny-actions">
+              <a id="epochCtaLink" className="button button-primary tiny-button" href="/trade/?preset=tiny-sell">
+                Start epoch
+              </a>
+              <a id="epochActivityLink" className="button button-secondary tiny-button" href="/activity/">
+                Public proof
+              </a>
+              <button id="copyEpochLinkButton" className="button button-secondary tiny-button">
+                Copy epoch link
+              </button>
+            </div>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
               <h2>Filters</h2>
               <span id="activityFeedStatus" className="badge">
                 loading
@@ -198,13 +265,22 @@ export default function ActivityPage() {
               <button id="copyActivityLinkButton" className="button button-secondary tiny-button">
                 Copy activity link
               </button>
+              <button id="shareActivityButton" className="button button-secondary tiny-button">
+                Share activity
+              </button>
               <button id="copyTinySwapLinkButton" className="button button-secondary tiny-button">
                 Copy tiny-swap link
+              </button>
+              <button id="copyEpochShareButton" className="button button-secondary tiny-button">
+                Copy epoch link
               </button>
             </div>
             <div className="link-row">
               <a id="activityMarketDocLink" href="#" target="_blank" rel="noreferrer">
                 Market runbook
+              </a>
+              <a id="activityCommunityDocLink" href="#" target="_blank" rel="noreferrer">
+                Community bootstrap
               </a>
               <a id="activityRepoLink" href="#" target="_blank" rel="noreferrer">
                 Repository
@@ -215,6 +291,29 @@ export default function ActivityPage() {
               <li>Project-controlled and third-party activity both appear here unless you filter off-site.</li>
               <li>For full raw traces, use the linked Base Sepolia explorer.</li>
             </ul>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
+              <h2>Explorer lookup</h2>
+              <span className="badge">quick jump</span>
+            </div>
+            <label className="field">
+              <span>Address or transaction hash</span>
+              <input
+                id="explorerLookupInput"
+                type="text"
+                placeholder="0x wallet or 0x transaction hash"
+              />
+            </label>
+            <div className="tiny-actions">
+              <button id="openExplorerLookupButton" className="button button-secondary tiny-button">
+                Open in explorer
+              </button>
+            </div>
+            <p id="explorerLookupStatus" className="tiny-hint">
+              Paste any Darwin-related address or transaction hash to open the Base Sepolia explorer.
+            </p>
           </section>
         </main>
       </div>

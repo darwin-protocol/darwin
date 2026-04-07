@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f4efe5" />
+  <rect x="54" y="54" width="1092" height="522" rx="28" fill="#ffffff" opacity="0.82" />
+  <rect x="82" y="82" width="1036" height="18" rx="9" fill="#0d7b73" />
+  <text x="110" y="188" fill="#1546a0" font-family="'IBM Plex Mono', monospace" font-size="28" letter-spacing="6">DARWIN EPOCH</text>
+  <text x="110" y="286" fill="#14202f" font-family="'Space Grotesk', sans-serif" font-size="78" font-weight="700">Claim. Tiny swap. Share.</text>
+  <text x="110" y="364" fill="#5d6978" font-family="'Space Grotesk', sans-serif" font-size="34">Epoch Alpha turns Darwin into a small, public first action on Base Sepolia.</text>
+  <text x="110" y="438" fill="#5d6978" font-family="'Space Grotesk', sans-serif" font-size="28">Claim 100 DRW, use the tiny-sell path, and watch it appear on the activity feed.</text>
+  <text x="110" y="522" fill="#0d7b73" font-family="'IBM Plex Mono', monospace" font-size="30">usedarwin.xyz/epoch</text>
+</svg>

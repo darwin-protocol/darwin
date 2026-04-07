@@ -5,6 +5,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 ## Public Surface
 
 - Site: `https://usedarwin.xyz/`
+- Epoch: `https://usedarwin.xyz/epoch/`
 - Market: `https://usedarwin.xyz/trade/`
 - Activity: `https://usedarwin.xyz/activity/`
 - Public status: [LIVE_STATUS.md](LIVE_STATUS.md)
@@ -23,6 +24,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Public `DRW / WETH` reference pool
 - Public browser trade portal
 - Public activity feed
+- Public epoch landing page
 
 ## Public Notes
 
@@ -34,6 +36,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Operators can derive a local-only recovery env with `./ops/prepare_recovery_env.sh` and preflight it with `./ops/preflight_recovery_redeploy.sh`.
 - Shared deployment artifacts are kept public-safe; local operator roles and deployer identity live in `~/.config/darwin/deployments/`.
 - Operators can build a local activity allowlist with `python3 ops/build_project_wallet_allowlist.py` before running `ops/report_external_activity.py`.
+- The public site now exposes a public-safe outside-activity snapshot while keeping the operator allowlist and full classification local.
 - The vNext promotion path now supports both Safe batch export and direct EOA execution for mutable DRW-era handoff.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 

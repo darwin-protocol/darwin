@@ -19,6 +19,7 @@ const socialImage = "/og-card.png";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
+  manifest: "/manifest.webmanifest",
   title: {
     default: "Use Darwin",
     template: "%s | Use Darwin",

@@ -1,6 +1,7 @@
 const activityState = {
   config: null,
   runtimeStatus: null,
+  activitySummary: null,
   provider: null,
   events: [],
   filter: "all",
@@ -43,6 +44,10 @@ function explorerLink(addressOrTx) {
   return `${base}/tx/${addressOrTx}`;
 }
 
+function absoluteUrl(path) {
+  return new URL(path, window.location.origin).toString();
+}
+
 async function copyText(value, successMessage) {
   await navigator.clipboard.writeText(value);
   activityEls.activityFeedStatus.textContent = successMessage;
@@ -79,11 +84,71 @@ async function loadRuntimeStatus() {
   }
 }
 
+async function loadActivitySummary() {
+  try {
+    const response = await fetch(`../activity-summary.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) return;
+    activityState.activitySummary = await response.json();
+  } catch {
+    activityState.activitySummary = null;
+  }
+}
+
 function bindActivityStatics() {
   activityEls.activityChainBadge.textContent = activityState.config.network.name;
   activityEls.activityLookback.textContent = `${activityState.config.activity.lookback_blocks.toLocaleString()} blocks`;
   activityEls.activityMarketDocLink.href = activityState.config.links.market_bootstrap;
+  activityEls.activityCommunityDocLink.href =
+    activityState.config.links.community_bootstrap || activityState.config.links.market_bootstrap;
   activityEls.activityRepoLink.href = activityState.config.links.repo;
+}
+
+function renderCommunitySummary() {
+  const summary = activityState.activitySummary?.summary;
+  if (!summary) {
+    activityEls.communityStatusBadge.textContent = "unavailable";
+    activityEls.communityUpdatedAt.textContent = "Local outside-activity summary is not available yet.";
+    return;
+  }
+
+  activityEls.externalEventCount.textContent = String(summary.external_events ?? 0);
+  activityEls.externalWalletCount.textContent = String(summary.external_wallets ?? 0);
+  activityEls.externalSwapCount.textContent = String(summary.external_swaps ?? 0);
+  activityEls.externalClaimCount.textContent = String(summary.external_claims ?? 0);
+  activityEls.communityStatusBadge.textContent =
+    Number(summary.external_events || 0) > 0 ? "outside wallets seen" : "waiting for first outside loop";
+  const generatedAt = activityState.activitySummary?.generated_at
+    ? new Date(activityState.activitySummary.generated_at).toLocaleString()
+    : "unknown";
+  activityEls.communityUpdatedAt.textContent =
+    `Updated ${generatedAt}. This snapshot is derived from the local project-wallet allowlist, not guessed in the browser.`;
+}
+
+function renderEpoch() {
+  const epoch = activityState.config.community?.epoch;
+  if (!epoch) {
+    activityEls.epochBadge.textContent = "not set";
+    activityEls.epochTitle.textContent = "No public epoch configured.";
+    activityEls.epochSummary.textContent = "Add a community epoch config to the portal export to drive the public campaign.";
+    activityEls.epochGoals.innerHTML = "<li>Set a new epoch in ops/community_epoch.json.</li>";
+    activityEls.epochFocus.textContent = "";
+    return;
+  }
+
+  activityEls.epochBadge.textContent = epoch.status || "live";
+  activityEls.epochTitle.textContent = epoch.title || "Darwin epoch";
+  activityEls.epochSummary.textContent = epoch.summary || "";
+  activityEls.epochFocus.textContent = epoch.focus || "";
+  activityEls.epochCtaLink.href = epoch.cta_path || activityState.config.community?.tiny_swap_path || TINY_SWAP_PATH;
+  activityEls.epochCtaLink.textContent = epoch.cta_label || "Start epoch";
+  activityEls.epochActivityLink.href = epoch.activity_path || activityState.config.community?.activity_path || "/activity/";
+
+  activityEls.epochGoals.innerHTML = "";
+  for (const goal of epoch.goals || []) {
+    const li = document.createElement("li");
+    li.textContent = goal;
+    activityEls.epochGoals.appendChild(li);
+  }
 }
 
 function renderContracts() {
@@ -314,6 +379,16 @@ function renderStats() {
   activityEls.activityClaimCount.textContent = String(claimCount);
 }
 
+async function shareUrl(title, text, url) {
+  if (navigator.share) {
+    await navigator.share({ title, text, url });
+    activityEls.activityFeedStatus.textContent = "shared";
+    return;
+  }
+  await navigator.clipboard.writeText(`${text}\n${url}`);
+  activityEls.activityFeedStatus.textContent = "share text copied";
+}
+
 function renderEvents() {
   const mount = activityEls.activityList;
   mount.innerHTML = "";
@@ -383,8 +458,10 @@ function renderEvents() {
 
 async function refreshActivity() {
   activityEls.activityFeedStatus.textContent = "loading";
+  await loadActivitySummary();
   await fetchEvents();
   renderStats();
+  renderCommunitySummary();
   renderEvents();
 }
 
@@ -403,16 +480,37 @@ async function bootActivity() {
     activityContracts: activity$("activityContracts"),
     activityRefreshButton: activity$("activityRefreshButton"),
     activityMarketDocLink: activity$("activityMarketDocLink"),
+    activityCommunityDocLink: activity$("activityCommunityDocLink"),
     activityRepoLink: activity$("activityRepoLink"),
     copyActivityLinkButton: activity$("copyActivityLinkButton"),
+    shareActivityButton: activity$("shareActivityButton"),
     copyTinySwapLinkButton: activity$("copyTinySwapLinkButton"),
     copyTinySwapButton: activity$("copyTinySwapButton"),
+    communityStatusBadge: activity$("communityStatusBadge"),
+    communityUpdatedAt: activity$("communityUpdatedAt"),
+    externalEventCount: activity$("externalEventCount"),
+    externalWalletCount: activity$("externalWalletCount"),
+    externalSwapCount: activity$("externalSwapCount"),
+    externalClaimCount: activity$("externalClaimCount"),
+    epochBadge: activity$("epochBadge"),
+    epochTitle: activity$("epochTitle"),
+    epochSummary: activity$("epochSummary"),
+    epochFocus: activity$("epochFocus"),
+    epochGoals: activity$("epochGoals"),
+    epochCtaLink: activity$("epochCtaLink"),
+    epochActivityLink: activity$("epochActivityLink"),
+    copyEpochLinkButton: activity$("copyEpochLinkButton"),
+    copyEpochShareButton: activity$("copyEpochShareButton"),
+    explorerLookupInput: activity$("explorerLookupInput"),
+    openExplorerLookupButton: activity$("openExplorerLookupButton"),
+    explorerLookupStatus: activity$("explorerLookupStatus"),
   });
 
   await loadActivityConfig();
   await loadRuntimeStatus();
   bindActivityStatics();
   renderContracts();
+  renderEpoch();
   await refreshActivity();
 
   document.querySelectorAll("[data-activity-filter]").forEach((button) => {
@@ -423,17 +521,45 @@ async function bootActivity() {
     activityEls.activityUpdatedAt.textContent = error?.message || "Failed to refresh activity.";
   }));
   activityEls.copyActivityLinkButton?.addEventListener("click", () => {
-    copyText(`${window.location.origin}/activity/`, "activity link copied").catch((error) => {
+    copyText(absoluteUrl("/activity/"), "activity link copied").catch((error) => {
       activityEls.activityFeedStatus.textContent = error?.message || "copy failed";
     });
   });
+  activityEls.shareActivityButton?.addEventListener("click", () => {
+    shareUrl(
+      "DARWIN activity",
+      "DARWIN onchain activity on Base Sepolia: swaps, claims, and outside-wallet progress.",
+      absoluteUrl("/activity/"),
+    ).catch((error) => {
+      activityEls.activityFeedStatus.textContent = error?.message || "share failed";
+    });
+  });
   const tinySwapHandler = () => {
-    copyText(`${window.location.origin}${TINY_SWAP_PATH}`, "tiny-swap link copied").catch((error) => {
+    copyText(absoluteUrl(TINY_SWAP_PATH), "tiny-swap link copied").catch((error) => {
       activityEls.activityFeedStatus.textContent = error?.message || "copy failed";
     });
   };
   activityEls.copyTinySwapLinkButton?.addEventListener("click", tinySwapHandler);
   activityEls.copyTinySwapButton?.addEventListener("click", tinySwapHandler);
+  const epochLinkHandler = () => {
+    copyText(absoluteUrl(activityState.config.community?.epoch?.share_path || "/epoch/"), "epoch link copied").catch((error) => {
+      activityEls.activityFeedStatus.textContent = error?.message || "copy failed";
+    });
+  };
+  activityEls.copyEpochLinkButton?.addEventListener("click", epochLinkHandler);
+  activityEls.copyEpochShareButton?.addEventListener("click", epochLinkHandler);
+  activityEls.openExplorerLookupButton?.addEventListener("click", () => {
+    const value = activityEls.explorerLookupInput.value.trim();
+    const isAddress = /^0x[a-fA-F0-9]{40}$/.test(value);
+    const isTx = /^0x[a-fA-F0-9]{64}$/.test(value);
+    if (!isAddress && !isTx) {
+      activityEls.explorerLookupStatus.textContent = "Enter a valid 0x address or 0x transaction hash.";
+      return;
+    }
+    const url = explorerLink(value);
+    window.open(url, "_blank", "noopener,noreferrer");
+    activityEls.explorerLookupStatus.textContent = `Opened ${isAddress ? "address" : "transaction"} in explorer.`;
+  });
 }
 
 bootActivity().catch((error) => {

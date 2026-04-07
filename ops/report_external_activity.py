@@ -38,6 +38,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-log-range", type=int, default=10000)
     parser.add_argument("--json-out", default="")
     parser.add_argument("--markdown-out", default="")
+    parser.add_argument("--public-json-out", default="")
     return parser.parse_args()
 
 
@@ -280,8 +281,13 @@ def main() -> int:
     events.sort(key=lambda item: (item["block_number"], item["tx_hash"]), reverse=True)
 
     project_wallets = collect_addresses(deployment) | collect_addresses(vnext) | parse_project_wallets(Path(args.project_wallets_file))
+    total_wallets = sorted({normalize_address(event["actor"]) for event in events})
     external_events = [event for event in events if normalize_address(event["actor"]) not in project_wallets]
     external_wallets = sorted({normalize_address(event["actor"]) for event in external_events})
+    project_events = [event for event in events if normalize_address(event["actor"]) in project_wallets]
+    project_wallets_seen = sorted({normalize_address(event["actor"]) for event in project_events})
+    external_swaps = [event for event in external_events if event["type"] == "swap"]
+    external_claims = [event for event in external_events if event["type"] in {"faucet", "distributor"}]
 
     report = {
         "generated_at": utc_now(),
@@ -290,8 +296,13 @@ def main() -> int:
         "lookback_blocks": args.lookback_blocks,
         "summary": {
             "total_events": len(events),
+            "total_wallets": len(total_wallets),
             "external_events": len(external_events),
             "external_wallets": len(external_wallets),
+            "external_swaps": len(external_swaps),
+            "external_claims": len(external_claims),
+            "project_events": len(project_events),
+            "project_wallets": len(project_wallets_seen),
         },
         "recent_events": events[:50],
         "recent_external": external_events[:50],
@@ -304,6 +315,25 @@ def main() -> int:
         write_report(args.json_out, rendered)
     if args.markdown_out:
         write_report(args.markdown_out, render_markdown(report))
+    if args.public_json_out:
+        public_report = {
+            "generated_at": report["generated_at"],
+            "network": report["network"],
+            "lookback_blocks": report["lookback_blocks"],
+            "summary": report["summary"],
+            "recent_external": [
+                {
+                    "type": event["type"],
+                    "title": event["title"],
+                    "actor": event["actor"],
+                    "detail": event["detail"],
+                    "tx_hash": event["tx_hash"],
+                    "block_number": event["block_number"],
+                }
+                for event in report["recent_external"][:10]
+            ],
+        }
+        write_report(args.public_json_out, json.dumps(public_report, indent=2) + "\n")
 
     return 0
 

@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260407-portal6";
+const tradeScriptVersion = "20260407-portal7";
 
 export default function TradePage() {
   return (
@@ -94,6 +94,9 @@ export default function TradePage() {
               </button>
               <Link className="button button-secondary" href="/activity/">
                 View activity
+              </Link>
+              <Link className="button button-secondary" href="/epoch/">
+                View epoch
               </Link>
             </div>
           </div>
@@ -242,6 +245,42 @@ export default function TradePage() {
             <p className="caption">
               Swaps hit the live pool directly with `approve` and `swapExactInput`. This is a
               testnet alpha market and not a promise of mainnet liquidity.
+            </p>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
+              <h2>Community epoch</h2>
+              <span id="tradeEpochBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <strong id="tradeEpochTitle">Loading epoch.</strong>
+            <p id="tradeEpochSummary" className="caption">
+              Waiting for the live Darwin community loop.
+            </p>
+            <div className="stat-grid">
+              <article className="metric">
+                <span className="label">Outside wallets</span>
+                <strong id="tradeExternalWalletCount">-</strong>
+                <small>recent non-project participants</small>
+              </article>
+              <article className="metric">
+                <span className="label">Outside swaps</span>
+                <strong id="tradeExternalSwapCount">-</strong>
+                <small>recent non-project swaps</small>
+              </article>
+            </div>
+            <div className="tiny-actions">
+              <a id="tradeEpochLink" className="button button-secondary tiny-button" href="/epoch/">
+                Open epoch
+              </a>
+              <button id="shareEpochButton" className="button button-secondary tiny-button">
+                Share epoch
+              </button>
+            </div>
+            <p id="tradeCommunityHint" className="tiny-hint">
+              The goal is real outside usage, not project-generated optics.
             </p>
           </section>
 
@@ -429,6 +468,17 @@ export default function TradePage() {
             <a id="messageLink" href="#" target="_blank" rel="noreferrer" hidden>
               View transaction
             </a>
+            <div className="tiny-actions">
+              <button id="shareActionButton" className="button button-secondary tiny-button" disabled>
+                Share progress
+              </button>
+              <button id="copyActionLinkButton" className="button button-secondary tiny-button" disabled>
+                Copy proof link
+              </button>
+            </div>
+            <p id="sharePrompt" className="tiny-hint">
+              Complete a claim, wrap, or swap to create a shareable Darwin proof link.
+            </p>
           </section>
         </main>
       </div>

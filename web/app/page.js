@@ -98,6 +98,9 @@ export default function HomePage() {
               <Link className="button button-secondary" href="/trade/?preset=tiny-sell">
                 Try tiny swap
               </Link>
+              <Link className="button button-secondary" href="/epoch/">
+                Current epoch
+              </Link>
               <Link className="button button-secondary" href="/activity/">
                 Live activity
               </Link>
@@ -177,6 +180,7 @@ export default function HomePage() {
               <li>Connect a wallet on Base Sepolia.</li>
               <li>Claim DRW from the faucet.</li>
               <li>Use the `tiny sell` preset for a first public swap.</li>
+              <li>Share the epoch or activity link so the next wallet can follow.</li>
               <li>Wrap ETH later if you want to buy from the pool.</li>
             </ol>
           </article>
