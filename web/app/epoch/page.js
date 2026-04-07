@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Script from "next/script";
 
 const siteUrl = "https://usedarwin.xyz";
 const epochUrl = `${siteUrl}/epoch/`;
@@ -55,6 +56,8 @@ export const metadata = {
 export default function EpochPage() {
   return (
     <div className="background-shell">
+      <Script src="../lane.js?v=20260407-epoch1" strategy="afterInteractive" />
+      <Script src="../epoch.js?v=20260407-epoch1" strategy="afterInteractive" />
       <div className="background">
         <div className="orb orb-a"></div>
         <div className="orb orb-b"></div>
@@ -66,7 +69,7 @@ export default function EpochPage() {
           <div>
             <p className="eyebrow">DARWIN EPOCH</p>
             <h1 className="plain-title">Epoch Alpha: claim, tiny swap, share.</h1>
-            <p className="plain-note">
+            <p id="epochSummaryLine" className="plain-note">
               The first outside Darwin actions should be small, public, and easy to repeat.
             </p>
           </div>
@@ -84,14 +87,15 @@ export default function EpochPage() {
               Darwin should not ask for blind conviction. It should offer a tiny, legible first
               move: claim DRW, use a tiny preset, and see the result on the public activity feed.
             </p>
+            <div id="epochLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
-              <Link className="button button-primary" href="/trade/?preset=tiny-sell">
+              <Link id="epochTinySellLink" className="button button-primary" href="/trade/?preset=tiny-sell">
                 Start tiny sell
               </Link>
-              <Link className="button button-secondary" href="/trade/?preset=tiny-buy">
+              <Link id="epochTinyBuyLink" className="button button-secondary" href="/trade/?preset=tiny-buy">
                 Start tiny buy
               </Link>
-              <Link className="button button-secondary" href="/activity/">
+              <Link id="epochActivityLink" className="button button-secondary" href="/activity/">
                 View public activity
               </Link>
             </div>

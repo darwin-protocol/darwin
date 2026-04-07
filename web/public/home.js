@@ -1,4 +1,5 @@
 const homeState = {
+  laneSelection: null,
   marketConfig: null,
   communityShare: null,
 };
@@ -18,9 +19,13 @@ async function loadJson(path) {
 }
 
 async function loadHomeData() {
+  homeState.laneSelection = window.DarwinLane ? await window.DarwinLane.resolveSelection() : null;
+  const marketConfigPath = homeState.laneSelection?.currentLane?.path || "/market-config.json";
+  const communitySharePath =
+    homeState.laneSelection?.currentLane?.community_share_path || "/community-share.json";
   const [marketConfig, communityShare] = await Promise.all([
-    loadJson("./market-config.json"),
-    loadJson("./community-share.json"),
+    loadJson(marketConfigPath),
+    loadJson(communitySharePath),
   ]);
   homeState.marketConfig = marketConfig;
   homeState.communityShare = communityShare;
@@ -37,10 +42,18 @@ function bindCommunityPanel() {
   const stats = share.stats || {};
   const links = share.links || {};
   const messages = share.messages || {};
+  const networkName = homeState.marketConfig?.network?.name || "Darwin lane";
+
+  if (window.DarwinLane && homeState.laneSelection) {
+    window.DarwinLane.renderSwitcher(homeEls.homeLaneSwitcher, homeState.laneSelection);
+  }
 
   homeEls.homeEpochBadge.textContent = epoch.status || "live";
   homeEls.homeEpochTitle.textContent = epoch.title || "Darwin epoch";
   homeEls.homeEpochSummary.textContent = epoch.summary || "";
+  homeEls.homePrimaryLaneBadge.textContent = networkName;
+  homeEls.homeHeroStatusLine.innerHTML =
+    `Public host: <code>usedarwin.xyz</code>. Current lane: <code>${networkName}</code>.`;
   homeEls.homeExternalWallets.textContent = String(stats.external_wallets ?? 0);
   homeEls.homeExternalSwaps.textContent = String(stats.external_swaps ?? 0);
   homeEls.homeTotalEvents.textContent = String(stats.total_events ?? 0);
@@ -49,9 +62,28 @@ function bindCommunityPanel() {
   homeEls.homeCommunityUpdatedAt.textContent = share.generated_at
     ? `Updated ${new Date(share.generated_at).toLocaleString()}. ${messages.progress_line || ""}`
     : (messages.progress_line || "Waiting for a live community snapshot.");
-  homeEls.homeEpochLink.href = links.epoch || "/epoch/";
-  homeEls.homeActivityLink.href = links.activity || "/activity/";
-  homeEls.homeTinySwapLink.href = links.tiny_swap || "/trade/?preset=tiny-sell";
+  const epochHref = window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/epoch/", homeState.laneSelection)
+    : (links.epoch || "/epoch/");
+  const activityHref = window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/activity/", homeState.laneSelection)
+    : (links.activity || "/activity/");
+  const tinySwapHref = window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/trade/?preset=tiny-sell", homeState.laneSelection)
+    : (links.tiny_swap || "/trade/?preset=tiny-sell");
+  const marketHref = window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/trade/", homeState.laneSelection)
+    : "/trade/";
+
+  homeEls.homeOpenMarketLink.href = marketHref;
+  homeEls.homeHeroTinySwapLink.href = tinySwapHref;
+  homeEls.homeHeroEpochLink.href = epochHref;
+  homeEls.homeHeroActivityLink.href = activityHref;
+  homeEls.homeEpochLink.href = epochHref;
+  homeEls.homeActivityLink.href = activityHref;
+  homeEls.homeTinySwapLink.href = tinySwapHref;
+  homeEls.homeMarketPageLink.href = marketHref;
+  homeEls.homeActivityPageLink.href = activityHref;
 
   homeEls.copyInviteButton.addEventListener("click", () => {
     copyText(messages.invite_long || links.epoch || "", "invite copied").catch((error) => {
@@ -75,6 +107,8 @@ async function bootHome() {
     homeEpochBadge: home$("homeEpochBadge"),
     homeEpochTitle: home$("homeEpochTitle"),
     homeEpochSummary: home$("homeEpochSummary"),
+    homePrimaryLaneBadge: home$("homePrimaryLaneBadge"),
+    homeHeroStatusLine: home$("homeHeroStatusLine"),
     homeExternalWallets: home$("homeExternalWallets"),
     homeExternalSwaps: home$("homeExternalSwaps"),
     homeTotalEvents: home$("homeTotalEvents"),
@@ -83,6 +117,13 @@ async function bootHome() {
     homeEpochLink: home$("homeEpochLink"),
     homeActivityLink: home$("homeActivityLink"),
     homeTinySwapLink: home$("homeTinySwapLink"),
+    homeOpenMarketLink: home$("homeOpenMarketLink"),
+    homeHeroTinySwapLink: home$("homeHeroTinySwapLink"),
+    homeHeroEpochLink: home$("homeHeroEpochLink"),
+    homeHeroActivityLink: home$("homeHeroActivityLink"),
+    homeMarketPageLink: home$("homeMarketPageLink"),
+    homeActivityPageLink: home$("homeActivityPageLink"),
+    homeLaneSwitcher: home$("homeLaneSwitcher"),
     copyInviteButton: home$("copyInviteButton"),
     copyTinySwapHomeButton: home$("copyTinySwapHomeButton"),
     copyActivityHomeButton: home$("copyActivityHomeButton"),

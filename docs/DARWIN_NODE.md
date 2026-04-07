@@ -20,7 +20,7 @@ finalization/safe-mode state.
 For the current live recovery deployment:
 
 ```bash
-cd /Users/simchagrieve/workspace/darwin
+cd /path/to/darwin
 DARWIN_DEPLOYMENT_FILE=ops/deployments/base-sepolia-recovery.json \
 DARWIN_RPC_URL=https://sepolia.base.org \
 ./ops/run_darwin_node.sh
@@ -35,7 +35,7 @@ The runner writes:
 ## Preflight Only
 
 ```bash
-cd /Users/simchagrieve/workspace/darwin
+cd /path/to/darwin
 ./.venv/bin/python ops/preflight_darwin_node.py \
   --deployment-file ops/deployments/base-sepolia-recovery.json \
   --rpc-url https://sepolia.base.org \
@@ -46,7 +46,7 @@ cd /Users/simchagrieve/workspace/darwin
 ## Status Check
 
 ```bash
-cd /Users/simchagrieve/workspace/darwin
+cd /path/to/darwin
 PYTHONPATH="$PWD:$PWD/sim" ./.venv/bin/python -m darwin_sim.cli.darwinctl status-check \
   --deployment-file ops/deployments/base-sepolia-recovery.json \
   --rpc-url https://sepolia.base.org

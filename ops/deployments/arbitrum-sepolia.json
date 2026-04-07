@@ -5,12 +5,58 @@
     "bond_asset": "0x850aa4f15b5c7fD8C4a8a136825e1fa971e321e6",
     "bond_vault": "0x39e5dd0e72FcaD2fE8F1314c092F465cf13A7281",
     "challenge_escrow": "0xeaf818cA9EF4C09a18cfF15A612419Df58AE4dbe",
+    "drw_faucet": "0xF33D8A17A0a2b0241A880CFC3A233809ea057BEA",
+    "drw_staking": "0x7454966a7645056D4E9AF0755a6910188C0f62A6",
+    "drw_token": "0x2D3a467BC7414b0634573e11D9Dc5F847D553a29",
     "epoch_manager": "0x0903177dCe98F0b4379174433E35A86C6A132d99",
+    "reference_pool": "0xB528c49D0c6De82C3Cc003CE2D53828082472d35",
     "score_registry": "0xC7d6B2b55fe3f81b356de94Ecacc831597e6C0Dd",
     "settlement_hub": "0x7B62a0048B38f45599C21bF02Bfed0025E0Ff812",
     "shared_pair_vault": "0xF78662d4Cb70143730cc19c71bD968a73C504da9",
     "species_registry": "0xEb839ED3543B61EAc79A22B47353e0a6b03EAF5B"
   },
   "deployed_at": 1775601053,
+  "drw": {
+    "allocations": {
+      "community_amount": "200000000000000000000000000",
+      "insurance_amount": "200000000000000000000000000",
+      "sponsor_rewards_amount": "100000000000000000000000000",
+      "staking_amount": "300000000000000000000000000",
+      "treasury_amount": "200000000000000000000000000"
+    },
+    "contracts": {
+      "drw_staking": "0x7454966a7645056D4E9AF0755a6910188C0f62A6",
+      "drw_token": "0x2D3a467BC7414b0634573e11D9Dc5F847D553a29"
+    },
+    "enabled": true,
+    "staking_duration": 31536000,
+    "total_supply": "1000000000000000000000000000"
+  },
+  "faucet": {
+    "claim_amount": "100000000000000000000",
+    "claim_cooldown": 86400,
+    "contracts": {
+      "drw_faucet": "0xF33D8A17A0a2b0241A880CFC3A233809ea057BEA"
+    },
+    "enabled": true,
+    "funded": true,
+    "initial_native_funding": "200000000000000",
+    "initial_token_funding": "100000000000000000000000",
+    "native_drip_amount": 10000000000000
+  },
+  "market": {
+    "base_token": "0x2D3a467BC7414b0634573e11D9Dc5F847D553a29",
+    "contracts": {
+      "reference_pool": "0xB528c49D0c6De82C3Cc003CE2D53828082472d35"
+    },
+    "enabled": true,
+    "fee_bps": 30,
+    "initial_base_amount": "1000000000000000000000",
+    "initial_quote_amount": "500000000000000",
+    "quote_token": "0x850aa4f15b5c7fD8C4a8a136825e1fa971e321e6",
+    "seeded": true,
+    "venue_id": "darwin_reference_pool",
+    "venue_type": "constant_product_bootstrap"
+  },
   "network": "arbitrum-sepolia"
 }

@@ -8,10 +8,10 @@
   "cta_path": "/trade/?preset=tiny-sell",
   "activity_path": "/activity/",
   "share_path": "/epoch/",
-  "share_text": "I claimed DRW and made a tiny Darwin swap on Base Sepolia.",
+  "share_text": "I claimed DRW and made a tiny Darwin swap.",
   "goals": [
     "Claim 100 DRW from the public faucet.",
-    "Use the tiny sell or tiny buy preset for one first swap.",
+    "Use the tiny sell preset for one first swap, then try tiny buy where the lane supports it.",
     "Share the public activity link and bring one more wallet."
   ],
   "milestones": {

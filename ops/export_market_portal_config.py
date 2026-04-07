@@ -117,6 +117,19 @@ def main() -> int:
     network_defaults = NETWORK_DEFAULTS.get(chain_id)
     if network_defaults is None:
         raise SystemExit(f"unsupported chain id for portal export: {chain_id}")
+    network_slug = str(deployment["network"])
+    is_default_lane = network_slug == "base-sepolia-recovery"
+    activity_summary_path = (
+        "/activity-summary.json"
+        if is_default_lane
+        else f"/activity-summary-{network_slug}.json"
+    )
+    community_share_path = (
+        "/community-share.json"
+        if is_default_lane
+        else f"/community-share-{network_slug}.json"
+    )
+    wrap_enabled = deployment.get("bond_asset_mode", "external") != "mock"
 
     config = {
         "generated_at": utc_now(),
@@ -126,12 +139,13 @@ def main() -> int:
         },
         "project": {
             "name": "DARWIN",
-            "tagline": "Trade DRW on the DARWIN reference pool",
+            "tagline": f"Trade DRW on the {network_defaults['network_name']} DARWIN reference pool",
         },
         "network": {
             "id": chain_id,
+            "chain_id": chain_id,
             "hex": network_defaults["chain_hex"],
-            "slug": deployment["network"],
+            "slug": network_slug,
             "name": network_defaults["network_name"],
             "rpc_url": network_defaults["rpc_url"],
             "read_rpc_url": network_defaults["read_rpc_url"],
@@ -148,6 +162,7 @@ def main() -> int:
             "address": market["quote_token"],
             "symbol": "WETH",
             "decimals": 18,
+            "wrap_enabled": wrap_enabled,
         },
         "pool": {
             "address": market["contracts"]["reference_pool"],
@@ -175,12 +190,13 @@ def main() -> int:
         },
         "activity": {
             "lookback_blocks": 50_000,
-            "summary_path": "/activity-summary.json",
+            "summary_path": activity_summary_path,
         },
         "community": {
             "tiny_swap_path": "/trade/?preset=tiny-sell",
             "activity_path": "/activity/",
             "epoch_path": "/epoch/",
+            "share_bundle_path": community_share_path,
             "share_text": "Claim DRW, make one tiny swap, and share the Darwin activity page.",
         },
         "notes": {
@@ -188,6 +204,7 @@ def main() -> int:
             "bond_asset_mode": deployment.get("bond_asset_mode", "external"),
             "bond_asset": contracts["bond_asset"],
             "market_seeded": True,
+            "wrap_supported": wrap_enabled,
             "warning": f"This is a DARWIN-owned {network_defaults['network_name']} reference pool. It is live and tradeable, but it is still alpha infrastructure.",
         },
     }

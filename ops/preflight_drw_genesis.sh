@@ -3,16 +3,25 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/load_env_defaults.sh"
-load_base_sepolia_env "$ROOT"
+load_darwin_network_env "$ROOT"
 
-if [[ -z "${BASE_SEPOLIA_RPC_URL:-}" && -n "${ALCHEMY_API_KEY:-}" ]]; then
-  BASE_SEPOLIA_RPC_URL="https://base-sepolia.g.alchemy.com/v2/$ALCHEMY_API_KEY"
+if [[ -z "${DARWIN_RPC_URL:-}" ]]; then
+  case "${DARWIN_NETWORK:-base-sepolia}" in
+    arbitrum-sepolia)
+      DARWIN_RPC_URL="${ARBITRUM_SEPOLIA_RPC_URL:-https://sepolia-rollup.arbitrum.io/rpc}"
+      ;;
+    *)
+      if [[ -z "${BASE_SEPOLIA_RPC_URL:-}" && -n "${ALCHEMY_API_KEY:-}" ]]; then
+        BASE_SEPOLIA_RPC_URL="https://base-sepolia.g.alchemy.com/v2/$ALCHEMY_API_KEY"
+      fi
+      DARWIN_RPC_URL="${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}"
+      ;;
+  esac
 fi
 
-DARWIN_RPC_URL="${DARWIN_RPC_URL:-${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}}"
 DARWIN_NETWORK="${DARWIN_NETWORK:-base-sepolia}"
 DARWIN_DEPLOYMENT_FILE="${DARWIN_DEPLOYMENT_FILE:-$ROOT/ops/deployments/${DARWIN_NETWORK}.json}"
-DARWIN_DRW_MIN_BASE_ETH_WEI="${DARWIN_DRW_MIN_BASE_ETH_WEI:-1000000000000000}" # 0.001 ETH
+DARWIN_DRW_MIN_NATIVE_ETH_WEI="${DARWIN_DRW_MIN_NATIVE_ETH_WEI:-1000000000000000}" # 0.001 ETH
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -91,9 +100,9 @@ if [[ -z "$DEPLOYER_ADDRESS" ]]; then
   READY=0
   BLOCKERS+=("missing_deployer")
 fi
-if [[ -n "$DEPLOYER_ADDRESS" && "$BASE_BALANCE_WEI" -lt "$DARWIN_DRW_MIN_BASE_ETH_WEI" ]]; then
+if [[ -n "$DEPLOYER_ADDRESS" && "$BASE_BALANCE_WEI" -lt "$DARWIN_DRW_MIN_NATIVE_ETH_WEI" ]]; then
   READY=0
-  BLOCKERS+=("insufficient_base_eth")
+  BLOCKERS+=("insufficient_native_eth")
 fi
 if [[ "$EXISTING_DRW" == "yes" && "${DARWIN_ALLOW_DRW_REDEPLOY:-0}" != "1" ]]; then
   READY=0
@@ -108,8 +117,8 @@ echo "  artifact_chain_id:    $ARTIFACT_CHAIN_ID"
 echo "  artifact_file:        $DARWIN_DEPLOYMENT_FILE"
 echo "  governance:           $DARWIN_GOVERNANCE"
 echo "  deployer_address:     ${DEPLOYER_ADDRESS:-missing}"
-echo "  base_balance_eth:     $(to_eth "$BASE_BALANCE_WEI")"
-echo "  min_base_eth:         $(to_eth "$DARWIN_DRW_MIN_BASE_ETH_WEI")"
+echo "  native_balance_eth:   $(to_eth "$BASE_BALANCE_WEI")"
+echo "  min_native_eth:       $(to_eth "$DARWIN_DRW_MIN_NATIVE_ETH_WEI")"
 echo "  existing_drw:         $EXISTING_DRW"
 echo "  total_supply:         ${DARWIN_DRW_TOTAL_SUPPLY:-1000000000000000000000000000}"
 

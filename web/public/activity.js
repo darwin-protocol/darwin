@@ -1,4 +1,5 @@
 const activityState = {
+  laneSelection: null,
   config: null,
   runtimeStatus: null,
   activitySummary: null,
@@ -45,6 +46,9 @@ function explorerLink(addressOrTx) {
 }
 
 function absoluteUrl(path) {
+  if (window.DarwinLane && activityState.laneSelection) {
+    return window.DarwinLane.laneAbsoluteHref(path, activityState.laneSelection);
+  }
   return new URL(path, window.location.origin).toString();
 }
 
@@ -62,7 +66,9 @@ function formatUnits(value, decimals, precision = 6) {
 }
 
 async function loadActivityConfig() {
-  const response = await fetch("../market-config.json", { cache: "no-store" });
+  activityState.laneSelection = window.DarwinLane ? await window.DarwinLane.resolveSelection() : null;
+  const configPath = activityState.laneSelection?.currentLane?.path || "/market-config.json";
+  const response = await fetch(configPath, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Failed to load market config: ${response.status}`);
   }
@@ -86,7 +92,9 @@ async function loadRuntimeStatus() {
 
 async function loadActivitySummary() {
   try {
-    const response = await fetch(`../activity-summary.json?ts=${Date.now()}`, { cache: "no-store" });
+    const summaryPath =
+      activityState.laneSelection?.currentLane?.activity_summary_path || "/activity-summary.json";
+    const response = await fetch(`${summaryPath}?ts=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) return;
     activityState.activitySummary = await response.json();
   } catch {
@@ -95,12 +103,28 @@ async function loadActivitySummary() {
 }
 
 function bindActivityStatics() {
+  if (window.DarwinLane && activityState.laneSelection) {
+    window.DarwinLane.renderSwitcher(activityEls.activityLaneSwitcher, activityState.laneSelection);
+  }
   activityEls.activityChainBadge.textContent = activityState.config.network.name;
   activityEls.activityLookback.textContent = `${activityState.config.activity.lookback_blocks.toLocaleString()} blocks`;
   activityEls.activityMarketDocLink.href = activityState.config.links.market_bootstrap;
   activityEls.activityCommunityDocLink.href =
     activityState.config.links.community_bootstrap || activityState.config.links.market_bootstrap;
   activityEls.activityRepoLink.href = activityState.config.links.repo;
+  activityEls.activityOpenTinySwapLink.href = window.DarwinLane && activityState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/trade/?preset=tiny-sell", activityState.laneSelection)
+    : "/trade/?preset=tiny-sell";
+  activityEls.activityOpenEpochLink.href = window.DarwinLane && activityState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/epoch/", activityState.laneSelection)
+    : "/epoch/";
+  activityEls.activityOpenMarketLink.href = window.DarwinLane && activityState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/trade/", activityState.laneSelection)
+    : "/trade/";
+  if (activityEls.explorerLookupStatus) {
+    activityEls.explorerLookupStatus.textContent =
+      `Paste any Darwin-related address or transaction hash to open the ${activityState.config.network.name} explorer.`;
+  }
 }
 
 function renderCommunitySummary() {
@@ -343,7 +367,8 @@ async function fetchEvents() {
     return right.txHash.localeCompare(left.txHash);
   });
   activityState.events = events;
-  activityEls.activityUpdatedAt.textContent = `Updated ${new Date().toLocaleString()} from live Base Sepolia RPC.`;
+  activityEls.activityUpdatedAt.textContent =
+    `Updated ${new Date().toLocaleString()} from live ${activityState.config.network.name} RPC.`;
 }
 
 async function getLogsChunked(filter) {
@@ -468,6 +493,7 @@ async function refreshActivity() {
 async function bootActivity() {
   Object.assign(activityEls, {
     activityRuntimeStatus: activity$("activityRuntimeStatus"),
+    activityLaneSwitcher: activity$("activityLaneSwitcher"),
     activityChainBadge: activity$("activityChainBadge"),
     activityLookback: activity$("activityLookback"),
     activityCount: activity$("activityCount"),
@@ -482,6 +508,9 @@ async function bootActivity() {
     activityMarketDocLink: activity$("activityMarketDocLink"),
     activityCommunityDocLink: activity$("activityCommunityDocLink"),
     activityRepoLink: activity$("activityRepoLink"),
+    activityOpenTinySwapLink: activity$("activityOpenTinySwapLink"),
+    activityOpenEpochLink: activity$("activityOpenEpochLink"),
+    activityOpenMarketLink: activity$("activityOpenMarketLink"),
     copyActivityLinkButton: activity$("copyActivityLinkButton"),
     shareActivityButton: activity$("shareActivityButton"),
     copyTinySwapLinkButton: activity$("copyTinySwapLinkButton"),
@@ -528,7 +557,7 @@ async function bootActivity() {
   activityEls.shareActivityButton?.addEventListener("click", () => {
     shareUrl(
       "DARWIN activity",
-      "DARWIN onchain activity on Base Sepolia: swaps, claims, and outside-wallet progress.",
+      `DARWIN onchain activity on ${activityState.config.network.name}: swaps, claims, and outside-wallet progress.`,
       absoluteUrl("/activity/"),
     ).catch((error) => {
       activityEls.activityFeedStatus.textContent = error?.message || "share failed";

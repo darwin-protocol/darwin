@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/load_env_defaults.sh"
-load_base_sepolia_env "$ROOT"
+load_darwin_network_env "$ROOT"
 
 require_env() {
   local name="$1"

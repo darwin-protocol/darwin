@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-04-07T23:04:23.340114Z",
-  "network": "base-sepolia-recovery",
+  "generated_at": "2026-04-07T23:05:13.411492Z",
+  "network": "arbitrum-sepolia",
   "lookback_blocks": 200000,
   "summary": {
-    "total_events": 3,
+    "total_events": 2,
     "total_wallets": 2,
     "external_events": 0,
     "external_wallets": 0,
     "external_swaps": 0,
     "external_claims": 0,
-    "project_events": 3,
+    "project_events": 2,
     "project_wallets": 2
   },
   "recent_external": []

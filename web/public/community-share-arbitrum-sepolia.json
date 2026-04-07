@@ -20,17 +20,17 @@
     "summary": "Claim DRW, make one tiny swap, and share the public proof surface.",
     "title": "Epoch Alpha"
   },
-  "generated_at": "2026-04-07T23:06:20.690994Z",
+  "generated_at": "2026-04-07T23:06:20.691446Z",
   "links": {
-    "activity": "https://usedarwin.xyz/activity/",
-    "epoch": "https://usedarwin.xyz/epoch/",
+    "activity": "https://usedarwin.xyz/activity/?lane=arbitrum-sepolia",
+    "epoch": "https://usedarwin.xyz/epoch/?lane=arbitrum-sepolia",
     "site": "https://usedarwin.xyz",
-    "tiny_swap": "https://usedarwin.xyz/trade/?preset=tiny-sell"
+    "tiny_swap": "https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia"
   },
   "messages": {
-    "invite_long": "Claim DRW, make one tiny swap, and share the public proof surface. No outside wallets have appeared in the current Darwin window yet. Epoch progress: 0/25 outside wallets, 0/40 outside swaps, 3 total Darwin events. Start at https://usedarwin.xyz/epoch/ or jump directly to the tiny swap: https://usedarwin.xyz/trade/?preset=tiny-sell Public proof: https://usedarwin.xyz/activity/",
-    "invite_short": "Be one of the first outside wallets to try Darwin on Base Sepolia: https://usedarwin.xyz/trade/?preset=tiny-sell",
-    "progress_line": "Epoch progress: 0/25 outside wallets, 0/40 outside swaps, 3 total Darwin events.",
+    "invite_long": "Claim DRW, make one tiny swap, and share the public proof surface. No outside wallets have appeared in the current Darwin window yet. Epoch progress: 0/25 outside wallets, 0/40 outside swaps, 2 total Darwin events. Start at https://usedarwin.xyz/epoch/?lane=arbitrum-sepolia or jump directly to the tiny swap: https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia Public proof: https://usedarwin.xyz/activity/?lane=arbitrum-sepolia",
+    "invite_short": "Be one of the first outside wallets to try Darwin on Arbitrum Sepolia: https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia",
+    "progress_line": "Epoch progress: 0/25 outside wallets, 0/40 outside swaps, 2 total Darwin events.",
     "status_line": "No outside wallets have appeared in the current Darwin window yet."
   },
   "site_url": "https://usedarwin.xyz",
@@ -39,9 +39,9 @@
     "external_events": 0,
     "external_swaps": 0,
     "external_wallets": 0,
-    "project_events": 3,
+    "project_events": 2,
     "project_wallets": 2,
-    "total_events": 3,
+    "total_events": 2,
     "total_wallets": 2
   }
 }

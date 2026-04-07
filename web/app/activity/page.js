@@ -35,7 +35,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "DARWIN Activity",
   description:
-    "Recent DARWIN onchain activity on Base Sepolia: swaps, faucet claims, and community distribution claims.",
+    "Recent DARWIN onchain activity: swaps, faucet claims, and community distribution claims.",
   alternates: {
     canonical: "/activity/",
   },
@@ -45,11 +45,12 @@ export const metadata = {
   },
 };
 
-const activityScriptVersion = "20260407-activity4";
+const activityScriptVersion = "20260407-activity5";
 
 export default function ActivityPage() {
   return (
     <>
+      <Script src={`../lane.js?v=${activityScriptVersion}`} strategy="afterInteractive" />
       <Script
         src="https://cdn.jsdelivr.net/npm/ethers@6.14.3/dist/ethers.umd.min.js"
         strategy="afterInteractive"
@@ -69,23 +70,24 @@ export default function ActivityPage() {
               DARWIN <span>activity</span>.
             </h2>
             <p className="lede">
-              This page shows recent DARWIN contract activity on Base Sepolia: public swaps, faucet
-              claims, and Merkle distributor claims. It is a DARWIN activity feed, not a full chain
-              explorer.
+              This page shows recent DARWIN contract activity on the selected lane: public swaps,
+              faucet claims, and Merkle distributor claims. It is a DARWIN activity feed, not a
+              full chain explorer.
             </p>
             <p className="hero-status-line">
               <span id="activityRuntimeStatus">
                 <code>usedarwin.xyz</code> is live over HTTPS.
               </span>
             </p>
+            <div id="activityLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
-              <Link className="button button-primary" href="/trade/?preset=tiny-sell">
+              <Link id="activityOpenTinySwapLink" className="button button-primary" href="/trade/?preset=tiny-sell">
                 Open tiny swap
               </Link>
-              <Link className="button button-secondary" href="/epoch/">
+              <Link id="activityOpenEpochLink" className="button button-secondary" href="/epoch/">
                 Open epoch
               </Link>
-              <Link className="button button-secondary" href="/trade/">
+              <Link id="activityOpenMarketLink" className="button button-secondary" href="/trade/">
                 Open market
               </Link>
               <button id="copyTinySwapButton" className="button button-secondary">
@@ -102,7 +104,7 @@ export default function ActivityPage() {
             <div className="hero-stat">
               <span className="label">Network</span>
               <span id="activityChainBadge" className="badge">
-                Base Sepolia
+                loading
               </span>
             </div>
             <div className="hero-stat">
@@ -287,9 +289,9 @@ export default function ActivityPage() {
               </a>
             </div>
             <ul className="truth-list">
-              <li>This feed shows recent DARWIN-related contracts, not every Base Sepolia transaction.</li>
+              <li>This feed shows recent DARWIN-related contracts, not every chain transaction.</li>
               <li>Project-controlled and third-party activity both appear here unless you filter off-site.</li>
-              <li>For full raw traces, use the linked Base Sepolia explorer.</li>
+              <li>For full raw traces, use the linked explorer for the current lane.</li>
             </ul>
           </section>
 
@@ -312,7 +314,7 @@ export default function ActivityPage() {
               </button>
             </div>
             <p id="explorerLookupStatus" className="tiny-hint">
-              Paste any Darwin-related address or transaction hash to open the Base Sepolia explorer.
+              Paste any Darwin-related address or transaction hash to open the explorer for the current lane.
             </p>
           </section>
         </main>

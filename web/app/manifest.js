@@ -5,7 +5,7 @@ export default function manifest() {
     name: "Use Darwin",
     short_name: "Darwin",
     description:
-      "Claim DRW, use a tiny first swap, and follow live DARWIN contract activity on Base Sepolia.",
+      "Claim DRW, use a tiny first swap, and follow live DARWIN contract activity across the public Darwin lanes.",
     start_url: "/",
     display: "standalone",
     background_color: "#f4efe5",

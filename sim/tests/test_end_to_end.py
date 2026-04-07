@@ -4888,7 +4888,11 @@ exit 0
             self.assertEqual(config["network"]["hex"], "0x66eee")
             self.assertEqual(config["network"]["rpc_url"], "https://sepolia-rollup.arbitrum.io/rpc")
             self.assertEqual(config["network"]["explorer_base_url"], "https://sepolia.arbiscan.io")
-            self.assertEqual(config["project"]["tagline"], "Trade DRW on the DARWIN reference pool")
+            self.assertEqual(config["project"]["tagline"], "Trade DRW on the Arbitrum Sepolia DARWIN reference pool")
+            self.assertEqual(config["network"]["chain_id"], 421614)
+            self.assertEqual(config["activity"]["summary_path"], "/activity-summary-arbitrum-sepolia.json")
+            self.assertEqual(config["community"]["share_bundle_path"], "/community-share-arbitrum-sepolia.json")
+            self.assertTrue(config["quote_token"]["wrap_enabled"])
             print("  Ops: market portal config export supports Arbitrum-family chain defaults")
 
     def test_56_prepare_arbitrum_sepolia_env_script(self):

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/load_env_defaults.sh"
-load_base_sepolia_env "$ROOT"
+load_darwin_network_env "$ROOT"
 
 read_manifest_field() {
   python3 - "$DARWIN_VNEXT_DISTRIBUTION_FILE" "$1" <<'PY'
@@ -27,6 +27,16 @@ export DARWIN_VNEXT_FILE="${DARWIN_VNEXT_FILE:-$ROOT/ops/deployments/${DARWIN_NE
 if [[ -z "${DARWIN_VNEXT_DISTRIBUTION_TOKEN:-}" ]]; then
   DARWIN_VNEXT_DISTRIBUTION_TOKEN="$(python3 "$ROOT/ops/read_deployment_field.py" --deployment-file "$DARWIN_DEPLOYMENT_FILE" contracts.drw_token)"
   export DARWIN_VNEXT_DISTRIBUTION_TOKEN
+fi
+
+if [[ -z "${DARWIN_VNEXT_COUNCIL:-}" ]]; then
+  DARWIN_VNEXT_COUNCIL="$(python3 "$ROOT/ops/read_deployment_field.py" --deployment-file "$DARWIN_DEPLOYMENT_FILE" roles.governance)"
+  export DARWIN_VNEXT_COUNCIL
+fi
+
+if [[ -z "${DARWIN_VNEXT_GUARDIAN:-}" ]]; then
+  DARWIN_VNEXT_GUARDIAN="$DARWIN_VNEXT_COUNCIL"
+  export DARWIN_VNEXT_GUARDIAN
 fi
 
 if [[ -f "$DARWIN_VNEXT_DISTRIBUTION_FILE" ]]; then

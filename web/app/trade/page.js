@@ -35,7 +35,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "Trade DRW",
   description:
-    "Connect a wallet, claim DRW from the live Base Sepolia faucet, and start with a tiny DRW swap against the live DARWIN reference pool.",
+    "Connect a wallet, claim DRW from the live Darwin faucet, and start with a tiny DRW swap against the current DARWIN reference pool.",
   alternates: {
     canonical: "/trade/",
   },
@@ -45,11 +45,12 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260407-portal7";
+const tradeScriptVersion = "20260407-portal8";
 
 export default function TradePage() {
   return (
     <>
+      <Script src={`../lane.js?v=${tradeScriptVersion}`} strategy="afterInteractive" />
       <Script
         src="https://cdn.jsdelivr.net/npm/ethers@6.14.3/dist/ethers.umd.min.js"
         strategy="afterInteractive"
@@ -73,15 +74,16 @@ export default function TradePage() {
               Trade <span>DRW</span>.
             </h2>
             <p className="lede">
-              Claim testnet DRW, wrap Base Sepolia ETH into WETH, swap against the live pool, or
-              open a direct peer-to-peer transfer request. The easiest public first move is a tiny
-              DRW sell after claiming from the faucet.
+              Claim testnet DRW, acquire quote assets where supported, swap against the live pool,
+              or open a direct peer-to-peer transfer request. The easiest public first move is a
+              tiny DRW sell after claiming from the faucet.
             </p>
             <p className="hero-status-line">
               <span id="runtimeHostStatus">
                 <code>usedarwin.xyz</code> is live over HTTPS.
               </span>
             </p>
+            <div id="tradeLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
               <button id="connectButton" className="button button-primary">
                 Connect wallet
@@ -92,10 +94,10 @@ export default function TradePage() {
               <button id="watchAssetButton" className="button button-secondary">
                 Add DRW to wallet
               </button>
-              <Link className="button button-secondary" href="/activity/">
+              <Link id="tradeViewActivityLink" className="button button-secondary" href="/activity/">
                 View activity
               </Link>
-              <Link className="button button-secondary" href="/epoch/">
+              <Link id="tradeViewEpochLink" className="button button-secondary" href="/epoch/">
                 View epoch
               </Link>
             </div>
@@ -127,7 +129,7 @@ export default function TradePage() {
             <div className="hero-stat">
               <span className="label">Chain</span>
               <span id="chainBadge" className="badge">
-                Base Sepolia
+                loading
               </span>
             </div>
             <div className="hero-stat">
@@ -161,7 +163,7 @@ export default function TradePage() {
               <article className="metric">
                 <span className="label">Token supply</span>
                 <strong id="tokenSupply">-</strong>
-                <small>Base Sepolia testnet</small>
+                <small>current Darwin lane</small>
               </article>
               <article className="metric">
                 <span className="label">Portal state</span>
@@ -190,7 +192,7 @@ export default function TradePage() {
                 <strong>Tiny swap path</strong>
                 <p className="caption">
                   Claim 100 DRW, then use <code>tiny sell</code> for a first public swap. If you
-                  already hold Base Sepolia ETH, <code>tiny buy</code> uses a minimal WETH input.
+                  already hold the lane quote asset, <code>tiny buy</code> uses a minimal input.
                 </p>
               </div>
               <div className="tiny-actions">
@@ -287,7 +289,7 @@ export default function TradePage() {
           <section className="card panel">
             <div className="section-heading">
               <h2>Wrap ETH</h2>
-              <span className="badge">Base Sepolia WETH</span>
+              <span id="wrapBadge" className="badge">Quote asset</span>
             </div>
             <label className="field">
               <span>ETH to wrap</span>
@@ -296,9 +298,9 @@ export default function TradePage() {
             <button id="wrapButton" className="button button-secondary button-wide">
               Wrap into WETH
             </button>
-            <p className="caption">
-              Buying `DRW` from this pool requires `WETH`, not native ETH. This action calls
-              `deposit()` on Base Sepolia WETH9.
+            <p id="wrapCaption" className="caption">
+              Buying `DRW` from this pool requires the quote asset, not native ETH. On lanes with
+              native wrapping this action calls `deposit()` on the quote token.
             </p>
           </section>
 
@@ -363,7 +365,7 @@ export default function TradePage() {
                 <strong id="walletDrw">-</strong>
               </div>
               <div>
-                <span className="label">WETH</span>
+                <span id="walletQuoteLabel" className="label">WETH</span>
                 <strong id="walletWeth">-</strong>
               </div>
             </div>
@@ -399,9 +401,9 @@ export default function TradePage() {
                   <span>Wallet request</span>
                   <textarea id="qrUri" rows="4" readOnly></textarea>
                 </label>
-                <p className="caption">
-                  This QR encodes a Base Sepolia DRW transfer request. Scan it from another wallet
-                  to open a direct token send.
+                <p id="qrCaption" className="caption">
+                  This QR encodes a DRW transfer request for the current Darwin lane. Scan it from
+                  another wallet to open a direct token send.
                 </p>
               </div>
             </div>
@@ -422,7 +424,7 @@ export default function TradePage() {
                 <code id="drwAddress"></code>
               </button>
               <button className="address-row" data-copy-target="wethAddress">
-                <span>WETH token</span>
+                <span id="quoteAddressLabel">Quote token</span>
                 <code id="wethAddress"></code>
               </button>
               <button id="faucetAddressRow" className="address-row" data-copy-target="faucetAddress" hidden>
@@ -439,10 +441,10 @@ export default function TradePage() {
             </div>
             <ul className="truth-list">
               <li>The pool is live and the portal talks to it directly.</li>
-              <li>This is public testnet alpha infrastructure on Base Sepolia.</li>
+              <li>This is public testnet alpha infrastructure on the selected Darwin lane.</li>
               <li>Liquidity is limited, so use small amounts.</li>
               <li>If the faucet is enabled, it is there for simple onboarding.</li>
-              <li>The public milestone is straightforward usage: claim, wrap, and trade.</li>
+              <li>The public milestone is straightforward usage: claim, trade, and then buy when the lane supports it.</li>
             </ul>
             <div className="link-row">
               <a id="liveStatusLink" href="#" target="_blank" rel="noreferrer">

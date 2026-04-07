@@ -61,8 +61,36 @@ with the Base recovery node:
 
 - `9543-9549`
 
-## Current Boundary
+## Bootstrap DRW
 
-If the preflight reports insufficient Arbitrum Sepolia ETH, the chain plumbing
-is ready but the deployer still needs funding on Arbitrum Sepolia before the
-first live deployment can broadcast.
+Once the core Arbitrum Sepolia lane exists and the deployer has gas, you can
+bootstrap the DRW market surface end to end:
+
+```bash
+./ops/bootstrap_arbitrum_sepolia_drw.sh
+```
+
+That flow:
+
+- deploys DRW genesis
+- mints mock quote liquidity into the Arbitrum mock bond asset
+- deploys and seeds the reference market
+- deploys and funds the DRW faucet
+- builds a Merkle claim manifest
+- deploys vNext governance and promotes the mutable DRW surface to the timelock
+
+## Live State
+
+The repo now supports a full Arbitrum Sepolia DARWIN lane:
+
+- core deployment artifact: `ops/deployments/arbitrum-sepolia.json`
+- detached overlay node: `./ops/run_arbitrum_sepolia_node.sh`
+- DRW market bootstrap: `./ops/bootstrap_arbitrum_sepolia_drw.sh`
+- public portal config: `web/public/market-config-arbitrum-sepolia.json`
+
+The public portal stays Base-first by default, but the Arbitrum lane is exposed
+through the same pages with `?lane=arbitrum-sepolia`, for example:
+
+- `https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia`
+- `https://usedarwin.xyz/activity/?lane=arbitrum-sepolia`
+- `https://usedarwin.xyz/epoch/?lane=arbitrum-sepolia`

@@ -1,0 +1,92 @@
+{
+  "lanes": [
+    {
+      "activity_summary_path": "/activity-summary.json",
+      "community_share_path": "/community-share.json",
+      "default": true,
+      "faucet": {
+        "address": "0xB08e9dfaD5C64CC29DA82D2d4a42AaA64Fe1E9c1",
+        "enabled": true
+      },
+      "name": "Base Sepolia",
+      "network": {
+        "chain_id": 84532,
+        "explorer_base_url": "https://sepolia-explorer.base.org",
+        "hex": "0x14a34",
+        "id": 84532,
+        "name": "Base Sepolia",
+        "native_symbol": "ETH",
+        "read_rpc_url": "https://sepolia-preconf.base.org",
+        "rpc_url": "https://sepolia.base.org",
+        "slug": "base-sepolia-recovery"
+      },
+      "notes": {
+        "alpha_stage": true,
+        "bond_asset": "0x4200000000000000000000000000000000000006",
+        "bond_asset_mode": "external",
+        "market_seeded": true,
+        "warning": "This is a DARWIN-owned Base Sepolia reference pool. It is live and tradeable, but it is still alpha infrastructure.",
+        "wrap_supported": true
+      },
+      "path": "/market-config.json",
+      "pool": {
+        "address": "0x0a04f15890c7fe64C2a4C02F8f157cba78Fcc7E5",
+        "venue_id": "darwin_reference_pool"
+      },
+      "slug": "base-sepolia-recovery",
+      "token": {
+        "address": "0xF78662d4Cb70143730cc19c71bD968a73C504da9",
+        "symbol": "DRW"
+      },
+      "vnext": {
+        "distributor": "0xB528c49D0c6De82C3Cc003CE2D53828082472d35",
+        "enabled": true,
+        "timelock": "0x88195958A031B116cbFA594e890A296b25a05BE0"
+      }
+    },
+    {
+      "activity_summary_path": "/activity-summary-arbitrum-sepolia.json",
+      "community_share_path": "/community-share-arbitrum-sepolia.json",
+      "default": false,
+      "faucet": {
+        "address": "0xF33D8A17A0a2b0241A880CFC3A233809ea057BEA",
+        "enabled": true
+      },
+      "name": "Arbitrum Sepolia",
+      "network": {
+        "chain_id": 421614,
+        "explorer_base_url": "https://sepolia.arbiscan.io",
+        "hex": "0x66eee",
+        "id": 421614,
+        "name": "Arbitrum Sepolia",
+        "native_symbol": "ETH",
+        "read_rpc_url": "https://sepolia-rollup.arbitrum.io/rpc",
+        "rpc_url": "https://sepolia-rollup.arbitrum.io/rpc",
+        "slug": "arbitrum-sepolia"
+      },
+      "notes": {
+        "alpha_stage": true,
+        "bond_asset": "0x850aa4f15b5c7fD8C4a8a136825e1fa971e321e6",
+        "bond_asset_mode": "mock",
+        "market_seeded": true,
+        "warning": "This is a DARWIN-owned Arbitrum Sepolia reference pool. It is live and tradeable, but it is still alpha infrastructure.",
+        "wrap_supported": false
+      },
+      "path": "/market-config-arbitrum-sepolia.json",
+      "pool": {
+        "address": "0xB528c49D0c6De82C3Cc003CE2D53828082472d35",
+        "venue_id": "darwin_reference_pool"
+      },
+      "slug": "arbitrum-sepolia",
+      "token": {
+        "address": "0x2D3a467BC7414b0634573e11D9Dc5F847D553a29",
+        "symbol": "DRW"
+      },
+      "vnext": {
+        "distributor": "0xc5B717491363a4175d52E0AA2ae18594c1e96CBC",
+        "enabled": true,
+        "timelock": "0xFa217a78365A21f6eaDBcE4Bf5C4a1CfCceFe4EF"
+      }
+    }
+  ]
+}

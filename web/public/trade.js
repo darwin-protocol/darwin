@@ -30,6 +30,7 @@ const FAUCET_ABI = [
 ];
 
 const state = {
+  laneSelection: null,
   config: null,
   runtimeStatus: null,
   activitySummary: null,
@@ -67,7 +68,7 @@ const TINY_SWAP_PRESETS = {
     amount: "0.00001",
     slippageBps: "150",
     wrapAmount: "0.00002",
-    note: "Tiny wrap loaded: wrap 0.00002 ETH first, then use the tiny buy path if you want to enter from WETH.",
+    note: "Tiny wrap loaded: wrap 0.00002 ETH first, then use the tiny buy path if the current lane supports public wrapping.",
   },
 };
 
@@ -130,7 +131,7 @@ function buildDrwTransferUri(recipient, amountText) {
     return "";
   }
 
-  const chainId = state.config.network.chain_id || 84532;
+  const chainId = state.config.network.chain_id || state.config.network.id || 84532;
   const trimmedAmount = (amountText || "").trim();
   if (!trimmedAmount || Number(trimmedAmount) <= 0) {
     return `ethereum:${state.config.token.address}@${chainId}/transfer?address=${recipient}`;
@@ -141,12 +142,18 @@ function buildDrwTransferUri(recipient, amountText) {
 }
 
 function buildTinySwapUrl(presetName) {
-  const url = new URL(window.location.href);
+  const baseHref = window.DarwinLane && state.laneSelection
+    ? window.DarwinLane.laneAbsoluteHref("/trade/", state.laneSelection)
+    : window.location.href;
+  const url = new URL(baseHref, window.location.origin);
   url.searchParams.set("preset", presetName || "tiny-sell");
   return url.toString();
 }
 
 function absoluteUrl(path) {
+  if (window.DarwinLane && state.laneSelection) {
+    return window.DarwinLane.laneAbsoluteHref(path, state.laneSelection);
+  }
   return new URL(path, window.location.origin).toString();
 }
 
@@ -193,21 +200,21 @@ function actionSharePayload(kind, txHash = "") {
   if (kind === "faucet") {
     return {
       title: "Claimed DRW",
-      text: `I claimed DRW on Base Sepolia and the next Darwin move is a tiny swap. ${shortAddress(txHash)}`,
+      text: `I claimed DRW on ${state.config.network.name} and the next Darwin move is a tiny swap. ${shortAddress(txHash)}`,
       url: epochUrl,
     };
   }
   if (kind === "wrap") {
     return {
       title: "Wrapped for Darwin",
-      text: `I wrapped a small amount of Base Sepolia ETH to get ready for a Darwin tiny swap. ${shortAddress(txHash)}`,
+      text: `I wrapped a small amount of ${state.config.network.name} ETH to get ready for a Darwin tiny swap. ${shortAddress(txHash)}`,
       url: tinySwapUrl,
     };
   }
   if (kind === "swap") {
     return {
       title: "Tiny Darwin swap",
-      text: `I just used the Darwin tiny-swap path on Base Sepolia. Public proof is on the activity page. ${shortAddress(txHash)}`,
+      text: `I just used the Darwin tiny-swap path on ${state.config.network.name}. Public proof is on the activity page. ${shortAddress(txHash)}`,
       url: activityUrl,
     };
   }
@@ -310,7 +317,9 @@ function syncTinyPresetButtons() {
 }
 
 async function loadConfig() {
-  const response = await fetch("../market-config.json", { cache: "no-store" });
+  state.laneSelection = window.DarwinLane ? await window.DarwinLane.resolveSelection() : null;
+  const configPath = state.laneSelection?.currentLane?.path || "/market-config.json";
+  const response = await fetch(configPath, { cache: "no-store" });
   if (!response.ok) {
     throw new Error(`Failed to load market config: ${response.status}`);
   }
@@ -343,7 +352,8 @@ async function loadRuntimeStatus() {
 
 async function loadActivitySummary() {
   try {
-    const response = await fetch(`../activity-summary.json?ts=${Date.now()}`, { cache: "no-store" });
+    const summaryPath = state.laneSelection?.currentLane?.activity_summary_path || "/activity-summary.json";
+    const response = await fetch(`${summaryPath}?ts=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) {
       return;
     }
@@ -356,10 +366,15 @@ async function loadActivitySummary() {
 function bindStaticConfig() {
   els.chainBadge.textContent = state.config.network.name;
   els.feeBadge.textContent = `${state.config.pool.fee_bps} bps`;
+  if (window.DarwinLane && state.laneSelection) {
+    window.DarwinLane.renderSwitcher(els.tradeLaneSwitcher, state.laneSelection);
+  }
 
   els.poolAddress.textContent = state.config.pool.address;
   els.drwAddress.textContent = state.config.token.address;
   els.wethAddress.textContent = state.config.quote_token.address;
+  els.walletQuoteLabel.textContent = state.config.quote_token.symbol;
+  els.quoteAddressLabel.textContent = `${state.config.quote_token.symbol} token`;
   if (state.config.faucet?.enabled && state.config.faucet.address) {
     els.faucetPanel.hidden = false;
     els.faucetAddressRow.hidden = false;
@@ -374,6 +389,16 @@ function bindStaticConfig() {
   els.poolLink.textContent = shortAddress(state.config.pool.address);
   els.tokenLink.href = explorerLink(state.config.token.address);
   els.tokenLink.textContent = shortAddress(state.config.token.address);
+  if (els.tradeViewActivityLink) {
+    els.tradeViewActivityLink.href = window.DarwinLane && state.laneSelection
+      ? window.DarwinLane.laneRelativeHref("/activity/", state.laneSelection)
+      : "/activity/";
+  }
+  if (els.tradeViewEpochLink) {
+    els.tradeViewEpochLink.href = window.DarwinLane && state.laneSelection
+      ? window.DarwinLane.laneRelativeHref("/epoch/", state.laneSelection)
+      : "/epoch/";
+  }
   els.liveStatusLink.href = state.config.links.live_status;
   els.marketDocLink.href = state.config.links.market_bootstrap;
   els.repoLink.href = state.config.links.repo;
@@ -384,8 +409,21 @@ function bindStaticConfig() {
     els.tradeEpochBadge.textContent = epoch.status || "live";
     els.tradeEpochTitle.textContent = epoch.title || "Darwin epoch";
     els.tradeEpochSummary.textContent = epoch.summary || "";
-    els.tradeEpochLink.href = epoch.share_path || state.config.community?.epoch_path || "/epoch/";
+    els.tradeEpochLink.href = absoluteUrl(epoch.share_path || state.config.community?.epoch_path || "/epoch/");
     els.tradeCommunityHint.textContent = epoch.focus || els.tradeCommunityHint.textContent;
+  }
+
+  const wrapEnabled = Boolean(state.config.quote_token?.wrap_enabled);
+  if (wrapEnabled) {
+    els.wrapBadge.textContent = `${state.config.network.name} ${state.config.quote_token.symbol}`;
+    els.wrapCaption.textContent =
+      `Buying DRW from this pool requires ${state.config.quote_token.symbol}, not native ETH. This action calls deposit() on ${state.config.network.name} ${state.config.quote_token.symbol}.`;
+    els.wrapButton.disabled = false;
+  } else {
+    els.wrapBadge.textContent = `${state.config.quote_token.symbol} is preseeded`;
+    els.wrapCaption.textContent =
+      `${state.config.quote_token.symbol} is a mock/operator-seeded quote asset on this lane, so public wrapping is disabled. The public first move here is claim DRW, then tiny sell.`;
+    els.wrapButton.disabled = true;
   }
 
   const summary = state.activitySummary?.summary;
@@ -404,7 +442,7 @@ async function refreshMarket() {
   els.poolBaseReserve.textContent = formatUnits(baseReserve, state.config.token.decimals, 9);
   els.poolQuoteReserve.textContent = formatUnits(quoteReserve, state.config.quote_token.decimals, 12);
   els.portalState.textContent = "Live";
-  els.portalSubstate.textContent = "Public Base Sepolia pool";
+  els.portalSubstate.textContent = `Public ${state.config.network.name} pool`;
 }
 
 async function refreshWallet() {
@@ -570,7 +608,7 @@ async function handleSwap() {
       tx.hash,
     );
     await tx.wait();
-    setMessage("swap", "Swap confirmed on Base Sepolia.", tx.hash);
+    setMessage("swap", `Swap confirmed on ${state.config.network.name}.`, tx.hash);
     setSharePayload(
       actionSharePayload("swap", tx.hash),
       "Swap confirmed. Share the Darwin activity page so another wallet can follow the same tiny path.",
@@ -584,6 +622,10 @@ async function handleSwap() {
 }
 
 async function handleWrap() {
+  if (!state.config.quote_token?.wrap_enabled) {
+    setMessage("wrap", `${state.config.quote_token.symbol} wrapping is disabled on ${state.config.network.name}.`);
+    return;
+  }
   if (!state.account) {
     await connectWallet();
     return;
@@ -602,7 +644,7 @@ async function handleWrap() {
     const tx = await state.quoteToken.connect(state.signer).deposit({ value: amount });
     setMessage("wrap", `Wrap submitted for ${rawAmount} ETH.`, tx.hash);
     await tx.wait();
-    setMessage("wrap", "Wrap confirmed on Base Sepolia.", tx.hash);
+    setMessage("wrap", `Wrap confirmed on ${state.config.network.name}.`, tx.hash);
     setSharePayload(
       actionSharePayload("wrap", tx.hash),
       "Wrap confirmed. You can share the tiny-buy path or continue into a tiny swap.",
@@ -697,7 +739,7 @@ function updateQrState() {
   const recipient = els.qrRecipient.value.trim();
   const amount = els.qrAmount.value.trim();
   const uri = buildDrwTransferUri(recipient, amount);
-  els.qrUri.value = uri || "Enter a valid Base Sepolia wallet address to generate a DRW transfer QR.";
+  els.qrUri.value = uri || `Enter a valid ${state.config?.network?.name || "Darwin lane"} wallet address to generate a DRW transfer QR.`;
   els.copyQrUriButton.disabled = !uri;
   drawQr(uri);
 }
@@ -724,6 +766,8 @@ async function boot() {
     swapButton: $("swapButton"),
     wrapAmount: $("wrapAmount"),
     wrapButton: $("wrapButton"),
+    wrapBadge: $("wrapBadge"),
+    wrapCaption: $("wrapCaption"),
     qrCanvas: $("qrCanvas"),
     qrRecipient: $("qrRecipient"),
     qrAmount: $("qrAmount"),
@@ -751,6 +795,7 @@ async function boot() {
     walletEth: $("walletEth"),
     walletDrw: $("walletDrw"),
     walletWeth: $("walletWeth"),
+    walletQuoteLabel: $("walletQuoteLabel"),
     poolLink: $("poolLink"),
     tokenLink: $("tokenLink"),
     chainBadge: $("chainBadge"),
@@ -760,8 +805,10 @@ async function boot() {
     poolAddress: $("poolAddress"),
     drwAddress: $("drwAddress"),
     wethAddress: $("wethAddress"),
+    quoteAddressLabel: $("quoteAddressLabel"),
     faucetAddressRow: $("faucetAddressRow"),
     faucetAddress: $("faucetAddress"),
+    qrCaption: $("qrCaption"),
     liveStatusLink: $("liveStatusLink"),
     marketDocLink: $("marketDocLink"),
     repoLink: $("repoLink"),
@@ -774,6 +821,9 @@ async function boot() {
     tradeExternalWalletCount: $("tradeExternalWalletCount"),
     tradeExternalSwapCount: $("tradeExternalSwapCount"),
     tradeEpochLink: $("tradeEpochLink"),
+    tradeLaneSwitcher: $("tradeLaneSwitcher"),
+    tradeViewActivityLink: $("tradeViewActivityLink"),
+    tradeViewEpochLink: $("tradeViewEpochLink"),
     shareEpochButton: $("shareEpochButton"),
     tradeCommunityHint: $("tradeCommunityHint"),
     shareActionButton: $("shareActionButton"),
@@ -875,6 +925,8 @@ async function boot() {
     actionSharePayload("epoch"),
     "Epoch share is ready. Complete a claim or swap to generate a more specific proof link.",
   );
+  els.qrCaption.textContent =
+    `This QR encodes a ${state.config.network.name} DRW transfer request. Scan it from another wallet to open a direct token send.`;
   setMessage("ready", "Portal ready. Connect a wallet to trade.");
 }
 

@@ -64,3 +64,15 @@ load_arbitrum_sepolia_env() {
   env_file="${DARWIN_ARBITRUM_ENV_FILE:-$(resolve_darwin_env_file "$config_dir/arbitrum-sepolia.env" "$root/.env.arbitrum-sepolia")}"
   load_env_defaults "$env_file"
 }
+
+load_darwin_network_env() {
+  local root="$1"
+  case "${DARWIN_NETWORK:-}" in
+    arbitrum-sepolia|arbitrum)
+      load_arbitrum_sepolia_env "$root"
+      ;;
+    *)
+      load_base_sepolia_env "$root"
+      ;;
+  esac
+}

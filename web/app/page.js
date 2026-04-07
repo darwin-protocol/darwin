@@ -34,7 +34,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "Use Darwin",
   description:
-    "Claim testnet DRW and use a tiny first swap on the live Base Sepolia DARWIN reference pool.",
+    "Claim testnet DRW and use a tiny first swap on the live DARWIN reference pools.",
   alternates: {
     canonical: "/",
   },
@@ -44,7 +44,7 @@ export const metadata = {
   },
 };
 
-const homeScriptVersion = "20260407-home1";
+const homeScriptVersion = "20260407-home2";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -52,12 +52,13 @@ const structuredData = {
   name: "Use Darwin",
   url: "https://usedarwin.xyz",
   description:
-    "Claim testnet DRW and use a tiny first swap on the live Base Sepolia DARWIN reference pool.",
+    "Claim testnet DRW and use a tiny first swap on the live DARWIN reference pools.",
 };
 
 export default function HomePage() {
   return (
     <div className="background-shell">
+      <Script src={`./lane.js?v=${homeScriptVersion}`} strategy="afterInteractive" />
       <Script src={`./home.js?v=${homeScriptVersion}`} strategy="afterInteractive" />
 
       <div className="background">
@@ -75,14 +76,15 @@ export default function HomePage() {
         <section className="card status-banner">
           <div>
             <p className="eyebrow">USE DARWIN</p>
-            <h1 className="plain-title">Live Base Sepolia DRW market.</h1>
-            <p className="plain-note">
-              Public host: <code>usedarwin.xyz</code>. The public testnet market, faucet, and trade
-              portal are live.
+            <h1 className="plain-title">Live DRW market lanes.</h1>
+            <p id="homeHeroStatusLine" className="plain-note">
+              Public host: <code>usedarwin.xyz</code>. Base recovery is live now, and the Arbitrum
+              Sepolia lane is ready in the same portal.
             </p>
           </div>
           <div className="status-banner-meta">
-            <span className="badge">Base Sepolia</span>
+            <span id="homePrimaryLaneBadge" className="badge">Base Sepolia</span>
+            <span className="badge">Arbitrum Sepolia</span>
             <span className="badge">DRW live</span>
             <span className="badge">Testnet alpha</span>
           </div>
@@ -93,20 +95,21 @@ export default function HomePage() {
             <h2 className="section-title">Claim, wrap, and trade.</h2>
             <p className="lede">
               DARWIN is live as a public testnet surface: token, faucet, reference pool, wallet
-              portal, and deployment artifact. The first outside action should be small and
-              obvious: claim DRW, then use a tiny swap.
+              portal, and deployment artifact. The first outside action should stay small and
+              obvious: claim DRW, then use a tiny swap on the current lane.
             </p>
+            <div id="homeLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
-              <Link className="button button-primary" href="/trade/">
+              <Link id="homeOpenMarketLink" className="button button-primary" href="/trade/">
                 Open market
               </Link>
-              <Link className="button button-secondary" href="/trade/?preset=tiny-sell">
+              <Link id="homeHeroTinySwapLink" className="button button-secondary" href="/trade/?preset=tiny-sell">
                 Try tiny swap
               </Link>
-              <Link className="button button-secondary" href="/epoch/">
+              <Link id="homeHeroEpochLink" className="button button-secondary" href="/epoch/">
                 Current epoch
               </Link>
-              <Link className="button button-secondary" href="/activity/">
+              <Link id="homeHeroActivityLink" className="button button-secondary" href="/activity/">
                 Live activity
               </Link>
               <a
@@ -132,7 +135,7 @@ export default function HomePage() {
             <div className="rail-card">
               <span className="label">Token</span>
               <strong>DRW</strong>
-              <small>Base Sepolia live surface</small>
+              <small>public testnet market lanes</small>
             </div>
             <div className="rail-card">
               <span className="label">Faucet</span>
@@ -210,7 +213,7 @@ export default function HomePage() {
               <div className="metric">
                 <span className="label">Token</span>
                 <strong>1B DRW</strong>
-                <small>live on Base Sepolia</small>
+                <small>live on Darwin testnet lanes</small>
               </div>
               <div className="metric">
                 <span className="label">Faucet claim</span>
@@ -237,11 +240,11 @@ export default function HomePage() {
             </div>
             <ol className="step-list">
               <li>Open the market page.</li>
-              <li>Connect a wallet on Base Sepolia.</li>
+              <li>Connect a wallet on the selected Darwin lane.</li>
               <li>Claim DRW from the faucet.</li>
               <li>Use the `tiny sell` preset for a first public swap.</li>
               <li>Share the epoch or activity link so the next wallet can follow.</li>
-              <li>Wrap ETH later if you want to buy from the pool.</li>
+              <li>Acquire quote assets later if the lane supports buying from the pool.</li>
             </ol>
           </article>
 
@@ -253,7 +256,7 @@ export default function HomePage() {
             <div className="status-ladder">
               <div className="ladder-step">
                 <strong>Testnet only</strong>
-                <span>Everything here runs on Base Sepolia, not mainnet.</span>
+                <span>Everything here still runs on public testnets, not mainnet.</span>
               </div>
               <div className="ladder-step">
                 <strong>Reference liquidity</strong>
@@ -272,10 +275,10 @@ export default function HomePage() {
               <span className="badge">repo-backed</span>
             </div>
             <div className="link-row">
-              <Link className="button button-secondary" href="/trade/">
+              <Link id="homeMarketPageLink" className="button button-secondary" href="/trade/">
                 Market page
               </Link>
-              <Link className="button button-secondary" href="/activity/">
+              <Link id="homeActivityPageLink" className="button button-secondary" href="/activity/">
                 Activity page
               </Link>
               <a

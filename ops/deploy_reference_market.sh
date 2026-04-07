@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/ops/load_env_defaults.sh"
-load_base_sepolia_env "$ROOT"
+load_darwin_network_env "$ROOT"
 
 require_env() {
   local name="$1"
@@ -64,6 +64,8 @@ deployment["market"] = market_deployment
 
 deployment_path.write_text(json.dumps(deployment, indent=2, sort_keys=True) + "\n")
 PY
+
+python3 "$ROOT/ops/split_deployment_artifact.py" --deployment-file "$DARWIN_DEPLOYMENT_FILE"
 
 echo "DARWIN reference market merged into deployment artifact."
 echo "  deployment: $DARWIN_DEPLOYMENT_FILE"

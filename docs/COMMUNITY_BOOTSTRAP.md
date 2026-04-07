@@ -2,7 +2,7 @@
 
 The right way to start outside DARWIN activity is simple:
 
-1. get outside wallets onto Base Sepolia
+1. get outside wallets onto a live Darwin lane
 2. point them at the public tiny-swap link
 3. keep public activity visible
 4. measure genuine outside usage locally
@@ -17,13 +17,20 @@ Do not manufacture volume with project bots or self-generated optics. That creat
 - Activity portal: `https://usedarwin.xyz/activity/`
 - Share bundle: `https://usedarwin.xyz/community-share.json`
 
+Additional lane:
+
+- Arbitrum epoch: `https://usedarwin.xyz/epoch/?lane=arbitrum-sepolia`
+- Arbitrum tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia`
+- Arbitrum activity: `https://usedarwin.xyz/activity/?lane=arbitrum-sepolia`
+- Arbitrum share bundle: `https://usedarwin.xyz/community-share-arbitrum-sepolia.json`
+
 ## Best Current Distribution Path
 
 For real outside onboarding, use:
 
 1. a short public message with the tiny-swap link
 2. the activity page as proof of recent DARWIN usage
-3. a clear note that this is Base Sepolia testnet alpha
+3. a clear note that this is Darwin testnet alpha on the selected lane
 
 The public portal now exposes:
 
@@ -52,11 +59,29 @@ Then generate the local outside-activity report:
   --markdown-out ops/state/activity/external-activity.md
 ```
 
+Arbitrum lane:
+
+```bash
+./.venv/bin/python ops/report_external_activity.py \
+  --deployment-file ops/deployments/arbitrum-sepolia.json \
+  --rpc-url https://arbitrum-sepolia-rpc.publicnode.com \
+  --json-out ops/state/activity/external-activity-arbitrum-sepolia.json \
+  --markdown-out ops/state/activity/external-activity-arbitrum-sepolia.md
+```
+
 That report is the honest operator view of whether any activity is genuinely third-party.
 
-The publish path now also exports a public-safe summary to `web/public/activity-summary.json` so the live site can show outside-wallet counts without exposing the local allowlist or operator notes.
+The publish path now also exports public-safe lane summaries:
 
-It also exports a public-safe outreach bundle to `web/public/community-share.json`. That bundle includes the current epoch, public links, and honest invite text derived from the live outside-activity snapshot. It is safe for operators or external agents to consume because it contains only public campaign data and public URLs.
+- `web/public/activity-summary.json`
+- `web/public/activity-summary-arbitrum-sepolia.json`
+
+It also exports public-safe outreach bundles:
+
+- `web/public/community-share.json`
+- `web/public/community-share-arbitrum-sepolia.json`
+
+Those bundles include the current epoch, public links, and honest invite text derived from the live outside-activity snapshot. They are safe for operators or external agents to consume because they contain only public campaign data and public URLs.
 
 ## Farcaster and Base App
 

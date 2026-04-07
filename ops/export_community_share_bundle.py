@@ -7,6 +7,7 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -45,8 +46,14 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
-def join_url(site_url: str, path: str) -> str:
-    return f"{site_url.rstrip('/')}/{path.lstrip('/')}"
+def join_url(site_url: str, path: str, lane_slug: str) -> str:
+    absolute = f"{site_url.rstrip('/')}/{path.lstrip('/')}"
+    if not lane_slug or lane_slug == "base-sepolia-recovery":
+        return absolute
+    parsed = urlparse(absolute)
+    query = dict(parse_qsl(parsed.query))
+    query["lane"] = lane_slug
+    return urlunparse(parsed._replace(query=urlencode(query)))
 
 
 def main() -> int:
@@ -55,15 +62,17 @@ def main() -> int:
     activity_summary = load_json(Path(args.activity_summary).expanduser().resolve())
     epoch = ((market_config.get("community") or {}).get("epoch")) or {}
     summary = activity_summary.get("summary") or {}
+    network_name = ((market_config.get("network") or {}).get("name")) or "the current Darwin lane"
+    lane_slug = ((market_config.get("network") or {}).get("slug")) or ""
 
     site_url = args.site_url.rstrip("/")
     tiny_swap_path = (market_config.get("community") or {}).get("tiny_swap_path", "/trade/?preset=tiny-sell")
     activity_path = (market_config.get("community") or {}).get("activity_path", "/activity/")
     epoch_path = (market_config.get("community") or {}).get("epoch_path", "/epoch/")
 
-    tiny_swap_url = join_url(site_url, tiny_swap_path)
-    activity_url = join_url(site_url, activity_path)
-    epoch_url = join_url(site_url, epoch_path)
+    tiny_swap_url = join_url(site_url, tiny_swap_path, lane_slug)
+    activity_url = join_url(site_url, activity_path, lane_slug)
+    epoch_url = join_url(site_url, epoch_path, lane_slug)
 
     external_wallets = int(summary.get("external_wallets", 0) or 0)
     external_swaps = int(summary.get("external_swaps", 0) or 0)
@@ -76,11 +85,11 @@ def main() -> int:
             f"{external_wallets} outside wallets and {external_swaps} outside swaps have appeared in the current Darwin window."
         )
         invite_short = (
-            f"Join {external_wallets} outside wallets using Darwin on Base Sepolia. Start here: {tiny_swap_url}"
+            f"Join {external_wallets} outside wallets using Darwin on {network_name}. Start here: {tiny_swap_url}"
         )
     else:
         status_line = "No outside wallets have appeared in the current Darwin window yet."
-        invite_short = f"Be one of the first outside wallets to try Darwin on Base Sepolia: {tiny_swap_url}"
+        invite_short = f"Be one of the first outside wallets to try Darwin on {network_name}: {tiny_swap_url}"
 
     progress_line = (
         f"Epoch progress: {external_wallets}/{wallet_target or '?'} outside wallets, "
