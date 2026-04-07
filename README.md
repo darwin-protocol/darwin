@@ -6,6 +6,7 @@ A peer-to-peer system for evolving exchange microstructure.
 
 - Current project status: [LIVE_STATUS.md](LIVE_STATUS.md)
 - Public site: `http://usedarwin.xyz/` for now, with HTTPS provisioning in progress
+- Deterministic fallback if GitHub TLS stalls: [docs/PI_TUNNEL_HOSTING.md](docs/PI_TUNNEL_HOSTING.md)
 - Public web source: [web/](web/)
 - Public Base Sepolia artifact: [ops/deployments/base-sepolia.json](ops/deployments/base-sepolia.json)
 - Operator flow: [docs/OPERATOR_QUICKSTART.md](docs/OPERATOR_QUICKSTART.md)

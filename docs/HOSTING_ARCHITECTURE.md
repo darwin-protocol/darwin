@@ -2,10 +2,10 @@
 
 ## Recommended Public Stack
 
-DARWIN should keep the public website on static hosting and keep the Raspberry Pi out of the direct public path.
+DARWIN should keep the public website on static hosting and keep the Raspberry Pi out of the direct public path unless the custom-domain TLS edge is blocked.
 
-- Public site: GitHub Pages
-- DNS / optional CDN: IONOS DNS now, optional Cloudflare later
+- Public site: GitHub Pages first, Cloudflare Tunnel fallback if the custom-domain cert stalls
+- DNS / edge: IONOS today, Cloudflare if the site moves behind a tunnel
 - App path: static Next.js export
 - Private services later: Raspberry Pi behind a tunnel on separate subdomains
 
@@ -34,6 +34,16 @@ This keeps the public site simple, cacheable, and easy to move, while avoiding a
 4. Point the bought domain at GitHub Pages from IONOS.
 5. Only add Cloudflare if you want DNS control, CDN, or extra edge features.
 6. Only add Raspberry Pi hosting for private or dynamic services later.
+
+## Current Fallback Path
+
+If GitHub Pages custom-domain HTTPS keeps failing, the deterministic fallback is:
+
+1. move the canonical domain to Cloudflare
+2. run the static site from the Raspberry Pi
+3. expose the Pi only through Cloudflare Tunnel
+
+That path is documented in [PI_TUNNEL_HOSTING.md](PI_TUNNEL_HOSTING.md).
 
 For the exact GitHub-side and registrar cutover sequence, see [CUSTOM_DOMAIN_SETUP.md](CUSTOM_DOMAIN_SETUP.md).
 

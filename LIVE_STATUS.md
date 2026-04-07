@@ -11,6 +11,7 @@ Last repo update: `2026-04-06`
 - A seeded Base Sepolia `DRW/WETH` reference pool is now live.
 - A first-party Next.js static-export site now exists in `web/` and deploys through GitHub Pages.
 - Canonical public domain is now `usedarwin.xyz`; HTTP is live and GitHub Pages HTTPS provisioning is in progress.
+- Pi + Cloudflare Tunnel fallback is now documented and staged in `ops/pi/` if GitHub TLS does not clear.
 - A transparent public `DRW` faucet is now live on Base Sepolia.
 - The next real steps are third-party token distribution, outside-watcher operation, outside archive flow, and external review.
 

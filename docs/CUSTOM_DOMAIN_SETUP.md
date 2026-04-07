@@ -75,6 +75,12 @@ If the bought domain is at IONOS:
 - do not move the main public site onto a Raspberry Pi just to say it is self-hosted
 - do not put the Pi directly on the public internet for the static site
 
+## If GitHub Pages TLS Stalls
+
+If `usedarwin.xyz` stays stuck on HTTP because GitHub Pages never finishes issuing the custom-domain certificate, stop waiting and use the Pi tunnel fallback instead of pretending the site is production-ready.
+
+That path is documented in [PI_TUNNEL_HOSTING.md](PI_TUNNEL_HOSTING.md).
+
 ## Raspberry Pi Later
 
 If the Raspberry Pi becomes useful later, keep it on a separate subdomain for:
