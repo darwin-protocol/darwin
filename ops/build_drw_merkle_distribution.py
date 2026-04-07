@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import subprocess
 import sys
@@ -14,6 +15,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claims-file", required=True, help="JSON file with claims or {claims:[...]}")
     parser.add_argument("--out", required=True, help="Output manifest path")
+    parser.add_argument(
+        "--format",
+        choices=("auto", "json", "csv"),
+        default="auto",
+        help="Input format for the claims file (default: infer from extension)",
+    )
     parser.add_argument("--token", default="", help="Optional token address metadata")
     parser.add_argument("--network", default="", help="Optional network metadata")
     parser.add_argument("--claim-deadline", default="", help="Optional claim deadline metadata")
@@ -55,9 +62,22 @@ def hash_pair(left: str, right: str) -> str:
 def load_claims(path: Path) -> list[dict]:
     raw = json.loads(path.read_text())
     claims = raw["claims"] if isinstance(raw, dict) else raw
+    return normalize_claims(claims)
+
+
+def load_claims_csv(path: Path) -> list[dict]:
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        if "account" not in (reader.fieldnames or []) or "amount" not in (reader.fieldnames or []):
+            raise ValueError("csv claims file must contain account and amount columns")
+        return normalize_claims(list(reader))
+
+
+def normalize_claims(claims: list[dict]) -> list[dict]:
     if not isinstance(claims, list) or not claims:
         raise ValueError("claims file must contain a non-empty list")
     normalized: list[dict] = []
+    seen_accounts: set[str] = set()
     for idx, entry in enumerate(claims):
         if not isinstance(entry, dict):
             raise ValueError("claim entries must be objects")
@@ -65,8 +85,20 @@ def load_claims(path: Path) -> list[dict]:
         amount = int(str(entry["amount"]))
         if amount <= 0:
             raise ValueError("claim amount must be positive")
+        if account in seen_accounts:
+            raise ValueError(f"duplicate account in claims file: {account}")
+        seen_accounts.add(account)
         normalized.append({"index": idx, "account": account, "amount": amount})
     return normalized
+
+
+def infer_input_format(path: Path, declared_format: str) -> str:
+    if declared_format != "auto":
+        return declared_format
+    suffix = path.suffix.lower()
+    if suffix == ".csv":
+        return "csv"
+    return "json"
 
 
 def build_tree(claims: list[dict]) -> tuple[list[str], list[list[str]]]:
@@ -100,7 +132,11 @@ def main() -> int:
     args = parse_args()
     claims_file = Path(args.claims_file).expanduser().resolve()
     out_path = Path(args.out).expanduser().resolve()
-    claims = load_claims(claims_file)
+    input_format = infer_input_format(claims_file, args.format)
+    if input_format == "csv":
+        claims = load_claims_csv(claims_file)
+    else:
+        claims = load_claims(claims_file)
     leaves, layers = build_tree(claims)
     manifest_claims: list[dict] = []
     total_amount = 0
@@ -135,6 +171,7 @@ def main() -> int:
 
     print("[drw-merkle] ready")
     print(f"  claims_file: {claims_file}")
+    print(f"  format:      {input_format}")
     print(f"  out:         {out_path}")
     print(f"  merkle_root: {manifest['merkle_root']}")
     print(f"  claims:      {manifest['claims_count']}")

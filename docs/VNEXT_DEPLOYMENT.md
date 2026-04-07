@@ -28,6 +28,15 @@ python3 ops/build_drw_merkle_distribution.py \
   --claim-deadline 1777777777
 ```
 
+CSV exports are also supported for spreadsheet-driven claim prep:
+
+```bash
+python3 ops/build_drw_merkle_distribution.py \
+  --claims-file ops/state/base-sepolia-claims.csv \
+  --out ops/state/base-sepolia-drw-merkle.json \
+  --claim-deadline 1777777777
+```
+
 The output manifest contains:
 
 - `merkle_root`
@@ -77,6 +86,17 @@ The sidecar artifact is public-safe and includes:
 - claim count and total amount
 
 It does **not** publish local operator-only wallet metadata.
+
+## Promote Mutable DRW Governance
+
+After deployment, build the timelock promotion batch:
+
+```bash
+./ops/preflight_vnext_promotion.sh
+./ops/build_vnext_promotion_batch.sh
+```
+
+See [`docs/VNEXT_PROMOTION.md`](./VNEXT_PROMOTION.md) for the full handoff path.
 
 ## Current Boundary
 

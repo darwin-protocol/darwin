@@ -3820,6 +3820,204 @@ exit 0
             self.assertIn("0x" + ("11" * 32), result.stdout)
             print("  Ops: vNext governance preflight resolves a public-safe artifact plus local manifest")
 
+    def test_49_build_drw_merkle_distribution_accepts_csv_claims(self):
+        """Ops: vNext Merkle builder accepts spreadsheet-style CSV claims."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            claims = tmp / "claims.csv"
+            out = tmp / "merkle.json"
+            claims.write_text(
+                "\n".join([
+                    "account,amount",
+                    "0x00000000000000000000000000000000000000a1,100000000000000000000",
+                    "0x00000000000000000000000000000000000000b2,200000000000000000000",
+                ]) + "\n"
+            )
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "build_drw_merkle_distribution.py"),
+                    "--claims-file",
+                    str(claims),
+                    "--out",
+                    str(out),
+                    "--claim-deadline",
+                    "1777777777",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            manifest = json.loads(out.read_text())
+            self.assertEqual(manifest["claims_count"], 2)
+            self.assertEqual(manifest["total_amount"], "300000000000000000000")
+            self.assertIn("format:      csv", result.stdout)
+            print("  Ops: vNext Merkle builder accepts CSV claim exports")
+
+    def test_50_build_vnext_safe_batch_outputs_safe_transaction_builder_json(self):
+        """Ops: vNext promotion batch exports Safe Transaction Builder JSON for mutable DRW handoff."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            vnext = tmp / "base-sepolia.vnext.json"
+            out = tmp / "batch.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_staking": "0x0000000000000000000000000000000000000012",
+                    "drw_faucet": "0x0000000000000000000000000000000000000013",
+                    "reference_pool": "0x0000000000000000000000000000000000000014",
+                },
+            }))
+            vnext.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "vnext": {
+                    "contracts": {
+                        "darwin_timelock": "0x00000000000000000000000000000000000000aa",
+                        "drw_merkle_distributor": "0x00000000000000000000000000000000000000bb",
+                    },
+                    "distribution": {
+                        "total_amount": "300000000000000000000",
+                    },
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "build_vnext_safe_batch.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--vnext-file",
+                    str(vnext),
+                    "--out",
+                    str(out),
+                    "--safe-address",
+                    "0x00000000000000000000000000000000000000cc",
+                    "--market-operator",
+                    "0x00000000000000000000000000000000000000dd",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            batch = json.loads(out.read_text())
+            self.assertEqual(batch["chainId"], "84532")
+            self.assertEqual(batch["meta"]["safeAddress"], "0x00000000000000000000000000000000000000cc")
+            self.assertEqual(len(batch["transactions"]), 6)
+            self.assertEqual(batch["transactions"][0]["contractMethod"]["name"], "transfer")
+            self.assertEqual(batch["transactions"][1]["contractMethod"]["name"], "setMarketOperator")
+            self.assertEqual(batch["transactions"][2]["contractMethod"]["name"], "setGovernance")
+            self.assertIn("transactions:    6", result.stdout)
+            print("  Ops: vNext promotion batch emits Safe Transaction Builder JSON")
+
+    def test_51_preflight_vnext_promotion_uses_local_overlay_and_live_checks(self):
+        """Ops: vNext promotion preflight uses the local overlay and validates live governance/funding."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            overlay = tmp / "base-sepolia.private.json"
+            vnext = tmp / "base-sepolia.vnext.json"
+            env_file = tmp / ".env.base-sepolia"
+            fake_bin = tmp / "bin"
+            fake_cast = fake_bin / "cast"
+
+            governance = "0x00000000000000000000000000000000000000aa"
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_staking": "0x0000000000000000000000000000000000000012",
+                    "drw_faucet": "0x0000000000000000000000000000000000000013",
+                    "reference_pool": "0x0000000000000000000000000000000000000014",
+                },
+            }))
+            overlay.write_text(json.dumps({
+                "roles": {
+                    "governance": governance,
+                },
+            }))
+            vnext.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "vnext": {
+                    "contracts": {
+                        "darwin_timelock": "0x00000000000000000000000000000000000000bb",
+                        "drw_merkle_distributor": "0x00000000000000000000000000000000000000cc",
+                    },
+                    "distribution": {
+                        "total_amount": "300000000000000000000",
+                    },
+                },
+            }))
+
+            env_file.write_text(
+                "\n".join([
+                    'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
+                    'export DARWIN_NETWORK="base-sepolia"',
+                    f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
+                    f'export DARWIN_VNEXT_FILE="{vnext}"',
+                ]) + "\n"
+            )
+
+            fake_bin.mkdir(parents=True, exist_ok=True)
+            fake_cast.write_text(
+                f"""#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${{1:-}}" != "call" ]]; then
+  echo "unexpected cast call: $*" >&2
+  exit 1
+fi
+method="${{5:-}}"
+if [[ "$method" == "governance()(address)" ]]; then
+  echo "{governance}"
+  exit 0
+fi
+if [[ "$method" == "balanceOf(address)(uint256)" ]]; then
+  echo "300000000000000000000"
+  exit 0
+fi
+echo "unexpected cast call: $*" >&2
+exit 1
+"""
+            )
+            fake_cast.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "ops" / "preflight_vnext_promotion.sh"),
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("ready_to_build:     yes", result.stdout)
+            self.assertIn(governance, result.stdout)
+            self.assertIn("300000000000000000000", result.stdout)
+            print("  Ops: vNext promotion preflight uses local overlay governance plus live checks")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

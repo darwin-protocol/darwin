@@ -16,6 +16,7 @@ Use the repository contact path first while a dedicated security mailbox is bein
 - Local recovery env and redeploy preflight are available via `./ops/prepare_recovery_env.sh` and `./ops/preflight_recovery_redeploy.sh`.
 - The public deployment artifact is redacted by default; local overlays in `~/.config/darwin/deployments/` restore operator-only fields.
 - The first vNext governance layer deploys to a separate public-safe sidecar artifact; see `docs/VNEXT_DEPLOYMENT.md`.
+- Mutable DRW-era governance handoff can be preflighted and batched locally; see `docs/VNEXT_PROMOTION.md`.
 
 ## Scope
 

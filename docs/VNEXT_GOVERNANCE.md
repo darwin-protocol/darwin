@@ -21,6 +21,9 @@ The first operational vNext path now exists:
 - deploy wrapper: [`ops/deploy_vnext_governance.sh`](../ops/deploy_vnext_governance.sh)
 - deploy script: [`contracts/script/DeployVNextGovernance.s.sol`](../contracts/script/DeployVNextGovernance.s.sol)
 - runbook: [`docs/VNEXT_DEPLOYMENT.md`](./VNEXT_DEPLOYMENT.md)
+- promotion preflight: [`ops/preflight_vnext_promotion.sh`](../ops/preflight_vnext_promotion.sh)
+- Safe batch builder: [`ops/build_vnext_safe_batch.py`](../ops/build_vnext_safe_batch.py)
+- promotion runbook: [`docs/VNEXT_PROMOTION.md`](./VNEXT_PROMOTION.md)
 
 ## What vNext Changes
 
