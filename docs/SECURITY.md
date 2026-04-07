@@ -11,7 +11,7 @@ Use the repository contact path first while a dedicated security mailbox is bein
 - DARWIN is public testnet alpha infrastructure.
 - The public deployment is on Base Sepolia.
 - The system has not undergone a formal external audit.
-- Operators can locally verify live privileged-role bindings with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
+- Operators can locally verify live privileged-role bindings with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia-recovery.json`.
 - Fresh local recovery wallets can be prepared with `./ops/init_recovery_wallets.sh`.
 - Local recovery env and redeploy preflight are available via `./ops/prepare_recovery_env.sh` and `./ops/preflight_recovery_redeploy.sh`.
 - The public deployment artifact is redacted by default; local overlays in `~/.config/darwin/deployments/` restore operator-only fields.

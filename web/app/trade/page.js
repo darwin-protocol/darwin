@@ -42,7 +42,7 @@ export default function TradePage() {
             </p>
             <p className="hero-status-line">
               <span id="runtimeHostStatus">
-                <code>usedarwin.xyz</code> is live now.
+                <code>usedarwin.xyz</code> is live over HTTPS.
               </span>
             </p>
             <div className="hero-actions">

@@ -84,15 +84,15 @@ export default function HomePage() {
             <div className="rail-card">
               <span className="label">Token</span>
               <strong>DRW</strong>
-              <small>Base Sepolia contract live</small>
+              <small>Base Sepolia live surface</small>
             </div>
             <div className="rail-card">
               <span className="label">Faucet</span>
-              <code>0x3DAa...bAe0</code>
+              <small>Public claim path in the market portal</small>
             </div>
             <div className="rail-card">
               <span className="label">Reference pool</span>
-              <code>0x9E1f...B891</code>
+              <small>Live DRW / WETH pair in the market portal</small>
             </div>
           </aside>
         </section>

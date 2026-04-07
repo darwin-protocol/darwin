@@ -14,12 +14,10 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - The canary still uses Base Sepolia `WETH9` as its bond asset.
 - The simplest demo market is `DRW/WETH`.
 - DARWIN now ships a first-party `ReferenceMarketPool` deployment path for Base Sepolia and local smoke tests.
-- The live seeded reserves are `1000 DRW` and `0.0005 WETH`.
-- Initial DARWIN-controlled demo trades have now executed against the live pool.
-- Current post-demo reserves are approximately `985.384919987 DRW` and `0.000507483787963681 WETH`.
+- The current public recovery pool is seeded at `1000 DRW` and `0.0005 WETH`.
 - A first-party Next.js portal now exists in `web/` for direct wallet-driven pool trading.
 - A first-party faucet contract + portal claim path now exists for transparent third-party DRW distribution.
-- Live faucet funding is `100,000 DRW` + `0.0002 ETH`.
+- Current live faucet funding is `100,000 DRW` + `0.0004 ETH`.
 - Uniswap Labs' interface currently lists `Sepolia` and `Unichain` as supported testnets, not `Base Sepolia`, so venue support must be confirmed before assuming a UI-driven testnet pool path.
 
 ## Preflight
@@ -28,7 +26,7 @@ Run:
 
 ```bash
 ./.venv/bin/python ops/preflight_market_bootstrap.py \
-  --deployment-file ops/deployments/base-sepolia.json \
+  --deployment-file ops/deployments/base-sepolia-recovery.json \
   --wallet-address <wallet-address> \
   --json-out ops/state/market-bootstrap/preflight.json \
   --markdown-out ops/state/market-bootstrap/preflight.md
@@ -52,7 +50,7 @@ Then confirm that your chosen venue is actually tracked for the deployment netwo
 
 ```bash
 ./.venv/bin/python ops/preflight_market_venue.py \
-  --deployment-file ops/deployments/base-sepolia.json \
+  --deployment-file ops/deployments/base-sepolia-recovery.json \
   --venue uniswap_v4 \
   --json-out ops/state/market-bootstrap/venue.json \
   --markdown-out ops/state/market-bootstrap/venue.md
@@ -89,7 +87,7 @@ Then verify the artifact-backed venue path:
 
 ```bash
 ./.venv/bin/python ops/preflight_market_venue.py \
-  --deployment-file ops/deployments/base-sepolia.json \
+  --deployment-file ops/deployments/base-sepolia-recovery.json \
   --venue darwin_reference_pool \
   --json-out ops/state/market-bootstrap/reference-venue.json \
   --markdown-out ops/state/market-bootstrap/reference-venue.md
@@ -148,14 +146,14 @@ Current live Base Sepolia faucet defaults:
 - claim amount: `100 DRW`
 - native drip: `0.00001 ETH`
 - cooldown: `86400` seconds
-- initial funding: `100000 DRW` + `0.0002 ETH`
+- initial funding: `100000 DRW` + `0.0004 ETH`
 
 Redeploy path once a signer is loaded locally:
 
 ```bash
 ./ops/init_drw_faucet.sh
-python -m darwin_sim.cli.darwinctl deployment-show --deployment-file ops/deployments/base-sepolia.json
-python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia.json --out web/public/market-config.json
+python -m darwin_sim.cli.darwinctl deployment-show --deployment-file ops/deployments/base-sepolia-recovery.json
+python ops/export_market_portal_config.py --deployment-file ops/deployments/base-sepolia-recovery.json --out web/public/market-config.json
 ```
 
 If the token holder differs from the deployer, set a separate funder key locally before running the faucet init:
@@ -164,9 +162,9 @@ If the token holder differs from the deployer, set a separate funder key locally
 export DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY="0x..."
 ```
 
-## Initial Demo Activity
+## Initial Claim Activity
 
-On `2026-04-06`, DARWIN-controlled demo traders executed the first live Base Sepolia swaps against the reference pool to prove the end-to-end trading path. Those transactions proved the pool is tradeable. They do not count as third-party market validation.
+The current public recovery stack has already processed first-party claimant tests through the live Merkle distributor. Those claims prove the vNext promotion and claim path are working end to end. They do not count as third-party adoption.
 
 ## Demo Market Path
 

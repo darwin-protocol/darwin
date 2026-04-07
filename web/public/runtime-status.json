@@ -1,8 +1,8 @@
 {
   "available": true,
-  "generated_at": "2026-04-07T13:08:33.278407Z",
+  "generated_at": "2026-04-07T13:14:23.384104Z",
   "site_domain": "usedarwin.xyz",
-  "site_url": "http://usedarwin.xyz/",
-  "summary": "usedarwin.xyz is live.",
-  "transport": "http"
+  "site_url": "https://usedarwin.xyz/",
+  "summary": "usedarwin.xyz is live over HTTPS.",
+  "transport": "https"
 }

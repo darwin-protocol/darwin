@@ -5,8 +5,8 @@ This file describes the practical recovery boundary for the live Base Sepolia DA
 ## Current Security Boundary
 
 - The old deployment signer can be retired for future deployments.
-- The live governance wallet remains the root of trust for the current public deployment.
-- `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json` is the source of truth for this status.
+- The recovery governance wallet remains the root of trust for the current public deployment.
+- `darwinctl role-audit --deployment-file ops/deployments/base-sepolia-recovery.json` is the source of truth for this status.
 - DRW genesis is already live on Base Sepolia. Recovery work is about future redeploy capability, not about whether DRW exists.
 
 ## What Can Be Rotated
@@ -94,7 +94,7 @@ Run the full recovery redeploy flow with:
 - Before any future migration or redeploy, rerun:
 
 ```bash
-darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json
+darwinctl role-audit --deployment-file ops/deployments/base-sepolia-recovery.json
 ```
 
 This file intentionally avoids private infrastructure detail.

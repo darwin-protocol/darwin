@@ -1,15 +1,15 @@
 {
   "faucet": {
-    "address": "0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0",
+    "address": "0xB08e9dfaD5C64CC29DA82D2d4a42AaA64Fe1E9c1",
     "claim_amount": "100000000000000000000",
     "claim_cooldown": 86400,
     "enabled": true,
     "funded": true,
-    "initial_native_funding": "200000000000000",
-    "initial_token_funding": "100000000000000000000000",
+    "initial_native_funding": "45000000000000",
+    "initial_token_funding": "123000000000000000000",
     "native_drip_amount": "10000000000000"
   },
-  "generated_at": "2026-04-07T03:47:23.678691Z",
+  "generated_at": "2026-04-07T13:14:23.384771Z",
   "links": {
     "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",
     "market_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md",
@@ -22,7 +22,7 @@
     "name": "Base Sepolia",
     "native_symbol": "ETH",
     "rpc_url": "https://sepolia.base.org",
-    "slug": "base-sepolia"
+    "slug": "base-sepolia-recovery"
   },
   "notes": {
     "alpha_stage": true,
@@ -32,7 +32,7 @@
     "warning": "This is a DARWIN-owned Base Sepolia reference pool. It is live and tradeable, but it is still testnet alpha infrastructure."
   },
   "pool": {
-    "address": "0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891",
+    "address": "0x0a04f15890c7fe64C2a4C02F8f157cba78Fcc7E5",
     "fee_bps": 30,
     "initial_base_amount": "1000000000000000000000",
     "initial_quote_amount": "500000000000000",
@@ -49,11 +49,11 @@
     "symbol": "WETH"
   },
   "source": {
-    "deployment_file": "ops/deployments/base-sepolia.json",
+    "deployment_file": "ops/deployments/base-sepolia-recovery.json",
     "repo_url": "https://github.com/darwin-protocol/darwin"
   },
   "token": {
-    "address": "0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2",
+    "address": "0xF78662d4Cb70143730cc19c71bD968a73C504da9",
     "decimals": 18,
     "symbol": "DRW",
     "total_supply": "1000000000000000000000000000"

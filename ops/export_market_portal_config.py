@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--deployment-file",
-        default=str(REPO_ROOT / "ops" / "deployments" / "base-sepolia.json"),
+        default=str(REPO_ROOT / "ops" / "deployments" / "base-sepolia-recovery.json"),
         help="Deployment artifact to read",
     )
     parser.add_argument(

@@ -11,6 +11,7 @@ PI_USER="${2:-pi}"
 DEST_DIR="${DARWIN_PI_SITE_DIR:-/srv/usedarwin/site/current}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SITE_DOMAIN="${DARWIN_SITE_DOMAIN:-usedarwin.xyz}"
+PORTAL_DEPLOYMENT_FILE="${DARWIN_PORTAL_DEPLOYMENT_FILE:-$REPO_ROOT/ops/deployments/base-sepolia-recovery.json}"
 MARKET_CONFIG_PATH="$REPO_ROOT/web/public/market-config.json"
 RUNTIME_STATUS_PATH="$REPO_ROOT/web/public/runtime-status.json"
 TMP_DIR="$(mktemp -d)"
@@ -37,7 +38,7 @@ cp "$RUNTIME_STATUS_PATH" "$TMP_DIR/runtime-status.json"
 
 pushd "$REPO_ROOT" >/dev/null
 python3 ops/export_market_portal_config.py \
-  --deployment-file ops/deployments/base-sepolia.json \
+  --deployment-file "$PORTAL_DEPLOYMENT_FILE" \
   --out web/public/market-config.json
 python3 ops/export_runtime_status.py \
   --hosting-mode cloudflare-tunnel \
