@@ -35,6 +35,12 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("GITHUB_REPOSITORY", "darwin-protocol/darwin"),
         help="GitHub repository in owner/name form",
     )
+    parser.add_argument(
+        "--hosting-mode",
+        choices=("github-pages", "cloudflare-tunnel"),
+        default="github-pages",
+        help="Hosting mode for the generated runtime status",
+    )
     return parser.parse_args()
 
 
@@ -50,38 +56,53 @@ def gh_json(path: str) -> dict:
 
 def main() -> int:
     args = parse_args()
-    pages = gh_json(f"repos/{args.repo}/pages")
-
-    https_enforced = bool(pages.get("https_enforced"))
-    html_url = pages.get("html_url") or ""
     site_domain = args.site_domain.strip()
+    if args.hosting_mode == "cloudflare-tunnel":
+        status = {
+            "generated_at": utc_now(),
+            "repo": args.repo,
+            "site_domain": site_domain,
+            "html_url": f"https://{site_domain}/",
+            "https_enforced": True,
+            "certificate_ready": True,
+            "transport": "https",
+            "summary": f"{site_domain} is live over HTTPS through Cloudflare Tunnel.",
+            "details": {
+                "hosting_mode": "cloudflare-tunnel",
+            },
+        }
+    else:
+        pages = gh_json(f"repos/{args.repo}/pages")
+        https_enforced = bool(pages.get("https_enforced"))
+        html_url = pages.get("html_url") or ""
 
-    status = {
-        "generated_at": utc_now(),
-        "repo": args.repo,
-        "site_domain": site_domain,
-        "html_url": html_url,
-        "https_enforced": https_enforced,
-        "certificate_ready": https_enforced,
-        "transport": "https" if https_enforced else "http",
-        "summary": (
-            f"{site_domain} is live over HTTPS."
-            if https_enforced
-            else f"{site_domain} is live over HTTP. GitHub Pages TLS is still pending."
-        ),
-        "details": {
-            "cname": pages.get("cname"),
-            "pending_domain_unverified_at": pages.get("pending_domain_unverified_at"),
-            "protected_domain_state": pages.get("protected_domain_state"),
-        },
-    }
+        status = {
+            "generated_at": utc_now(),
+            "repo": args.repo,
+            "site_domain": site_domain,
+            "html_url": html_url,
+            "https_enforced": https_enforced,
+            "certificate_ready": https_enforced,
+            "transport": "https" if https_enforced else "http",
+            "summary": (
+                f"{site_domain} is live over HTTPS."
+                if https_enforced
+                else f"{site_domain} is live over HTTP. GitHub Pages TLS is still pending."
+            ),
+            "details": {
+                "hosting_mode": "github-pages",
+                "cname": pages.get("cname"),
+                "pending_domain_unverified_at": pages.get("pending_domain_unverified_at"),
+                "protected_domain_state": pages.get("protected_domain_state"),
+            },
+        }
 
     out_path = Path(args.out).expanduser().resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(status, indent=2, sort_keys=True) + "\n")
     print(f"[runtime-status] wrote {out_path}")
-    print(f"  https_enforced: {https_enforced}")
-    print(f"  html_url:       {html_url}")
+    print(f"  https_enforced: {status['https_enforced']}")
+    print(f"  html_url:       {status['html_url']}")
     return 0
 
 

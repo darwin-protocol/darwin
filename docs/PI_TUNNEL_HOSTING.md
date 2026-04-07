@@ -69,10 +69,22 @@ cd /path/to/darwin
 ./ops/pi/publish_static_site.sh <pi-host> <pi-user>
 ```
 
+That script now:
+
+- regenerates `market-config.json`
+- regenerates `runtime-status.json` in Cloudflare-tunnel mode
+- builds the site for the canonical custom domain instead of the GitHub Pages `/darwin` base path
+- syncs the finished static export to the Pi
+
 ## What The Pi Runs
 
 - `darwin-site`: Caddy serving static files from `/srv/usedarwin/site/current`
 - `darwin-cloudflared`: Cloudflare Tunnel agent
+
+For host-local verification only, the stack binds:
+
+- `127.0.0.1:8080 -> darwin-site`
+- `127.0.0.1:21123 -> cloudflared metrics`
 
 The Caddy config lives in [ops/pi/Caddyfile](../ops/pi/Caddyfile).
 
