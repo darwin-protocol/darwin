@@ -2316,6 +2316,73 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("future-deployer", summary.read_text())
             print("  Ops: init_recovery_wallets creates future governance and deployer wallet bundles")
 
+    def test_30d_prepare_recovery_env_script(self):
+        """Ops: prepare_recovery_env derives a local-only recovery env from fresh wallets."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            wallet_dir = tmp / "wallets"
+            wallet_dir.mkdir()
+            deployment = tmp / "base-sepolia.json"
+            env_path = tmp / ".env.recovery"
+            recovery_artifact = tmp / "base-sepolia-recovery.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+            }))
+
+            init_result = subprocess.run(
+                ["bash", str(ROOT / "ops" / "init_recovery_wallets.sh")],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_WALLET_DIR": str(wallet_dir),
+                    "DARWIN_DEPLOYMENT_FILE": str(deployment),
+                    "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM),
+                },
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(init_result.returncode, 0, msg=init_result.stdout + init_result.stderr)
+
+            result = subprocess.run(
+                ["bash", str(ROOT / "ops" / "prepare_recovery_env.sh")],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_WALLET_DIR": str(wallet_dir),
+                    "DARWIN_SOURCE_DEPLOYMENT_FILE": str(deployment),
+                    "DARWIN_RECOVERY_ENV_FILE": str(env_path),
+                    "DARWIN_RECOVERY_DEPLOYMENT_FILE": str(recovery_artifact),
+                    "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertTrue(env_path.exists())
+            env_text = env_path.read_text()
+            self.assertIn('export DARWIN_DEPLOYMENT_FILE="' + str(recovery_artifact) + '"', env_text)
+            self.assertIn('export DARWIN_BOND_ASSET="0x4200000000000000000000000000000000000006"', env_text)
+            self.assertIn("DARWIN_GOVERNANCE_PRIVATE_KEY", env_text)
+            self.assertIn("DARWIN_DEPLOYER_PRIVATE_KEY", env_text)
+            self.assertIn("[recovery-env] Ready", result.stdout)
+            print("  Ops: prepare_recovery_env derives a separate recovery artifact env from local wallets")
+
     def test_31_prepare_external_packets(self):
         """Ops: prepare_external_packets emits sendable operator and reviewer tarballs."""
         with tempfile.TemporaryDirectory() as tmpdir:

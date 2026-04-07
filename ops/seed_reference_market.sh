@@ -16,7 +16,6 @@ require_env() {
 require_env DARWIN_RPC_URL
 require_env DARWIN_NETWORK
 require_env DARWIN_DEPLOYMENT_FILE
-require_env DARWIN_DEPLOYER_PRIVATE_KEY
 require_env DARWIN_REFERENCE_MARKET_BASE_AMOUNT
 require_env DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT
 
@@ -36,18 +35,23 @@ PY
 POOL_ADDRESS="${DARWIN_REFERENCE_MARKET_POOL:-$(read_deployment_field market.contracts.reference_pool)}"
 BASE_TOKEN="${DARWIN_REFERENCE_MARKET_BASE_TOKEN:-$(read_deployment_field market.base_token)}"
 QUOTE_TOKEN="${DARWIN_REFERENCE_MARKET_QUOTE_TOKEN:-$(read_deployment_field market.quote_token)}"
+SEEDER_PRIVATE_KEY="${DARWIN_REFERENCE_MARKET_SEEDER_PRIVATE_KEY:-${DARWIN_DEPLOYER_PRIVATE_KEY:-}}"
+
+require_env SEEDER_PRIVATE_KEY
+
+SEEDER_ADDRESS="$(cast wallet address --private-key "$SEEDER_PRIVATE_KEY")"
 
 cast send "$BASE_TOKEN" "approve(address,uint256)" "$POOL_ADDRESS" "$DARWIN_REFERENCE_MARKET_BASE_AMOUNT" \
-  --private-key "$DARWIN_DEPLOYER_PRIVATE_KEY" \
+  --private-key "$SEEDER_PRIVATE_KEY" \
   --rpc-url "$DARWIN_RPC_URL" >/dev/null
 
 cast send "$QUOTE_TOKEN" "approve(address,uint256)" "$POOL_ADDRESS" "$DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT" \
-  --private-key "$DARWIN_DEPLOYER_PRIVATE_KEY" \
+  --private-key "$SEEDER_PRIVATE_KEY" \
   --rpc-url "$DARWIN_RPC_URL" >/dev/null
 
 cast send "$POOL_ADDRESS" "seedInitialLiquidity(uint256,uint256)" \
   "$DARWIN_REFERENCE_MARKET_BASE_AMOUNT" "$DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT" \
-  --private-key "$DARWIN_DEPLOYER_PRIVATE_KEY" \
+  --private-key "$SEEDER_PRIVATE_KEY" \
   --rpc-url "$DARWIN_RPC_URL"
 
 python3 - "$DARWIN_DEPLOYMENT_FILE" "$DARWIN_REFERENCE_MARKET_BASE_AMOUNT" "$DARWIN_REFERENCE_MARKET_QUOTE_AMOUNT" <<'PY'
@@ -69,3 +73,4 @@ PY
 echo "DARWIN reference market seeded."
 echo "  deployment: $DARWIN_DEPLOYMENT_FILE"
 echo "  pool:       $POOL_ADDRESS"
+echo "  seeder:     $SEEDER_ADDRESS"

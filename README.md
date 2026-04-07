@@ -25,6 +25,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Use small amounts and expect testnet conditions.
 - Operators can locally re-audit live privileged roles with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
 - Operators can bootstrap fresh local recovery wallets with `./ops/init_recovery_wallets.sh`.
+- Operators can derive a local-only recovery env with `./ops/prepare_recovery_env.sh` and preflight it with `./ops/preflight_recovery_redeploy.sh`.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 
 ## Repository Layout

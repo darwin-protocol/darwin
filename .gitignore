@@ -26,3 +26,5 @@ sim/intent-base-sepolia.json
 darwin_wallet.json
 .env.external-watcher
 .env.base-sepolia
+.env.recovery
+.env.recovery.*

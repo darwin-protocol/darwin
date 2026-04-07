@@ -7,6 +7,7 @@ This file describes the practical recovery boundary for the live Base Sepolia DA
 - The old deployment signer can be retired for future deployments.
 - The live governance wallet remains the root of trust for the current public deployment.
 - `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json` is the source of truth for this status.
+- DRW genesis is already live on Base Sepolia. Recovery work is about future redeploy capability, not about whether DRW exists.
 
 ## What Can Be Rotated
 
@@ -65,6 +66,24 @@ That emits two local-only, gitignored wallets under `ops/wallets/`:
 
 - `darwin-future-governance`
 - `darwin-future-deployer`
+
+Prepare a local-only recovery env from those wallets with:
+
+```bash
+./ops/prepare_recovery_env.sh
+```
+
+Check whether the fresh wallets are funded and safe to use with:
+
+```bash
+./ops/preflight_recovery_redeploy.sh
+```
+
+Run the full recovery redeploy flow with:
+
+```bash
+./ops/run_recovery_redeploy.sh
+```
 
 ## Deployment Posture
 

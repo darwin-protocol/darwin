@@ -24,8 +24,8 @@ Usage:
 Notes:
   - Loads .env.base-sepolia automatically unless DARWIN_ENV_FILE is set
   - Uses the deployment artifact bond asset as the WETH address by default
-  - Requires DARWIN_DEPLOYER_PRIVATE_KEY for a live broadcast
-  - DARWIN_DEPLOYER_ADDRESS is sufficient for --dry-run
+  - Accepts DARWIN_WRAP_PRIVATE_KEY / DARWIN_WRAP_ADDRESS for a dedicated wrapper wallet
+  - Falls back to DARWIN_DEPLOYER_PRIVATE_KEY / DARWIN_DEPLOYER_ADDRESS if unset
 EOF
 }
 
@@ -126,12 +126,17 @@ fi
 require_cmd cast
 require_cmd python3
 
-if [[ -n "${DARWIN_DEPLOYER_PRIVATE_KEY:-}" ]]; then
-  DEPLOYER_ADDRESS="$(cast wallet address --private-key "$DARWIN_DEPLOYER_PRIVATE_KEY")"
+WRAP_PRIVATE_KEY="${DARWIN_WRAP_PRIVATE_KEY:-${DARWIN_DEPLOYER_PRIVATE_KEY:-}}"
+WRAP_ADDRESS="${DARWIN_WRAP_ADDRESS:-}"
+
+if [[ -n "$WRAP_PRIVATE_KEY" ]]; then
+  DEPLOYER_ADDRESS="$(cast wallet address --private-key "$WRAP_PRIVATE_KEY")"
+elif [[ -n "$WRAP_ADDRESS" ]]; then
+  DEPLOYER_ADDRESS="$WRAP_ADDRESS"
 elif [[ -n "${DARWIN_DEPLOYER_ADDRESS:-}" ]]; then
   DEPLOYER_ADDRESS="$DARWIN_DEPLOYER_ADDRESS"
 else
-  echo "Missing deployer. Set DARWIN_DEPLOYER_PRIVATE_KEY or DARWIN_DEPLOYER_ADDRESS." >&2
+  echo "Missing wrapper address. Set DARWIN_WRAP_PRIVATE_KEY, DARWIN_WRAP_ADDRESS, or DARWIN_DEPLOYER_ADDRESS." >&2
   exit 1
 fi
 
@@ -184,12 +189,12 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-if [[ -z "${DARWIN_DEPLOYER_PRIVATE_KEY:-}" ]]; then
-  echo "DARWIN_DEPLOYER_PRIVATE_KEY is required for a live wrap." >&2
+if [[ -z "$WRAP_PRIVATE_KEY" ]]; then
+  echo "DARWIN_WRAP_PRIVATE_KEY or DARWIN_DEPLOYER_PRIVATE_KEY is required for a live wrap." >&2
   exit 1
 fi
 
-TX_OUTPUT="$(cast send "$WETH_ADDRESS" "deposit()" --value "$AMOUNT_WEI" --private-key "$DARWIN_DEPLOYER_PRIVATE_KEY" --rpc-url "$DARWIN_RPC_URL")"
+TX_OUTPUT="$(cast send "$WETH_ADDRESS" "deposit()" --value "$AMOUNT_WEI" --private-key "$WRAP_PRIVATE_KEY" --rpc-url "$DARWIN_RPC_URL")"
 WETH_BALANCE_AFTER="$(cast call "$WETH_ADDRESS" "balanceOf(address)(uint256)" "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")"
 BASE_BALANCE_AFTER="$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")"
 
