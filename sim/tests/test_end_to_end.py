@@ -1031,6 +1031,408 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("Overall status: `READY`", markdown_report.read_text())
             print("  CLI: status-check summarizes full overlay readiness")
 
+    def test_13b_cli_status_check_allows_vnext_mutable_governance_and_distribution(self):
+        """CLI: status-check accepts timelocked mutable DRW governance and circulating community reserve."""
+        with (
+            tempfile.TemporaryDirectory() as storage_dir,
+            tempfile.TemporaryDirectory() as watcher_dir,
+            tempfile.TemporaryDirectory() as gateway_dir,
+            tempfile.TemporaryDirectory() as router_dir,
+            tempfile.TemporaryDirectory() as finalizer_dir,
+            tempfile.TemporaryDirectory() as sentinel_dir,
+            tempfile.TemporaryDirectory() as deploy_dir,
+            tempfile.TemporaryDirectory() as report_dir,
+        ):
+            deployment_path = Path(deploy_dir) / "base-sepolia-recovery.json"
+            vnext_path = Path(deploy_dir) / "base-sepolia-recovery.vnext.json"
+            json_report = Path(report_dir) / "status.json"
+            deployment_path.write_text(json.dumps({
+                "network": "base-sepolia-recovery",
+                "chain_id": 84532,
+                "bond_asset_mode": "mock",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x0000000000000000000000000000000000000001",
+                    "challenge_escrow": "0x0000000000000000000000000000000000000002",
+                    "bond_vault": "0x0000000000000000000000000000000000000003",
+                    "species_registry": "0x0000000000000000000000000000000000000004",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                    "epoch_manager": "0x0000000000000000000000000000000000000006",
+                    "score_registry": "0x0000000000000000000000000000000000000007",
+                    "shared_pair_vault": "0x0000000000000000000000000000000000000008",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_staking": "0x0000000000000000000000000000000000000012",
+                    "drw_faucet": "0x0000000000000000000000000000000000000013",
+                    "reference_pool": "0x0000000000000000000000000000000000000014",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000c",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000b",
+                },
+                "drw": {
+                    "enabled": True,
+                    "total_supply": "1000",
+                    "staking_duration": 31536000,
+                    "contracts": {
+                        "drw_token": "0x0000000000000000000000000000000000000011",
+                        "drw_staking": "0x0000000000000000000000000000000000000012",
+                    },
+                    "allocations": {
+                        "treasury_recipient": "0x0000000000000000000000000000000000000009",
+                        "treasury_amount": "200",
+                        "insurance_recipient": "0x0000000000000000000000000000000000000009",
+                        "insurance_amount": "200",
+                        "sponsor_rewards_recipient": "0x0000000000000000000000000000000000000009",
+                        "sponsor_rewards_amount": "100",
+                        "community_recipient": "0x0000000000000000000000000000000000000009",
+                        "community_amount": "200",
+                        "staking_recipient": "0x0000000000000000000000000000000000000012",
+                        "staking_amount": "300",
+                    },
+                },
+                "faucet": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_faucet": "0x0000000000000000000000000000000000000013",
+                    },
+                    "governance": "0x0000000000000000000000000000000000000009",
+                },
+                "market": {
+                    "enabled": True,
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000014",
+                    },
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "market_operator": "0x0000000000000000000000000000000000000009",
+                },
+            }))
+            vnext_path.write_text(json.dumps({
+                "chain_id": 84532,
+                "network": "base-sepolia-recovery",
+                "vnext": {
+                    "enabled": True,
+                    "contracts": {
+                        "darwin_timelock": "0x000000000000000000000000000000000000000d",
+                        "drw_merkle_distributor": "0x000000000000000000000000000000000000000e",
+                    },
+                    "distribution": {
+                        "token": "0x0000000000000000000000000000000000000011",
+                        "merkle_root": "0x" + "11" * 32,
+                        "total_amount": "30",
+                        "claim_count": 2,
+                        "claim_deadline": 9999999999,
+                    },
+                },
+            }))
+
+            archive = archive_service.ArchiveState(storage_dir=storage_dir)
+            archive.ingest_epoch("10", "outputs/test_e2")
+
+            watcher = WatcherState(
+                archive_url="http://127.0.0.1:1",
+                artifact_dir=watcher_dir,
+                poll_interval_sec=15,
+            )
+            watcher.last_mirrored_epoch = "10"
+            watcher.last_check_ts = time.time()
+            watcher.last_success_ts = watcher.last_check_ts
+            watcher.epochs[10] = watcher.replay_local_epoch("outputs/test_e2", epoch_id=10)
+
+            gateway = GatewayState(gateway_dir, deployment_file=str(deployment_path))
+            router = router_service.RouterState(state_file=str(Path(router_dir) / "router-state.json"))
+            router.route_intent({"intent_id": "intent-10", "profile": "BALANCED"})
+            scorer = scorer_service.ScorerState()
+            finalizer = finalizer_service.FinalizerState(
+                challenge_window_sec=0,
+                state_file=str(Path(finalizer_dir) / "finalizer-state.json"),
+                poll_interval_sec=15,
+            )
+            finalizer.register_epoch(
+                epoch_id=10,
+                closed_at=time.time() - 5,
+                score_root="0xscore",
+                weight_root="0xweight",
+                rebalance_root="0xrebalance",
+            )
+            finalizer.poll_once()
+            sentinel = sentinel_service.SentinelState(state_file=str(Path(sentinel_dir) / "sentinel-state.json"))
+            for service in ("archive", "gateway", "router", "scorer", "watcher", "finalizer"):
+                sentinel.report_heartbeat(service)
+
+            prev_archive_state = archive_service.STATE
+            prev_gateway_state = gateway_service.STATE
+            prev_router_state = router_service.STATE
+            prev_scorer_state = scorer_service.STATE
+            prev_finalizer_state = finalizer_service.STATE
+            prev_sentinel_state = sentinel_service.STATE
+            import overlay.watcher.service as watcher_module
+            prev_watcher_state = watcher_module.STATE
+
+            archive_service.STATE = archive
+            gateway_service.STATE = gateway
+            router_service.STATE = router
+            scorer_service.STATE = scorer
+            finalizer_service.STATE = finalizer
+            sentinel_service.STATE = sentinel
+            watcher_module.STATE = watcher
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    content_len = int(self.headers.get("Content-Length", 0))
+                    body = json.loads(self.rfile.read(content_len)) if content_len else {}
+                    method = body.get("method")
+                    params = body.get("params", [])
+
+                    def encode_address(address: str) -> str:
+                        return "0x" + address.lower().replace("0x", "").rjust(64, "0")
+
+                    def encode_bool(value: bool) -> str:
+                        return "0x" + ("1" if value else "0").rjust(64, "0")
+
+                    def encode_uint(value: int) -> str:
+                        return "0x" + hex(value)[2:].rjust(64, "0")
+
+                    if method == "eth_chainId":
+                        result = hex(84532)
+                    elif method == "eth_getCode":
+                        address = params[0].lower()
+                        result = "0x60006000" if address in {
+                            "0x0000000000000000000000000000000000000001",
+                            "0x0000000000000000000000000000000000000002",
+                            "0x0000000000000000000000000000000000000003",
+                            "0x0000000000000000000000000000000000000004",
+                            "0x0000000000000000000000000000000000000005",
+                            "0x0000000000000000000000000000000000000006",
+                            "0x0000000000000000000000000000000000000007",
+                            "0x0000000000000000000000000000000000000008",
+                            "0x0000000000000000000000000000000000000011",
+                            "0x0000000000000000000000000000000000000012",
+                            "0x0000000000000000000000000000000000000013",
+                            "0x0000000000000000000000000000000000000014",
+                        } else "0x"
+                    elif method == "eth_call":
+                        call = params[0]
+                        to = call["to"].lower()
+                        data = call.get("data", "").lower()
+
+                        if to == "0x0000000000000000000000000000000000000005":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x6900b3a3":
+                                result = encode_address("0x000000000000000000000000000000000000000b")
+                            elif data == "0xd220935c" + "0" * 24 + "000000000000000000000000000000000000000c":
+                                result = encode_bool(True)
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000002":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0xbabef33e":
+                                result = encode_address("0x0000000000000000000000000000000000000001")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000003":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x92433067":
+                                result = encode_address("0x0000000000000000000000000000000000000002")
+                            elif data == "0xbabef33e":
+                                result = encode_address("0x0000000000000000000000000000000000000001")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000004":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x1942c738":
+                                result = encode_address("0x000000000000000000000000000000000000000a")
+                            elif data == "0x92433067":
+                                result = encode_address("0x0000000000000000000000000000000000000002")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000007":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x1942c738":
+                                result = encode_address("0x000000000000000000000000000000000000000a")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000011":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x000000000000000000000000000000000000000d")
+                            elif data == "0x4421d5f5":
+                                result = encode_bool(True)
+                            elif data == "0x18160ddd":
+                                result = encode_uint(1000)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000009":
+                                result = encode_uint(650)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000012":
+                                result = encode_uint(300)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000013":
+                                result = encode_uint(10)
+                            elif data == "0x70a08231" + "0" * 24 + "0000000000000000000000000000000000000014":
+                                result = encode_uint(10)
+                            elif data == "0x70a08231" + "0" * 24 + "000000000000000000000000000000000000000e":
+                                result = encode_uint(10)
+                            else:
+                                result = encode_uint(0)
+                        elif to == "0x0000000000000000000000000000000000000012":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x000000000000000000000000000000000000000d")
+                            elif data == "0x6891e77c":
+                                result = encode_address("0x0000000000000000000000000000000000000011")
+                            elif data == "0xf520e7e5":
+                                result = encode_uint(31536000)
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000013":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x000000000000000000000000000000000000000d")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000014":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x000000000000000000000000000000000000000d")
+                            elif data == "0xb1ae3471":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            else:
+                                result = "0x"
+                        else:
+                            result = "0x0"
+
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            archive_server = HTTPServer(("127.0.0.1", 0), archive_service.ArchiveHandler)
+            gateway_server = HTTPServer(("127.0.0.1", 0), gateway_service.GatewayHandler)
+            router_server = HTTPServer(("127.0.0.1", 0), router_service.RouterHandler)
+            scorer_server = HTTPServer(("127.0.0.1", 0), scorer_service.ScorerHandler)
+            watcher_server = HTTPServer(("127.0.0.1", 0), watcher_module.WatcherHandler)
+            finalizer_server = HTTPServer(("127.0.0.1", 0), finalizer_service.FinalizerHandler)
+            sentinel_server = HTTPServer(("127.0.0.1", 0), sentinel_service.SentinelHandler)
+            rpc_server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            archive_thread = Thread(target=archive_server.serve_forever, daemon=True)
+            gateway_thread = Thread(target=gateway_server.serve_forever, daemon=True)
+            router_thread = Thread(target=router_server.serve_forever, daemon=True)
+            scorer_thread = Thread(target=scorer_server.serve_forever, daemon=True)
+            watcher_thread = Thread(target=watcher_server.serve_forever, daemon=True)
+            finalizer_thread = Thread(target=finalizer_server.serve_forever, daemon=True)
+            sentinel_thread = Thread(target=sentinel_server.serve_forever, daemon=True)
+            rpc_thread = Thread(target=rpc_server.serve_forever, daemon=True)
+            archive_thread.start()
+            gateway_thread.start()
+            router_thread.start()
+            scorer_thread.start()
+            watcher_thread.start()
+            finalizer_thread.start()
+            sentinel_thread.start()
+            rpc_thread.start()
+
+            try:
+                env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM)}
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "darwin_sim.cli.darwinctl",
+                        "status-check",
+                        "--archive-url",
+                        f"http://127.0.0.1:{archive_server.server_port}",
+                        "--gateway-url",
+                        f"http://127.0.0.1:{gateway_server.server_port}",
+                        "--router-url",
+                        f"http://127.0.0.1:{router_server.server_port}",
+                        "--scorer-url",
+                        f"http://127.0.0.1:{scorer_server.server_port}",
+                        "--watcher-url",
+                        f"http://127.0.0.1:{watcher_server.server_port}",
+                        "--finalizer-url",
+                        f"http://127.0.0.1:{finalizer_server.server_port}",
+                        "--sentinel-url",
+                        f"http://127.0.0.1:{sentinel_server.server_port}",
+                        "--deployment-file",
+                        str(deployment_path),
+                        "--base-rpc-url",
+                        f"http://127.0.0.1:{rpc_server.server_port}",
+                        "--json-out",
+                        str(json_report),
+                    ],
+                    cwd=str(SIM),
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                archive_server.shutdown()
+                gateway_server.shutdown()
+                router_server.shutdown()
+                scorer_server.shutdown()
+                watcher_server.shutdown()
+                finalizer_server.shutdown()
+                sentinel_server.shutdown()
+                rpc_server.shutdown()
+                archive_server.server_close()
+                gateway_server.server_close()
+                router_server.server_close()
+                scorer_server.server_close()
+                watcher_server.server_close()
+                finalizer_server.server_close()
+                sentinel_server.server_close()
+                rpc_server.server_close()
+                archive_thread.join(timeout=5)
+                gateway_thread.join(timeout=5)
+                router_thread.join(timeout=5)
+                scorer_thread.join(timeout=5)
+                watcher_thread.join(timeout=5)
+                finalizer_thread.join(timeout=5)
+                sentinel_thread.join(timeout=5)
+                rpc_thread.join(timeout=5)
+                archive_service.STATE = prev_archive_state
+                gateway_service.STATE = prev_gateway_state
+                router_service.STATE = prev_router_state
+                scorer_service.STATE = prev_scorer_state
+                finalizer_service.STATE = prev_finalizer_state
+                sentinel_service.STATE = prev_sentinel_state
+                watcher_module.STATE = prev_watcher_state
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            status_report = json.loads(json_report.read_text())
+            self.assertTrue(status_report["ready"])
+            self.assertEqual(
+                status_report["deployment"]["effective_mutable_governance"],
+                "0x000000000000000000000000000000000000000d",
+            )
+            self.assertEqual(status_report["checks"]["onchain_auth"]["state"], "OK")
+            self.assertEqual(status_report["checks"]["onchain_drw"]["state"], "OK")
+            self.assertTrue(status_report["onchain_auth"]["components"]["drw_token"]["ok"])
+            self.assertTrue(status_report["onchain_auth"]["components"]["drw_staking"]["ok"])
+            self.assertTrue(status_report["onchain_auth"]["components"]["drw_faucet"]["ok"])
+            self.assertTrue(status_report["onchain_auth"]["components"]["reference_pool"]["ok"])
+            self.assertEqual(
+                status_report["onchain_drw"]["holders"]["0x0000000000000000000000000000000000000009"]["minimum"],
+                500,
+            )
+            self.assertEqual(
+                status_report["onchain_drw"]["holders"]["0x0000000000000000000000000000000000000009"]["observed"],
+                650,
+            )
+            self.assertEqual(status_report["onchain_drw"]["circulating_total"], 20)
+            self.assertEqual(
+                status_report["onchain_drw"]["auxiliary_holders"]["drw_merkle_distributor"]["observed"],
+                10,
+            )
+            print("  CLI: status-check accepts vNext mutable governance and community circulation")
+
     def test_14_overlay_state_persistence(self):
         """Overlay services persist state snapshots and recover them on restart."""
         with tempfile.TemporaryDirectory() as tmpdir:

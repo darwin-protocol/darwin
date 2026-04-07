@@ -200,6 +200,50 @@ def _aggregate_expected_drw_balances(drw: dict | None) -> dict[str, int]:
     return expected
 
 
+def _effective_mutable_governance(deployment) -> str:
+    governance = deployment.roles.get("governance", "")
+    vnext = deployment.vnext or {}
+    contracts = vnext.get("contracts", {}) if isinstance(vnext, dict) else {}
+    timelock = contracts.get("darwin_timelock", "") if isinstance(contracts, dict) else ""
+    selected = timelock or governance
+    return _normalize_address(selected) if selected else ""
+
+
+def _build_expected_drw_windows(deployment) -> dict[str, dict[str, int | bool]]:
+    allocations = (deployment.drw or {}).get("allocations", {})
+    windows: dict[str, dict[str, int | bool]] = {}
+    buckets = (
+        ("treasury_recipient", "treasury_amount", False),
+        ("insurance_recipient", "insurance_amount", False),
+        ("sponsor_rewards_recipient", "sponsor_rewards_amount", False),
+        # Community allocation is intentionally spendable after launch.
+        ("community_recipient", "community_amount", True),
+        ("staking_recipient", "staking_amount", False),
+    )
+    for recipient_key, amount_key, allows_variance in buckets:
+        recipient = allocations.get(recipient_key, "")
+        amount = int(allocations.get(amount_key, 0) or 0)
+        if not recipient or amount <= 0:
+            continue
+        normalized = _normalize_address(recipient)
+        detail = windows.setdefault(
+            normalized,
+            {
+                "expected": 0,
+                "minimum": 0,
+                "variable_amount": 0,
+                "allows_variance": False,
+            },
+        )
+        detail["expected"] = int(detail["expected"]) + amount
+        if allows_variance:
+            detail["variable_amount"] = int(detail["variable_amount"]) + amount
+            detail["allows_variance"] = True
+        else:
+            detail["minimum"] = int(detail["minimum"]) + amount
+    return windows
+
+
 def _wei_to_eth(wei: int) -> str:
     return f"{(Decimal(wei) / Decimal(10**18)):.8f}"
 
@@ -278,10 +322,23 @@ def _render_status_markdown(report: dict) -> str:
             f"`{onchain_drw.get('expected_total_supply', 0)}`"
         )
         for holder, detail in sorted(onchain_drw.get("holders", {}).items()):
+            if detail.get("allows_variance"):
+                lines.append(
+                    f"- `{holder}`: minimum=`{detail.get('minimum', 0)}` "
+                    f"expected=`{detail.get('expected', 0)}` "
+                    f"observed=`{detail.get('observed', 0)}`"
+                )
+            else:
+                lines.append(
+                    f"- `{holder}`: expected=`{detail.get('expected', 0)}` "
+                    f"observed=`{detail.get('observed', 0)}`"
+                )
+        for label, detail in sorted(onchain_drw.get("auxiliary_holders", {}).items()):
             lines.append(
-                f"- `{holder}`: expected=`{detail.get('expected', 0)}` "
-                f"observed=`{detail.get('observed', 0)}`"
+                f"- `{label}` (`{detail.get('holder', '')}`): observed=`{detail.get('observed', 0)}`"
             )
+        if "circulating_total" in onchain_drw:
+            lines.append(f"- circulating=`{onchain_drw.get('circulating_total', 0)}`")
 
     blockers = report.get("blockers", [])
     lines.extend(["", "## Blockers", ""])
@@ -990,6 +1047,9 @@ def cmd_status_check(args):
         if deployment.has_private_operator_fields:
             report["deployment"]["deployer"] = deployment.deployer
             report["deployment"]["roles"] = deployment.roles
+            effective_mutable_governance = _effective_mutable_governance(deployment)
+            if effective_mutable_governance and effective_mutable_governance != deployment.roles["governance"]:
+                report["deployment"]["effective_mutable_governance"] = effective_mutable_governance
         report["checks"]["deployment"] = {
             "state": "PIN",
             "detail": f"{deployment.network} chain={deployment.chain_id} mode={deployment.bond_asset_mode}",
@@ -1063,6 +1123,7 @@ def cmd_status_check(args):
                 auth_failures: list[str] = []
                 auth_components: dict[str, dict] = {}
                 expected_governance = deployment.roles["governance"]
+                expected_mutable_governance = _effective_mutable_governance(deployment) or expected_governance
                 expected_safe_mode = deployment.roles["safe_mode_authority"]
                 expected_batch_operator = deployment.roles.get("batch_operator") or deployment.roles["epoch_operator"]
                 expected_epoch_operator = deployment.roles["epoch_operator"]
@@ -1229,14 +1290,14 @@ def cmd_status_check(args):
                     observed_total_supply = _rpc_call_uint(base_rpc_url, drw_token, "0x18160ddd")
                     expected_total_supply = int((deployment.drw or {}).get("total_supply", 0))
                     token_ok = (
-                        observed_governance == expected_governance
+                        observed_governance == expected_mutable_governance
                         and observed_finalized
                         and (expected_total_supply == 0 or observed_total_supply == expected_total_supply)
                     )
                     auth_components["drw_token"] = {
                         "ok": token_ok,
                         "expected": {
-                            "governance": expected_governance,
+                            "governance": expected_mutable_governance,
                             "genesis_finalized": True,
                             "total_supply": expected_total_supply,
                         },
@@ -1251,7 +1312,7 @@ def cmd_status_check(args):
                             f"total_supply={observed_total_supply}"
                         ),
                     }
-                    if observed_governance != expected_governance:
+                    if observed_governance != expected_mutable_governance:
                         auth_failures.append("deployment_drw_token_governance_mismatch")
                     if not observed_finalized:
                         auth_failures.append("deployment_drw_token_genesis_open")
@@ -1265,14 +1326,14 @@ def cmd_status_check(args):
                     observed_duration = _rpc_call_uint(base_rpc_url, drw_staking, "0xf520e7e5")
                     expected_duration = int((deployment.drw or {}).get("staking_duration", 0))
                     staking_ok = (
-                        observed_governance == expected_governance
+                        observed_governance == expected_mutable_governance
                         and (not drw_token or observed_token == drw_token)
                         and (expected_duration == 0 or observed_duration == expected_duration)
                     )
                     auth_components["drw_staking"] = {
                         "ok": staking_ok,
                         "expected": {
-                            "governance": expected_governance,
+                            "governance": expected_mutable_governance,
                             "drw_token": drw_token,
                             "reward_duration": expected_duration,
                         },
@@ -1286,29 +1347,116 @@ def cmd_status_check(args):
                             f"token={observed_token} duration={observed_duration}"
                         ),
                     }
-                    if observed_governance != expected_governance:
+                    if observed_governance != expected_mutable_governance:
                         auth_failures.append("deployment_drw_staking_governance_mismatch")
                     if drw_token and observed_token != drw_token:
                         auth_failures.append("deployment_drw_staking_token_mismatch")
                     if expected_duration and observed_duration != expected_duration:
                         auth_failures.append("deployment_drw_staking_duration_mismatch")
 
-                drw_expected_balances = _aggregate_expected_drw_balances(deployment.drw)
-                if drw_token and drw_expected_balances:
+                drw_faucet = deployment.contracts.get("drw_faucet", "")
+                if drw_faucet:
+                    observed_governance = _rpc_call_address(base_rpc_url, drw_faucet, "0x5aa6e675")
+                    faucet_ok = observed_governance == expected_mutable_governance
+                    auth_components["drw_faucet"] = {
+                        "ok": faucet_ok,
+                        "expected": {
+                            "governance": expected_mutable_governance,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                        },
+                        "summary": f"governance={observed_governance}",
+                    }
+                    if observed_governance != expected_mutable_governance:
+                        auth_failures.append("deployment_drw_faucet_governance_mismatch")
+
+                reference_pool = deployment.contracts.get("reference_pool", "")
+                if reference_pool:
+                    observed_governance = _rpc_call_address(base_rpc_url, reference_pool, "0x5aa6e675")
+                    observed_market_operator = _rpc_call_address(base_rpc_url, reference_pool, "0xb1ae3471")
+                    expected_market_operator = (
+                        (deployment.market or {}).get("market_operator")
+                        or expected_governance
+                    )
+                    if expected_market_operator:
+                        expected_market_operator = _normalize_address(expected_market_operator)
+                    pool_ok = (
+                        observed_governance == expected_mutable_governance
+                        and (not expected_market_operator or observed_market_operator == expected_market_operator)
+                    )
+                    auth_components["reference_pool"] = {
+                        "ok": pool_ok,
+                        "expected": {
+                            "governance": expected_mutable_governance,
+                            "market_operator": expected_market_operator,
+                        },
+                        "observed": {
+                            "governance": observed_governance,
+                            "market_operator": observed_market_operator,
+                        },
+                        "summary": (
+                            f"governance={observed_governance} "
+                            f"market_operator={observed_market_operator}"
+                        ),
+                    }
+                    if observed_governance != expected_mutable_governance:
+                        auth_failures.append("deployment_reference_pool_governance_mismatch")
+                    if expected_market_operator and observed_market_operator != expected_market_operator:
+                        auth_failures.append("deployment_reference_pool_market_operator_mismatch")
+
+                drw_expected_windows = _build_expected_drw_windows(deployment)
+                if drw_token and drw_expected_windows:
                     expected_total_supply = int((deployment.drw or {}).get("total_supply", 0) or 0)
                     observed_holders: dict[str, dict[str, int]] = {}
                     tracked_total = 0
-                    for holder, expected_amount in sorted(drw_expected_balances.items()):
+                    for holder, expected_window in sorted(drw_expected_windows.items()):
                         observed_amount = _rpc_call_erc20_balance(base_rpc_url, drw_token, holder)
                         observed_holders[holder] = {
-                            "expected": expected_amount,
+                            "expected": int(expected_window["expected"]),
+                            "minimum": int(expected_window["minimum"]),
+                            "variable_amount": int(expected_window["variable_amount"]),
+                            "allows_variance": bool(expected_window["allows_variance"]),
                             "observed": observed_amount,
                         }
                         tracked_total += observed_amount
 
-                    drw_balances_ok = all(
-                        detail["expected"] == detail["observed"] for detail in observed_holders.values()
-                    ) and (expected_total_supply == 0 or tracked_total == expected_total_supply)
+                    auxiliary_holders: dict[str, dict[str, int | str]] = {}
+                    auxiliary_total = 0
+                    auxiliary_contracts = {
+                        "drw_faucet": drw_faucet,
+                        "reference_pool": reference_pool,
+                        "drw_merkle_distributor": ((deployment.vnext or {}).get("contracts") or {}).get(
+                            "drw_merkle_distributor", ""
+                        ),
+                    }
+                    for label, holder in auxiliary_contracts.items():
+                        if not holder:
+                            continue
+                        normalized = _normalize_address(holder)
+                        if normalized in observed_holders:
+                            continue
+                        observed_amount = _rpc_call_erc20_balance(base_rpc_url, drw_token, normalized)
+                        auxiliary_holders[label] = {
+                            "holder": normalized,
+                            "observed": observed_amount,
+                        }
+                        auxiliary_total += observed_amount
+
+                    circulating_total = (
+                        expected_total_supply - tracked_total - auxiliary_total if expected_total_supply else 0
+                    )
+                    drw_balances_ok = (
+                        all(
+                            (
+                                detail["observed"] == detail["expected"]
+                                if not detail["allows_variance"]
+                                else detail["observed"] >= detail["minimum"]
+                            )
+                            for detail in observed_holders.values()
+                        )
+                        and (expected_total_supply == 0 or circulating_total >= 0)
+                    )
                     print(
                         f"  {'onchain_drw':12} {'OK ' if drw_balances_ok else 'FAIL':4} "
                         f"holders={len(observed_holders)} tracked_supply={tracked_total}/{expected_total_supply}"
@@ -1322,6 +1470,9 @@ def cmd_status_check(args):
                         "ok": drw_balances_ok,
                         "holders": observed_holders,
                         "tracked_total": tracked_total,
+                        "auxiliary_holders": auxiliary_holders,
+                        "auxiliary_total": auxiliary_total,
+                        "circulating_total": max(circulating_total, 0),
                         "expected_total_supply": expected_total_supply,
                     }
                     if not drw_balances_ok:
@@ -1382,6 +1533,9 @@ def cmd_status_check(args):
         "deployment_drw_staking_governance_mismatch": "DRW staking governance does not match the pinned deployment",
         "deployment_drw_staking_token_mismatch": "DRW staking token does not match the pinned deployment",
         "deployment_drw_staking_duration_mismatch": "DRW staking reward duration does not match the pinned deployment",
+        "deployment_drw_faucet_governance_mismatch": "DRW faucet governance does not match the pinned deployment",
+        "deployment_reference_pool_governance_mismatch": "reference pool governance does not match the pinned deployment",
+        "deployment_reference_pool_market_operator_mismatch": "reference pool market operator does not match the pinned deployment",
         "deployment_drw_allocation_mismatch": "DRW holder balances do not match the pinned deployment allocations",
     }
     report["blockers"] = [blocker_messages.get(name, name) for name in failures]
