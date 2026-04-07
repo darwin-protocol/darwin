@@ -29,7 +29,8 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Operators can locally re-audit live privileged roles with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
 - Operators can bootstrap fresh local recovery wallets with `./ops/init_recovery_wallets.sh`.
 - Operators can derive a local-only recovery env with `./ops/prepare_recovery_env.sh` and preflight it with `./ops/preflight_recovery_redeploy.sh`.
-- The tracked deployment artifact is public-safe; local operator roles and deployer identity live in `~/.config/darwin/deployments/`.
+- Shared deployment artifacts are kept public-safe; local operator roles and deployer identity live in `~/.config/darwin/deployments/`.
+- The vNext promotion path now supports both Safe batch export and direct EOA execution for mutable DRW-era handoff.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 
 ## Repository Layout

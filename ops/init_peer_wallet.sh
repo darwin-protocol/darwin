@@ -88,8 +88,8 @@ cat >"$SHARE_FILE" <<EOF
 - Label: \`$WALLET_LABEL\`
 - Address: \`$EVM_ADDR\`
 - Requested amount: \`$REQUEST_AMOUNT DRW\`
-- Public site: \`http://usedarwin.xyz/\`
-- Market page: \`http://usedarwin.xyz/trade/\`
+- Public site: \`https://usedarwin.xyz/\`
+- Market page: \`https://usedarwin.xyz/trade/\`
 - Deployment artifact: \`$DEPLOYMENT_FILE\`
 
 ## Shareable DRW request URI

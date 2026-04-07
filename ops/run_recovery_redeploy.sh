@@ -8,7 +8,7 @@ CONFIG_DIR="$(darwin_config_dir)"
 RECOVERY_ENV_FILE="${DARWIN_RECOVERY_ENV_FILE:-$(resolve_darwin_env_file "$CONFIG_DIR/recovery.env" "$ROOT/.env.recovery")}"
 load_env_defaults "$RECOVERY_ENV_FILE"
 
-DARWIN_NETWORK="${DARWIN_NETWORK:-base-sepolia}"
+DARWIN_NETWORK="${DARWIN_NETWORK:-base-sepolia-recovery}"
 DARWIN_RPC_URL="${DARWIN_RPC_URL:-https://sepolia.base.org}"
 DARWIN_EXPECT_CHAIN_ID="${DARWIN_EXPECT_CHAIN_ID:-84532}"
 DARWIN_SOURCE_DEPLOYMENT_FILE="${DARWIN_SOURCE_DEPLOYMENT_FILE:-$ROOT/ops/deployments/base-sepolia.json}"

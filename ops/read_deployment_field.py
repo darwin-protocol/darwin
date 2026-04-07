@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    _, data, _, _ = load_deployment_data(deployment_file=args.deployment_file)
+    _, data, *_ = load_deployment_data(deployment_file=args.deployment_file)
 
     cursor = data
     for part in args.field.split("."):

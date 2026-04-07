@@ -122,7 +122,7 @@ def main() -> int:
         else default_private_overlay_path(deployment_path).resolve()
     )
 
-    _, data, _, _ = load_deployment_data(deployment_file=deployment_path)
+    _, data, *_ = load_deployment_data(deployment_file=deployment_path)
     public_artifact = _build_public_artifact(data)
     private_overlay = _build_private_overlay(data)
 

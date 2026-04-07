@@ -34,8 +34,11 @@ class DarwinDeployment:
     drw: dict | None = None
     market: dict | None = None
     faucet: dict | None = None
+    vnext: dict | None = None
     private_overlay_path: Path | None = None
     private_overlay_loaded: bool = False
+    vnext_path: Path | None = None
+    vnext_loaded: bool = False
 
     @property
     def has_private_operator_fields(self) -> bool:
@@ -94,6 +97,14 @@ def resolve_private_overlay_path(path: Path) -> Path | None:
     return default_private_overlay_path(path)
 
 
+def resolve_vnext_path(path: Path) -> Path | None:
+    env_vnext = os.environ.get("DARWIN_VNEXT_FILE")
+    if env_vnext:
+        return Path(env_vnext).expanduser().resolve()
+    resolved_path = path.resolve()
+    return resolved_path.with_name(f"{resolved_path.stem}.vnext.json")
+
+
 def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     merged = dict(base)
     for key, value in overlay.items():
@@ -104,7 +115,9 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
     return merged
 
 
-def load_deployment_data(deployment_file: str | os.PathLike | None = None, network: str | None = None) -> tuple[Path, dict, Path | None, bool]:
+def load_deployment_data(
+    deployment_file: str | os.PathLike | None = None, network: str | None = None
+) -> tuple[Path, dict, Path | None, bool, Path | None, dict | None, bool]:
     path = resolve_deployment_path(deployment_file=deployment_file, network=network)
     data = json.loads(path.read_text())
     overlay_path = resolve_private_overlay_path(path)
@@ -112,11 +125,19 @@ def load_deployment_data(deployment_file: str | os.PathLike | None = None, netwo
     if overlay_path and overlay_path.exists():
         data = _deep_merge(data, json.loads(overlay_path.read_text()))
         overlay_loaded = True
-    return path, data, overlay_path, overlay_loaded
+    vnext_path = resolve_vnext_path(path)
+    vnext_loaded = False
+    vnext_data = None
+    if vnext_path and vnext_path.exists():
+        vnext_data = json.loads(vnext_path.read_text())
+        vnext_loaded = True
+    return path, data, overlay_path, overlay_loaded, vnext_path, vnext_data, vnext_loaded
 
 
 def load_deployment(deployment_file: str | os.PathLike | None = None, network: str | None = None) -> DarwinDeployment:
-    path, data, overlay_path, overlay_loaded = load_deployment_data(deployment_file=deployment_file, network=network)
+    path, data, overlay_path, overlay_loaded, vnext_path, vnext_data, vnext_loaded = load_deployment_data(
+        deployment_file=deployment_file, network=network
+    )
     contracts = _normalize_address_fields(data["contracts"])
     roles = _normalize_address_fields(data.get("roles", {}))
     deployer = str(data.get("deployer", "") or "")
@@ -135,6 +156,9 @@ def load_deployment(deployment_file: str | os.PathLike | None = None, network: s
         drw=data.get("drw"),
         market=data.get("market"),
         faucet=data.get("faucet"),
+        vnext=vnext_data.get("vnext") if isinstance(vnext_data, dict) else None,
         private_overlay_path=overlay_path,
         private_overlay_loaded=overlay_loaded,
+        vnext_path=vnext_path,
+        vnext_loaded=vnext_loaded,
     )

@@ -6,8 +6,11 @@ That promotion path now has two operator helpers:
 
 - `./ops/preflight_vnext_promotion.sh`
 - `./ops/build_vnext_promotion_batch.sh`
+- `./ops/execute_vnext_promotion.sh`
 
 The output batch is designed for a Safe Transaction Builder import.
+The execution helper is for the case where the current governance is still an EOA rather than a Safe.
+After funding the distributor, individual claimants can use `./ops/claim_drw_merkle.sh`.
 
 ## What It Promotes
 
@@ -62,6 +65,31 @@ That writes a Safe-ready batch JSON under:
 
 ```text
 ops/state/<network>-vnext-safe-batch.json
+```
+
+## Execute Directly
+
+If the current governance is still an EOA and its key is available locally:
+
+```bash
+export DARWIN_GOVERNANCE_PRIVATE_KEY="0x..."
+./ops/execute_vnext_promotion.sh
+```
+
+That helper:
+
+- funds the distributor from the current governance wallet
+- optionally updates the market operator
+- moves mutable DRW-era governance to the timelock
+
+## Claim From the Live Distributor
+
+For a claimant with a local private key:
+
+```bash
+export DARWIN_MERKLE_CLAIM_INDEX="0"
+export DARWIN_MERKLE_CLAIM_PRIVATE_KEY="0x..."
+./ops/claim_drw_merkle.sh
 ```
 
 ## Current Boundary

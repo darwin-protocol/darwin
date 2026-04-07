@@ -325,6 +325,110 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(deployment.market["market_operator"], "0x00000000000000000000000000000000000000b4")
             print("  Deployment: public artifact merges a local private overlay")
 
+    def test_06ca_load_deployment_reads_vnext_sidecar(self):
+        """Deployment: adjacent vNext sidecar is loaded when present."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment_path = tmp / "base-sepolia.json"
+            vnext_path = tmp / "base-sepolia.vnext.json"
+
+            deployment_path.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000011",
+                    "drw_token": "0x0000000000000000000000000000000000000012",
+                },
+            }))
+            vnext_path.write_text(json.dumps({
+                "network": "base-sepolia",
+                "vnext": {
+                    "enabled": True,
+                    "contracts": {
+                        "darwin_timelock": "0x00000000000000000000000000000000000000f1",
+                        "drw_merkle_distributor": "0x00000000000000000000000000000000000000f2",
+                    },
+                },
+            }))
+
+            deployment = load_deployment(deployment_file=deployment_path)
+
+            self.assertTrue(deployment.vnext_loaded)
+            self.assertEqual(deployment.vnext_path, vnext_path.resolve())
+            self.assertEqual(
+                deployment.vnext["contracts"]["darwin_timelock"],
+                "0x00000000000000000000000000000000000000f1",
+            )
+            print("  Deployment: adjacent vNext sidecar loads with public artifact")
+
+    def test_06cb_role_audit_accepts_vnext_timelock_for_mutable_contracts(self):
+        """Role audit: promoted mutable contracts should match the vNext timelock, not the legacy governance wallet."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment_path = tmp / "base-sepolia.json"
+            vnext_path = tmp / "base-sepolia.vnext.json"
+
+            deployment_path.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x00000000000000000000000000000000000000d1",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x556d75f4455cf3f0D7c5F9c6e7ea49447f66D8d2",
+                    "drw_token": "0x00000000000000000000000000000000000000a1",
+                    "drw_staking": "0x00000000000000000000000000000000000000a2",
+                    "drw_faucet": "0x00000000000000000000000000000000000000a3",
+                    "reference_pool": "0x00000000000000000000000000000000000000a4",
+                    "bond_vault": "0xa842Dc4BF4CA3e1f1CA07714867145038D5e0ab4",
+                    "challenge_escrow": "0xd71e90F784f45FeC0b6b36454186CD88eaD126a7",
+                    "epoch_manager": "0xE53A27DA8e3C2c69495a97C3AcD6E484AbD7892B",
+                    "score_registry": "0x9135b4BDDa2739212a7c5c0dB0C45AdEc42b7346",
+                    "shared_pair_vault": "0xbecDB8e518C9C1B57db0656297F5F1c1FE5c2851",
+                    "species_registry": "0xcaC5E4C711b4FfD9C76354FF8FfD4E236b1798AB",
+                },
+                "roles": {
+                    "governance": "0x00000000000000000000000000000000000000b1",
+                    "epoch_operator": "0x00000000000000000000000000000000000000b2",
+                    "batch_operator": "0x00000000000000000000000000000000000000b3",
+                    "safe_mode_authority": "0x00000000000000000000000000000000000000b4",
+                },
+            }))
+            vnext_path.write_text(json.dumps({
+                "vnext": {
+                    "enabled": True,
+                    "contracts": {
+                        "darwin_timelock": "0x00000000000000000000000000000000000000f1",
+                    },
+                },
+            }))
+
+            deployment = load_deployment(deployment_file=deployment_path)
+            report = build_role_audit_report(
+                deployment,
+                LiveRoleState(
+                    "0x00000000000000000000000000000000000000f1",
+                    "0x0000000000000000000000000000000000000000",
+                    True,
+                    "0x00000000000000000000000000000000000000f1",
+                    "0x0000000000000000000000000000000000000000",
+                    "0x00000000000000000000000000000000000000f1",
+                    "0x00000000000000000000000000000000000000f1",
+                    "0x00000000000000000000000000000000000000b5",
+                    "0x00000000000000000000000000000000000000b1",
+                    False,
+                    True,
+                ),
+            )
+
+            self.assertTrue(report["governance_matches_live"])
+            self.assertEqual(report["governance_drift"], [])
+            self.assertEqual(report["effective_mutable_governance"], "0x00000000000000000000000000000000000000f1")
+            self.assertTrue(report["governance_root_summary"]["vnext_enabled"])
+            print("  Role audit: vNext timelock is treated as the mutable governance root")
+
     def test_06d_split_deployment_artifact_redacts_public_fields(self):
         """Ops: split_deployment_artifact writes a public-safe artifact and local private overlay."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2416,6 +2520,7 @@ class TestEndToEnd(unittest.TestCase):
             self.assertTrue(request_path.exists())
             self.assertTrue(share_path.exists())
             self.assertIn("ethereum:0x00000000000000000000000000000000000000d1@84532/transfer", request_path.read_text())
+            self.assertIn("https://usedarwin.xyz/", share_path.read_text())
             self.assertIn("[peer-wallet] Ready", result.stdout)
             print("  Ops: init_peer_wallet creates a shareable DRW peer-to-peer wallet bundle")
 
@@ -2534,6 +2639,7 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
             self.assertTrue(env_path.exists())
             env_text = env_path.read_text()
+            self.assertIn('export DARWIN_NETWORK="base-sepolia-recovery"', env_text)
             self.assertIn('export DARWIN_DEPLOYMENT_FILE="' + str(recovery_artifact) + '"', env_text)
             self.assertIn('export DARWIN_BOND_ASSET="0x4200000000000000000000000000000000000006"', env_text)
             self.assertIn("DARWIN_GOVERNANCE_PRIVATE_KEY", env_text)
@@ -4017,6 +4123,219 @@ exit 1
             self.assertIn(governance, result.stdout)
             self.assertIn("300000000000000000000", result.stdout)
             print("  Ops: vNext promotion preflight uses local overlay governance plus live checks")
+
+    def test_52_execute_vnext_promotion_sends_funding_and_governance_handoff(self):
+        """Ops: vNext promotion execution funds the distributor and hands mutable governance to the timelock."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            overlay = tmp / "base-sepolia.private.json"
+            vnext = tmp / "base-sepolia.vnext.json"
+            batch = tmp / "base-sepolia-vnext-safe-batch.json"
+            env_file = tmp / ".env.base-sepolia"
+            fake_bin = tmp / "bin"
+            fake_cast = fake_bin / "cast"
+            log_path = tmp / "cast.log"
+
+            governance = "0x00000000000000000000000000000000000000aa"
+            timelock = "0x00000000000000000000000000000000000000bb"
+            distributor = "0x00000000000000000000000000000000000000cc"
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                    "drw_staking": "0x0000000000000000000000000000000000000012",
+                    "drw_faucet": "0x0000000000000000000000000000000000000013",
+                    "reference_pool": "0x0000000000000000000000000000000000000014",
+                },
+            }))
+            overlay.write_text(json.dumps({
+                "roles": {
+                    "governance": governance,
+                },
+            }))
+            vnext.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "vnext": {
+                    "contracts": {
+                        "darwin_timelock": timelock,
+                        "drw_merkle_distributor": distributor,
+                    },
+                    "distribution": {
+                        "total_amount": "300000000000000000000",
+                    },
+                },
+            }))
+
+            env_file.write_text(
+                "\n".join([
+                    'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
+                    'export DARWIN_NETWORK="base-sepolia"',
+                    f'export DARWIN_DEPLOYMENT_FILE="{deployment}"',
+                    f'export DARWIN_VNEXT_FILE="{vnext}"',
+                    f'export DARWIN_VNEXT_PROMOTION_FILE="{batch}"',
+                    'export DARWIN_VNEXT_PROMOTION_PRIVATE_KEY="0x1234"',
+                ]) + "\n"
+            )
+
+            fake_bin.mkdir(parents=True, exist_ok=True)
+            fake_cast.write_text(
+                f"""#!/usr/bin/env bash
+set -euo pipefail
+echo "$*" >> "{log_path}"
+if [[ "${{1:-}}" == "call" ]]; then
+  method="${{5:-}}"
+  if [[ "$method" == "governance()(address)" ]]; then
+    echo "{governance}"
+    exit 0
+  fi
+  if [[ "$method" == "balanceOf(address)(uint256)" ]]; then
+    echo "300000000000000000000 [3e20]"
+    exit 0
+  fi
+fi
+if [[ "${{1:-}}" == "wallet" && "${{2:-}}" == "address" ]]; then
+  echo "{governance}"
+  exit 0
+fi
+if [[ "${{1:-}}" == "nonce" ]]; then
+  echo "7"
+  exit 0
+fi
+if [[ "${{1:-}}" == "send" ]]; then
+  nonce=""
+  for ((i=1; i<=$#; i++)); do
+    if [[ "${{!i}}" == "--nonce" ]]; then
+      j=$((i+1))
+      nonce="${{!j}}"
+    fi
+  done
+  echo "transactionHash 0x$(printf '%064x' "${{nonce:-0}}")"
+  exit 0
+fi
+echo "unexpected cast call: $*" >&2
+exit 1
+"""
+            )
+            fake_cast.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "ops" / "execute_vnext_promotion.sh"),
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("DARWIN vNext promotion execution complete.", result.stdout)
+            self.assertTrue(batch.exists())
+            log = log_path.read_text()
+            self.assertIn("send 0x0000000000000000000000000000000000000011 transfer(address,uint256)", log)
+            self.assertIn("--nonce 7", log)
+            self.assertIn("--nonce 11", log)
+            print("  Ops: vNext promotion execution sends distributor funding and governance handoff txs")
+
+    def test_53_claim_drw_merkle_uses_manifest_proof_and_signer(self):
+        """Ops: DRW Merkle claim helper validates the signer and dispatches the Foundry claim script."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            manifest = tmp / "base-sepolia-drw-merkle.json"
+            vnext = tmp / "base-sepolia.vnext.json"
+            env_file = tmp / ".env.base-sepolia"
+            fake_bin = tmp / "bin"
+            fake_cast = fake_bin / "cast"
+            fake_forge = fake_bin / "forge"
+            log_path = tmp / "cast.log"
+            forge_log_path = tmp / "forge.log"
+
+            claimant = "0x00000000000000000000000000000000000000aa"
+            manifest.write_text(json.dumps({
+                "claims": [
+                    {
+                        "index": 0,
+                        "account": claimant,
+                        "amount": "100000000000000000000",
+                        "proof": [
+                            "0x" + ("11" * 32),
+                            "0x" + ("22" * 32),
+                        ],
+                    }
+                ]
+            }))
+            vnext.write_text(json.dumps({
+                "vnext": {
+                    "contracts": {
+                        "drw_merkle_distributor": "0x00000000000000000000000000000000000000bb",
+                    }
+                }
+            }))
+            env_file.write_text(
+                "\n".join([
+                    'export DARWIN_RPC_URL="http://127.0.0.1:8545"',
+                    'export DARWIN_NETWORK="base-sepolia"',
+                    f'export DARWIN_VNEXT_FILE="{vnext}"',
+                    f'export DARWIN_VNEXT_DISTRIBUTION_FILE="{manifest}"',
+                    'export DARWIN_MERKLE_CLAIM_INDEX="0"',
+                    'export DARWIN_MERKLE_CLAIM_PRIVATE_KEY="0x1234"',
+                ]) + "\n"
+            )
+
+            fake_bin.mkdir(parents=True, exist_ok=True)
+            fake_cast.write_text(
+                f"""#!/usr/bin/env bash
+set -euo pipefail
+echo "$*" >> "{log_path}"
+if [[ "${{1:-}}" == "wallet" && "${{2:-}}" == "address" ]]; then
+  echo "{claimant}"
+  exit 0
+fi
+echo "unexpected cast call: $*" >&2
+exit 1
+"""
+            )
+            fake_cast.chmod(0o755)
+            fake_forge.write_text(
+                f"""#!/usr/bin/env bash
+set -euo pipefail
+echo "$*" >> "{forge_log_path}"
+exit 0
+"""
+            )
+            fake_forge.chmod(0o755)
+
+            result = subprocess.run(
+                [
+                    "bash",
+                    str(ROOT / "ops" / "claim_drw_merkle.sh"),
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_ENV_FILE": str(env_file),
+                    "PATH": str(fake_bin) + os.pathsep + os.environ.get("PATH", ""),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("wallet address --private-key 0x1234", log_path.read_text())
+            forge_log = forge_log_path.read_text()
+            self.assertIn("script/ClaimDRWMerkle.s.sol:ClaimDRWMerkle", forge_log)
+            self.assertIn("--private-key 0x1234", forge_log)
+            print("  Ops: DRW Merkle claim helper dispatches the Foundry claim script for the signer")
 
 
 if __name__ == "__main__":

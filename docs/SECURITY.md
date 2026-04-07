@@ -17,6 +17,7 @@ Use the repository contact path first while a dedicated security mailbox is bein
 - The public deployment artifact is redacted by default; local overlays in `~/.config/darwin/deployments/` restore operator-only fields.
 - The first vNext governance layer deploys to a separate public-safe sidecar artifact; see `docs/VNEXT_DEPLOYMENT.md`.
 - Mutable DRW-era governance handoff can be preflighted and batched locally; see `docs/VNEXT_PROMOTION.md`.
+- If the current governance is still an EOA, the mutable vNext handoff can also be executed locally with `./ops/execute_vnext_promotion.sh`.
 
 ## Scope
 

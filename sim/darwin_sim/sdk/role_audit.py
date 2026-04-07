@@ -53,9 +53,21 @@ def _norm(address: str) -> str:
     return normalize_evm_address(address)
 
 
+def _effective_mutable_governance(deployment: DarwinDeployment) -> str:
+    vnext = deployment.vnext or {}
+    if not vnext.get("enabled"):
+        return _norm(deployment.roles["governance"])
+    contracts = vnext.get("contracts", {})
+    timelock = contracts.get("darwin_timelock", "")
+    if not timelock:
+        return _norm(deployment.roles["governance"])
+    return _norm(timelock)
+
+
 def build_role_audit_report(deployment: DarwinDeployment, live: LiveRoleState) -> dict:
     deployer = _norm(deployment.deployer)
     governance = _norm(deployment.roles["governance"])
+    effective_mutable_governance = _effective_mutable_governance(deployment)
     epoch_operator = _norm(deployment.roles["epoch_operator"])
     safe_mode_authority = _norm(deployment.roles["safe_mode_authority"])
     batch_operator = _norm(deployment.roles.get("batch_operator", governance))
@@ -79,10 +91,10 @@ def build_role_audit_report(deployment: DarwinDeployment, live: LiveRoleState) -
         deployer_privileges.append("roles.batch_operator")
 
     governance_checks = {
-        "drw_token": _norm(live.token_governance) == governance,
-        "drw_staking": _norm(live.staking_governance) == governance,
-        "drw_faucet": _norm(live.faucet_governance) == governance,
-        "reference_pool": _norm(live.pool_governance) == governance,
+        "drw_token": _norm(live.token_governance) == effective_mutable_governance,
+        "drw_staking": _norm(live.staking_governance) == effective_mutable_governance,
+        "drw_faucet": _norm(live.faucet_governance) == effective_mutable_governance,
+        "reference_pool": _norm(live.pool_governance) == effective_mutable_governance,
         "settlement_hub": _norm(live.hub_governance) == governance,
     }
     governance_drift = [label for label, ok in governance_checks.items() if not ok]
@@ -96,6 +108,8 @@ def build_role_audit_report(deployment: DarwinDeployment, live: LiveRoleState) -
 
     governance_root_summary = {
         "address": governance,
+        "effective_mutable_governance": effective_mutable_governance,
+        "vnext_enabled": bool((deployment.vnext or {}).get("enabled")),
         "rotatable_contracts": list(ROTATABLE_CONTRACTS),
         "immutable_core_contracts": list(IMMUTABLE_GOVERNANCE_CONTRACTS),
         "compromise_requires_redeploy": True,
@@ -104,6 +118,7 @@ def build_role_audit_report(deployment: DarwinDeployment, live: LiveRoleState) -
     return {
         "deployer": deployer,
         "governance": governance,
+        "effective_mutable_governance": effective_mutable_governance,
         "epoch_operator": epoch_operator,
         "batch_operator": batch_operator,
         "safe_mode_authority": safe_mode_authority,

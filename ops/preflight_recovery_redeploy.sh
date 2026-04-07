@@ -13,7 +13,7 @@ if [[ -z "${BASE_SEPOLIA_RPC_URL:-}" && -n "${ALCHEMY_API_KEY:-}" ]]; then
 fi
 
 DARWIN_RPC_URL="${DARWIN_RPC_URL:-${BASE_SEPOLIA_RPC_URL:-https://sepolia.base.org}}"
-DARWIN_NETWORK="${DARWIN_NETWORK:-base-sepolia}"
+DARWIN_NETWORK="${DARWIN_NETWORK:-base-sepolia-recovery}"
 DARWIN_EXPECT_CHAIN_ID="${DARWIN_EXPECT_CHAIN_ID:-84532}"
 DARWIN_SOURCE_DEPLOYMENT_FILE="${DARWIN_SOURCE_DEPLOYMENT_FILE:-$ROOT/ops/deployments/base-sepolia.json}"
 DARWIN_DEPLOYMENT_FILE="${DARWIN_DEPLOYMENT_FILE:-$ROOT/ops/deployments/base-sepolia-recovery.json}"

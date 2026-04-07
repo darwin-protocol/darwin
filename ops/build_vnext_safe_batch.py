@@ -92,7 +92,7 @@ def main() -> int:
     vnext_path = Path(args.vnext_file).expanduser().resolve()
     out_path = Path(args.out).expanduser().resolve()
 
-    _, deployment, _, _ = load_deployment_data(deployment_file=deployment_path)
+    _, deployment, *_ = load_deployment_data(deployment_file=deployment_path)
     vnext_root = load_json(vnext_path)
     vnext = vnext_root["vnext"]
     contracts = deployment["contracts"]

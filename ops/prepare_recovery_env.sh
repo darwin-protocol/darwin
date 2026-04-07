@@ -70,6 +70,9 @@ deployment = json.loads(source_deployment_file.read_text())
 
 bond_asset = deployment["contracts"]["bond_asset"]
 network = deployment["network"]
+recovery_network = f"{network}-recovery"
+if recovery_deployment_file.stem.endswith("-recovery"):
+    recovery_network = recovery_deployment_file.stem
 chain_id = deployment["chain_id"]
 
 gov_addr = gov_wallet.account.evm_addr
@@ -81,7 +84,7 @@ lines = [
     "# DARWIN recovery env",
     "# Local-only file. Keep this out of git.",
     f'export DARWIN_RPC_URL="https://sepolia.base.org"',
-    f'export DARWIN_NETWORK="{network}"',
+    f'export DARWIN_NETWORK="{recovery_network}"',
     f'export DARWIN_EXPECT_CHAIN_ID="{chain_id}"',
     f'export DARWIN_SOURCE_DEPLOYMENT_FILE="{source_deployment_file}"',
     f'export DARWIN_DEPLOYMENT_FILE="{recovery_deployment_file}"',

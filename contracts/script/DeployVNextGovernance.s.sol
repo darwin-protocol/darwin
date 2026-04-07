@@ -10,6 +10,8 @@ import {DRWMerkleDistributor} from "../src/DRWMerkleDistributor.sol";
 contract DeployVNextGovernance is Script {
     using stdJson for string;
 
+    uint64 internal constant TIMELOCK_GRACE_PERIOD = 14 days;
+
     struct DeployConfig {
         uint256 deployerKey;
         string network;
@@ -88,8 +90,7 @@ contract DeployVNextGovernance is Script {
 
         string memory timelockJsonKey = "timelock";
         timelockJsonKey.serialize("min_delay", uint256(cfg.minDelay));
-        string memory timelockJson =
-            timelockJsonKey.serialize("grace_period", uint256(DarwinTimelock.GRACE_PERIOD));
+        string memory timelockJson = timelockJsonKey.serialize("grace_period", uint256(TIMELOCK_GRACE_PERIOD));
 
         string memory distributionJsonKey = "distribution";
         distributionJsonKey.serialize("token", cfg.token);

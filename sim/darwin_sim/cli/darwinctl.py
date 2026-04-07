@@ -533,6 +533,8 @@ def cmd_role_audit(args):
     print(f"  RPC:                    {base_rpc_url}")
     print(f"  Deployer:               {report['deployer']}")
     print(f"  Governance:             {report['governance']}")
+    if report["effective_mutable_governance"] != report["governance"]:
+        print(f"  Mutable governance:     {report['effective_mutable_governance']}")
     print(f"  Epoch operator:         {report['epoch_operator']}")
     print(f"  Batch operator:         {report['batch_operator']}")
     print(f"  Safe mode auth:         {report['safe_mode_authority']}")

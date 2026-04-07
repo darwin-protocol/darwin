@@ -37,7 +37,14 @@ rpc_address() {
 }
 
 rpc_balance() {
-  cast call --rpc-url "$DARWIN_RPC_URL" "$1" "balanceOf(address)(uint256)" "$2"
+  cast call --rpc-url "$DARWIN_RPC_URL" "$1" "balanceOf(address)(uint256)" "$2" | awk '{print $1}'
+}
+
+uint_lt() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+print(1 if int(sys.argv[1]) < int(sys.argv[2]) else 0)
+PY
 }
 
 export DARWIN_DEPLOYMENT_FILE="${DARWIN_DEPLOYMENT_FILE:-$ROOT/ops/deployments/${DARWIN_NETWORK:-base-sepolia}.json}"
@@ -105,7 +112,7 @@ if [[ -n "${DARWIN_RPC_URL:-}" && -n "${DARWIN_VNEXT_CURRENT_GOVERNANCE:-}" ]]; 
     current_balance="$(rpc_balance "$DARWIN_VNEXT_DISTRIBUTION_TOKEN" "$DARWIN_VNEXT_CURRENT_GOVERNANCE" || true)"
     if [[ -z "$current_balance" || "$current_balance" == "0" ]]; then
       blockers+=("missing_distribution_balance")
-    elif (( current_balance < DARWIN_VNEXT_TOTAL_AMOUNT )); then
+    elif [[ "$(uint_lt "$current_balance" "$DARWIN_VNEXT_TOTAL_AMOUNT")" == "1" ]]; then
       blockers+=("insufficient_distribution_balance")
     fi
   fi
