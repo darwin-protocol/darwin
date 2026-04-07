@@ -115,13 +115,7 @@ The repo now ships a static market portal in `web/` that connects directly to th
 - source: `web/`
 - config: `web/public/market-config.json`
 - exporter: `ops/export_market_portal_config.py`
-- Pages workflow: `.github/workflows/pages.yml`
-
-Expected GitHub Pages URL:
-
-```text
-https://darwin-protocol.github.io/darwin/
-```
+- public site: `https://usedarwin.xyz/`
 
 The portal supports:
 
@@ -129,7 +123,7 @@ The portal supports:
 - Base Sepolia network switch/add
 - DRW wallet import
 - optional DRW faucet claim when the pinned artifact enables a funded faucet
-- live reserve + governance-balance reads
+- live reserve reads
 - direct `WETH -> DRW` and `DRW -> WETH` swaps
 - direct `ETH -> WETH` wrapping for the quote side
 

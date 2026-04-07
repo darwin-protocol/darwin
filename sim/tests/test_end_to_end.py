@@ -2667,11 +2667,12 @@ class TestEndToEnd(unittest.TestCase):
         ]
 
         offenders: list[str] = []
+        disallowed_prefixes = ["](/" + "Users/", "](/" + "tmp/"]
         for path in public_docs:
             if not path.exists():
                 continue
             text = path.read_text()
-            if "](/" + "Users/" in text or "](/tmp/" in text:
+            if any(prefix in text for prefix in disallowed_prefixes):
                 offenders.append(str(path.relative_to(ROOT)))
 
         self.assertEqual(offenders, [], f"public docs contain local absolute links: {offenders}")
@@ -3151,8 +3152,8 @@ exit 1
             self.assertEqual(config["pool"]["address"], "0x0000000000000000000000000000000000000042")
             self.assertEqual(config["token"]["address"], "0x0000000000000000000000000000000000000011")
             self.assertEqual(config["quote_token"]["address"], "0x4200000000000000000000000000000000000006")
-            self.assertEqual(config["roles"]["market_operator"], "0x0000000000000000000000000000000000000008")
-            print("  Ops: market portal config exports from the live deployment artifact")
+            self.assertNotIn("roles", config)
+            print("  Ops: market portal config exports the public market surface from the live deployment artifact")
 
     def test_44_deployment_show_with_faucet(self):
         """CLI: deployment-show surfaces faucet metadata when present."""
@@ -3280,8 +3281,8 @@ exit 1
             self.assertTrue(config["faucet"]["enabled"])
             self.assertEqual(config["faucet"]["address"], "0x0000000000000000000000000000000000000045")
             self.assertEqual(config["faucet"]["claim_amount"], "100000000000000000000")
-            self.assertEqual(config["links"]["operator_quickstart"], "https://github.com/darwin-protocol/darwin/blob/main/docs/OPERATOR_QUICKSTART.md")
-            print("  Ops: market portal config exports faucet metadata from the live deployment artifact")
+            self.assertNotIn("operator_quickstart", config["links"])
+            print("  Ops: market portal config exports faucet metadata without private operator links")
 
     def test_46_fund_drw_faucet_updates_artifact(self):
         """Ops: faucet funding helper updates the deployment artifact after transfer calls."""
