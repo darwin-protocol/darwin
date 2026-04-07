@@ -479,6 +479,68 @@ def cmd_deployment_show(args):
         print("  Faucet enabled:   no")
 
 
+def cmd_role_audit(args):
+    deployment = _load_deployment_or_none(args)
+    if deployment is None:
+        print("[darwinctl] role-audit requires --deployment-file, --network, or DARWIN_DEPLOYMENT_FILE")
+        sys.exit(1)
+
+    base_rpc_url = args.base_rpc_url or _default_base_sepolia_rpc_url()
+    contracts = deployment.contracts
+
+    from darwin_sim.sdk.role_audit import LiveRoleState, build_role_audit_report
+
+    live = LiveRoleState(
+        token_governance = _rpc_call_address(base_rpc_url, contracts["drw_token"], "0x5aa6e675"),
+        token_genesis_operator = _rpc_call_address(base_rpc_url, contracts["drw_token"], "0x018b2a45"),
+        token_genesis_finalized=_rpc_call_bool(base_rpc_url, contracts["drw_token"], "0x4421d5f5"),
+        staking_governance=_rpc_call_address(base_rpc_url, contracts["drw_staking"], "0x5aa6e675"),
+        staking_genesis_operator=_rpc_call_address(base_rpc_url, contracts["drw_staking"], "0x018b2a45"),
+        faucet_governance=_rpc_call_address(base_rpc_url, contracts["drw_faucet"], "0x5aa6e675"),
+        pool_governance=_rpc_call_address(base_rpc_url, contracts["reference_pool"], "0x5aa6e675"),
+        pool_market_operator=_rpc_call_address(base_rpc_url, contracts["reference_pool"], "0xb1ae3471"),
+        hub_governance=_rpc_call_address(base_rpc_url, contracts["settlement_hub"], "0x5aa6e675"),
+        hub_batch_operator_deployer=_rpc_call_bool(
+            base_rpc_url, contracts["settlement_hub"], "0xd220935c" + _abi_encode_address(deployment.deployer)
+        ),
+        hub_batch_operator_governance=_rpc_call_bool(
+            base_rpc_url,
+            contracts["settlement_hub"],
+            "0xd220935c" + _abi_encode_address(deployment.roles["governance"]),
+        ),
+    )
+    report = build_role_audit_report(deployment, live)
+
+    if args.json_out:
+        _write_report(args.json_out, json.dumps(report, indent=2, sort_keys=True) + "\n")
+
+    print("[darwinctl] Live role audit")
+    print(f"  Network:                {deployment.network}")
+    print(f"  Chain ID:               {deployment.chain_id}")
+    print(f"  RPC:                    {base_rpc_url}")
+    print(f"  Deployer:               {report['deployer']}")
+    print(f"  Governance:             {report['governance']}")
+    print(f"  Epoch operator:         {report['epoch_operator']}")
+    print(f"  Batch operator:         {report['batch_operator']}")
+    print(f"  Safe mode auth:         {report['safe_mode_authority']}")
+    print(f"  Token genesis closed:   {'yes' if report['token_genesis_finalized'] else 'no'}")
+    print(f"  Token genesis operator: {report['token_genesis_operator']}")
+    print(f"  Staking genesis admin:  {report['staking_genesis_operator']}")
+    print(f"  Deployer retire ready:  {'yes' if report['deployer_retire_ready'] else 'no'}")
+    print(f"  Governance drift:       {'none' if not report['governance_drift'] else ', '.join(report['governance_drift'])}")
+    if report["deployer_privileges"]:
+        print(f"  Deployer privileges:    {', '.join(report['deployer_privileges'])}")
+    else:
+        print("  Deployer privileges:    none")
+    print(
+        "  Governance root:       "
+        f"rotatable={','.join(report['governance_root_summary']['rotatable_contracts'])} "
+        f"immutable={','.join(report['governance_root_summary']['immutable_core_contracts'])}"
+    )
+    if args.json_out:
+        print(f"  JSON report:            {Path(args.json_out).resolve()}")
+
+
 def cmd_config_lint(args):
     from darwin_sim.core.config import SimConfig
     try:
@@ -1404,6 +1466,13 @@ def main():
     p.add_argument("--deployment-file")
     p.add_argument("--network")
 
+    # role audit
+    p = sub.add_parser("role-audit", help="Audit live privileged roles for a deployment")
+    p.add_argument("--deployment-file")
+    p.add_argument("--network")
+    p.add_argument("--base-rpc-url", default="")
+    p.add_argument("--json-out", default="")
+
     # config lint
     p = sub.add_parser("config-lint", help="Validate config")
     p.add_argument("config")
@@ -1498,6 +1567,8 @@ def main():
         cmd_wallet_request(args)
     elif args.command == "deployment-show":
         cmd_deployment_show(args)
+    elif args.command == "role-audit":
+        cmd_role_audit(args)
     elif args.command == "config-lint":
         cmd_config_lint(args)
     elif args.command == "intent-create":

@@ -31,6 +31,7 @@ from overlay.watcher.service import WatcherState
 from darwin_sim.sdk.accounts import create_account
 from darwin_sim.sdk.deployments import load_deployment
 from darwin_sim.sdk.intents import create_intent, verify_pq_sig, verify_evm_sig, verify_binding
+from darwin_sim.sdk.role_audit import LiveRoleState, build_role_audit_report
 from darwin_sim.sdk.wallets import create_wallet, load_wallet, load_wallet_public_account, save_wallet
 from darwin_sim.watcher.replay import replay_and_verify
 from darwin_sim.core.config import SimConfig
@@ -195,6 +196,62 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(deployment.bond_asset_mode, "external")
             self.assertEqual(deployment.settlement_hub, "0xdc64a140aa3e981100a9beca4e685f962f0cf6c9")
             print(f"  Deployment: {deployment.network} chain={deployment.chain_id} hub={deployment.settlement_hub}")
+
+    def test_06b_role_audit_retire_ready(self):
+        """Role audit: finalized genesis + no deployer roles means the deployer can be retired."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            deployment_path = Path(tmpdir) / "base-sepolia.json"
+            deployment_path.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0xBFf27f141250C1323431eDB1BfCbB7D550a168f6",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x556d75f4455cf3f0D7c5F9c6e7ea49447f66D8d2",
+                    "drw_token": "0x90519DFb5ed50fbd959Ed47BBcf7E4ae33750FF2",
+                    "drw_staking": "0xC84090E74880a672C5273f6A454E208Fe114634e",
+                    "drw_faucet": "0x3DAa29B6b497a830AA5C3e4eE881ad2fFe2FbAe0",
+                    "reference_pool": "0x9E1fb3eb0Ca3b06038d2A4d6b6e5D18183E6B891",
+                    "bond_vault": "0xa842Dc4BF4CA3e1f1CA07714867145038D5e0ab4",
+                    "challenge_escrow": "0xd71e90F784f45FeC0b6b36454186CD88eaD126a7",
+                    "epoch_manager": "0xE53A27DA8e3C2c69495a97C3AcD6E484AbD7892B",
+                    "score_registry": "0x9135b4BDDa2739212a7c5c0dB0C45AdEc42b7346",
+                    "shared_pair_vault": "0xbecDB8e518C9C1B57db0656297F5F1c1FE5c2851",
+                    "species_registry": "0xcaC5E4C711b4FfD9C76354FF8FfD4E236b1798AB",
+                },
+                "roles": {
+                    "governance": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+                    "epoch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+                    "batch_operator": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+                    "safe_mode_authority": "0xC50f7A6ddDBBfe85af8b47B9bDf1A6B525746A9d",
+                },
+            }))
+
+            deployment = load_deployment(deployment_file=deployment_path)
+            report = build_role_audit_report(
+                deployment,
+                LiveRoleState(
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x0000000000000000000000000000000000000000",
+                    True,
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x0000000000000000000000000000000000000000",
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x00000000000000000000000000000000000000b1",
+                    "0x00000000000000000000000000000000000000b5",
+                    "0x00000000000000000000000000000000000000b1",
+                    False,
+                    True,
+                ),
+            )
+
+            self.assertTrue(report["deployer_retire_ready"])
+            self.assertEqual(report["deployer_privileges"], [])
+            self.assertTrue(report["governance_matches_live"])
+            self.assertIn("settlement_hub", report["governance_root_summary"]["immutable_core_contracts"])
+            self.assertIn("reference_pool", report["governance_root_summary"]["rotatable_contracts"])
+            print("  Role audit: deployer can be retired once no live roles remain")
 
     def test_07_config_validation(self):
         """Config: YAML loads and validates correctly."""

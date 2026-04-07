@@ -22,6 +22,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - DARWIN is currently public testnet alpha infrastructure.
 - The current public market is on Base Sepolia, not mainnet.
 - Use small amounts and expect testnet conditions.
+- Operators can locally re-audit live privileged roles with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 
 ## Repository Layout

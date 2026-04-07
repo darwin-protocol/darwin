@@ -11,6 +11,7 @@ Use the repository contact path first while a dedicated security mailbox is bein
 - DARWIN is public testnet alpha infrastructure.
 - The public deployment is on Base Sepolia.
 - The system has not undergone a formal external audit.
+- Operators can locally verify live privileged-role bindings with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
 
 ## Scope
 
