@@ -63,6 +63,22 @@ print(int(wei))
 PY
 }
 
+normalize_uint() {
+  python3 - "$1" <<'PY'
+import sys
+
+value = sys.argv[1].strip()
+if not value:
+    raise SystemExit("missing uint value")
+
+value = value.split()[0]
+if value.startswith("0x"):
+    print(int(value, 16))
+else:
+    print(int(value))
+PY
+}
+
 read_artifact_field() {
   python3 - "$DARWIN_DEPLOYMENT_FILE" "$1" <<'PY'
 import json
@@ -156,8 +172,8 @@ if [[ "$CHAIN_ID" != "84532" ]]; then
   exit 1
 fi
 
-BASE_BALANCE_WEI="$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")"
-WETH_BALANCE_BEFORE="$(cast call "$WETH_ADDRESS" "balanceOf(address)(uint256)" "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")"
+BASE_BALANCE_WEI="$(normalize_uint "$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")")"
+WETH_BALANCE_BEFORE="$(normalize_uint "$(cast call "$WETH_ADDRESS" "balanceOf(address)(uint256)" "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")")"
 
 if [[ "$AMOUNT_WEI" -le 0 ]]; then
   echo "Wrap amount must be positive." >&2
@@ -195,8 +211,8 @@ if [[ -z "$WRAP_PRIVATE_KEY" ]]; then
 fi
 
 TX_OUTPUT="$(cast send "$WETH_ADDRESS" "deposit()" --value "$AMOUNT_WEI" --private-key "$WRAP_PRIVATE_KEY" --rpc-url "$DARWIN_RPC_URL")"
-WETH_BALANCE_AFTER="$(cast call "$WETH_ADDRESS" "balanceOf(address)(uint256)" "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")"
-BASE_BALANCE_AFTER="$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")"
+WETH_BALANCE_AFTER="$(normalize_uint "$(cast call "$WETH_ADDRESS" "balanceOf(address)(uint256)" "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")")"
+BASE_BALANCE_AFTER="$(normalize_uint "$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$DARWIN_RPC_URL")")"
 
 echo "$TX_OUTPUT"
 echo "  weth_after:        $(to_eth "$WETH_BALANCE_AFTER")"

@@ -37,15 +37,20 @@ FAUCET_ADDRESS="${DARWIN_DRW_FAUCET_ADDRESS:-$(read_deployment_field faucet.cont
 TOKEN_ADDRESS="${DARWIN_DRW_FAUCET_TOKEN:-$(read_deployment_field drw.contracts.drw_token)}"
 TOKEN_FUNDING="${DARWIN_DRW_FAUCET_INITIAL_TOKEN_FUNDING:-100000000000000000000000}"
 NATIVE_FUNDING="${DARWIN_DRW_FAUCET_INITIAL_NATIVE_FUNDING:-200000000000000}"
+FUNDER_ADDRESS="$(cast wallet address --private-key "$DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY")"
+NEXT_NONCE="$(cast nonce "$FUNDER_ADDRESS" --block pending --rpc-url "$DARWIN_RPC_URL")"
 
 if [[ "$TOKEN_FUNDING" != "0" ]]; then
   cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$FAUCET_ADDRESS" "$TOKEN_FUNDING" \
+    --nonce "$NEXT_NONCE" \
     --private-key "$DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY" \
     --rpc-url "$DARWIN_RPC_URL" >/dev/null
+  NEXT_NONCE="$((NEXT_NONCE + 1))"
 fi
 
 if [[ "$NATIVE_FUNDING" != "0" ]]; then
   cast send "$FAUCET_ADDRESS" "fundNative()" \
+    --nonce "$NEXT_NONCE" \
     --value "$NATIVE_FUNDING" \
     --private-key "$DARWIN_DRW_FAUCET_FUNDER_PRIVATE_KEY" \
     --rpc-url "$DARWIN_RPC_URL" >/dev/null

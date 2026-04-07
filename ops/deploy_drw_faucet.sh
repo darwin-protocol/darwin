@@ -21,12 +21,14 @@ require_env DARWIN_DRW_FAUCET_TOKEN
 
 export DARWIN_EXPECT_CHAIN_ID="${DARWIN_EXPECT_CHAIN_ID:-0}"
 export DARWIN_DEPLOYMENT_FILE="${DARWIN_DEPLOYMENT_FILE:-$ROOT/ops/deployments/${DARWIN_NETWORK}.json}"
-export DARWIN_DRW_FAUCET_FILE="${DARWIN_DRW_FAUCET_FILE:-$ROOT/ops/deployments/.${DARWIN_NETWORK}.faucet.json}"
 
 if [[ ! -f "$DARWIN_DEPLOYMENT_FILE" ]]; then
   echo "Missing deployment artifact: $DARWIN_DEPLOYMENT_FILE" >&2
   exit 1
 fi
+
+deployment_basename="$(basename "$DARWIN_DEPLOYMENT_FILE" .json)"
+export DARWIN_DRW_FAUCET_FILE="${DARWIN_DRW_FAUCET_FILE:-$ROOT/ops/deployments/.${deployment_basename}.faucet.json}"
 
 mkdir -p "$(dirname "$DARWIN_DRW_FAUCET_FILE")"
 
