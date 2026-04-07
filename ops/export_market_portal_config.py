@@ -28,6 +28,20 @@ NETWORK_DEFAULTS = {
         "read_rpc_url": "https://mainnet-preconf.base.org",
         "explorer_base_url": "https://basescan.org",
     },
+    421614: {
+        "network_name": "Arbitrum Sepolia",
+        "chain_hex": "0x66eee",
+        "rpc_url": "https://sepolia-rollup.arbitrum.io/rpc",
+        "read_rpc_url": "https://sepolia-rollup.arbitrum.io/rpc",
+        "explorer_base_url": "https://sepolia.arbiscan.io",
+    },
+    42161: {
+        "network_name": "Arbitrum",
+        "chain_hex": "0xa4b1",
+        "rpc_url": "https://arb1.arbitrum.io/rpc",
+        "read_rpc_url": "https://arb1.arbitrum.io/rpc",
+        "explorer_base_url": "https://arbiscan.io",
+    },
 }
 
 
@@ -112,7 +126,7 @@ def main() -> int:
         },
         "project": {
             "name": "DARWIN",
-            "tagline": "Trade DRW on the Base Sepolia reference pool",
+            "tagline": "Trade DRW on the DARWIN reference pool",
         },
         "network": {
             "id": chain_id,
@@ -174,7 +188,7 @@ def main() -> int:
             "bond_asset_mode": deployment.get("bond_asset_mode", "external"),
             "bond_asset": contracts["bond_asset"],
             "market_seeded": True,
-            "warning": "This is a DARWIN-owned Base Sepolia reference pool. It is live and tradeable, but it is still testnet alpha infrastructure.",
+            "warning": f"This is a DARWIN-owned {network_defaults['network_name']} reference pool. It is live and tradeable, but it is still alpha infrastructure.",
         },
     }
 

@@ -21,6 +21,8 @@ DEFAULT_PROJECT_WALLETS = Path.home() / ".config" / "darwin" / "project-wallets.
 NETWORK_DEFAULTS = {
     84532: "https://sepolia.base.org",
     8453: "https://mainnet.base.org",
+    421614: "https://sepolia-rollup.arbitrum.io/rpc",
+    42161: "https://arb1.arbitrum.io/rpc",
 }
 
 

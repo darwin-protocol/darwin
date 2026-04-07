@@ -4337,6 +4337,158 @@ exit 0
             self.assertIn("--private-key 0x1234", forge_log)
             print("  Ops: DRW Merkle claim helper dispatches the Foundry claim script for the signer")
 
+    def test_54_preflight_darwin_node_accepts_arbitrum_rpc(self):
+        """Ops: DARWIN node preflight validates a generic deployment against an Arbitrum-family RPC."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "arbitrum-sepolia.json"
+            json_out = tmp / "node-preflight.json"
+            md_out = tmp / "node-preflight.md"
+
+            def reserve_port():
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(("127.0.0.1", 0))
+                port = sock.getsockname()[1]
+                sock.close()
+                return port
+
+            deployment.write_text(json.dumps({
+                "network": "arbitrum-sepolia",
+                "chain_id": 421614,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000042",
+                },
+            }))
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                    method = body.get("method")
+                    result = "0x0"
+                    if method == "eth_chainId":
+                        result = hex(421614)
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            rpc_server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            rpc_thread = Thread(target=rpc_server.serve_forever, daemon=True)
+            rpc_thread.start()
+
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(ROOT / "ops" / "preflight_darwin_node.py"),
+                        "--deployment-file",
+                        str(deployment),
+                        "--rpc-url",
+                        f"http://127.0.0.1:{rpc_server.server_port}",
+                        "--state-root",
+                        str(tmp / "state"),
+                        "--gateway-port",
+                        str(reserve_port()),
+                        "--router-port",
+                        str(reserve_port()),
+                        "--scorer-port",
+                        str(reserve_port()),
+                        "--watcher-port",
+                        str(reserve_port()),
+                        "--archive-port",
+                        str(reserve_port()),
+                        "--finalizer-port",
+                        str(reserve_port()),
+                        "--sentinel-port",
+                        str(reserve_port()),
+                        "--json-out",
+                        str(json_out),
+                        "--markdown-out",
+                        str(md_out),
+                    ],
+                    cwd=str(ROOT),
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                rpc_server.shutdown()
+                rpc_server.server_close()
+                rpc_thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            report = json.loads(json_out.read_text())
+            self.assertTrue(report["ready"])
+            self.assertEqual(report["deployment"]["network"], "arbitrum-sepolia")
+            self.assertEqual(report["deployment"]["chain_id"], 421614)
+            self.assertEqual(report["rpc"]["observed_chain_id"], 421614)
+            self.assertEqual(report["checks"]["rpc"]["state"], "OK")
+            self.assertIn("Ready to start", md_out.read_text())
+            print("  Ops: DARWIN node preflight validates a generic Arbitrum-family deployment")
+
+    def test_55_market_portal_config_export_supports_arbitrum_sepolia(self):
+        """Ops: market portal config export supports Arbitrum-family deployments."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "arbitrum-sepolia.json"
+            out = tmp / "market-config.json"
+
+            deployment.write_text(json.dumps({
+                "network": "arbitrum-sepolia",
+                "chain_id": 421614,
+                "bond_asset_mode": "external",
+                "contracts": {
+                    "bond_asset": "0x0000000000000000000000000000000000000006",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x0000000000000000000000000000000000000006",
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+                "drw": {
+                    "total_supply": "1000000000000000000000000000",
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_market_portal_config.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            config = json.loads(out.read_text())
+            self.assertEqual(config["network"]["id"], 421614)
+            self.assertEqual(config["network"]["name"], "Arbitrum Sepolia")
+            self.assertEqual(config["network"]["hex"], "0x66eee")
+            self.assertEqual(config["network"]["rpc_url"], "https://sepolia-rollup.arbitrum.io/rpc")
+            self.assertEqual(config["network"]["explorer_base_url"], "https://sepolia.arbiscan.io")
+            self.assertEqual(config["project"]["tagline"], "Trade DRW on the DARWIN reference pool")
+            print("  Ops: market portal config export supports Arbitrum-family chain defaults")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

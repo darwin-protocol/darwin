@@ -34,6 +34,16 @@ from urllib.request import Request, urlopen
 
 getcontext().prec = 40
 
+_RPC_DEFAULTS = {
+    1: "https://ethereum-rpc.publicnode.com",
+    10: "https://optimism-rpc.publicnode.com",
+    42161: "https://arb1.arbitrum.io/rpc",
+    421614: "https://sepolia-rollup.arbitrum.io/rpc",
+    8453: "https://mainnet.base.org",
+    84532: "https://sepolia.base.org",
+    11155111: "https://ethereum-sepolia-rpc.publicnode.com",
+}
+
 
 def _load_deployment_or_none(args):
     deployment_file = getattr(args, "deployment_file", None)
@@ -67,6 +77,23 @@ def _default_sepolia_rpc_url() -> str:
     if os.environ.get("ALCHEMY_API_KEY"):
         return f"https://eth-sepolia.g.alchemy.com/v2/{os.environ['ALCHEMY_API_KEY']}"
     return "https://ethereum-sepolia-rpc.publicnode.com"
+
+
+def _default_rpc_url_for_chain(chain_id: int) -> str:
+    return _RPC_DEFAULTS.get(int(chain_id), "")
+
+
+def _resolve_deployment_rpc_url(args, deployment=None) -> str:
+    direct = getattr(args, "rpc_url", "") or getattr(args, "base_rpc_url", "")
+    if direct:
+        return direct
+    if os.environ.get("DARWIN_RPC_URL"):
+        return os.environ["DARWIN_RPC_URL"]
+    if deployment is not None:
+        default = _default_rpc_url_for_chain(deployment.chain_id)
+        if default:
+            return default
+    return _default_base_sepolia_rpc_url()
 
 
 def _http_post_json(url: str, payload: dict) -> dict:
@@ -498,7 +525,7 @@ def cmd_role_audit(args):
         print(f"  expected_overlay:       {overlay}")
         sys.exit(1)
 
-    base_rpc_url = args.base_rpc_url or _default_base_sepolia_rpc_url()
+    base_rpc_url = _resolve_deployment_rpc_url(args, deployment)
     contracts = deployment.contracts
 
     from darwin_sim.sdk.role_audit import LiveRoleState, build_role_audit_report
@@ -978,7 +1005,7 @@ def cmd_status_check(args):
         else:
             failures.append("gateway_config_unreachable")
 
-        base_rpc_url = args.base_rpc_url or _default_base_sepolia_rpc_url()
+        base_rpc_url = _resolve_deployment_rpc_url(args, deployment)
         try:
             rpc_chain_id = _rpc_chain_id(base_rpc_url)
             if rpc_chain_id != deployment.chain_id:
@@ -1495,6 +1522,7 @@ def main():
     p = sub.add_parser("role-audit", help="Audit live privileged roles for a deployment")
     p.add_argument("--deployment-file")
     p.add_argument("--network")
+    p.add_argument("--rpc-url", default="")
     p.add_argument("--base-rpc-url", default="")
     p.add_argument("--json-out", default="")
 
@@ -1546,6 +1574,7 @@ def main():
     p.add_argument("--sentinel-url", default="http://127.0.0.1:9449")
     p.add_argument("--deployment-file")
     p.add_argument("--network")
+    p.add_argument("--rpc-url", default="")
     p.add_argument("--base-rpc-url", default="")
     p.add_argument("--allow-cold-watcher", action="store_true")
     p.add_argument("--json-out", default="")
