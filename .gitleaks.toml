@@ -1,0 +1,12 @@
+title = "DARWIN gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public on-chain addresses in token and authority fields"
+regexTarget = "match"
+regexes = [
+  '''(?i)[a-z_]*token[a-z_]*["'` ]*:\s*["'`]0x[a-f0-9]{40}["'`]?''',
+  '''(?i)[a-z_]*authority[a-z_]*["'` ]*:\s*["'`]0x[a-f0-9]{40}["'`]?''',
+]
