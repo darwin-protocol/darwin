@@ -21,9 +21,10 @@ services:
     restart: unless-stopped
     depends_on:
       - site
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
-    environment:
-      TUNNEL_METRICS: 0.0.0.0:21123
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared-config.yml:/etc/cloudflared/config.yml:ro
+      - ./${CLOUDFLARE_TUNNEL_CREDENTIALS_FILE:-cloudflared-credentials.json}:/etc/cloudflared/credentials.json:ro
     ports:
       - "127.0.0.1:21123:21123"
     networks:

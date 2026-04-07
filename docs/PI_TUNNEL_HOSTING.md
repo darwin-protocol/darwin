@@ -42,14 +42,10 @@ Keep the GitHub Pages URL as a backup path, not the canonical public host.
 1. Add `usedarwin.xyz` to Cloudflare.
 2. Change nameservers at IONOS to Cloudflare.
 3. In Cloudflare Zero Trust, create a tunnel.
-4. Add a public hostname:
-
-```text
-Hostname: usedarwin.xyz
-Service:  http://site:8080
-```
-
-5. Copy the tunnel token into the Pi stack `.env`.
+4. Route the tunnel hostnames in Cloudflare DNS to that tunnel.
+5. Copy the tunnel credentials JSON onto the Pi.
+6. Render the local tunnel config with the tunnel id and public hostnames.
+The local config should point `usedarwin.xyz` and `www.usedarwin.xyz` at `http://site:8080`.
 
 ## Pi Setup
 
@@ -59,6 +55,7 @@ On the Raspberry Pi:
 cd /path/to/darwin
 ./ops/pi/install_public_site_stack.sh
 sudo nano /opt/darwin-public-site/.env
+sudo nano /opt/darwin-public-site/cloudflared-config.yml
 sudo docker compose -f /opt/darwin-public-site/docker-compose.yml up -d
 ```
 
@@ -79,7 +76,7 @@ That script now:
 ## What The Pi Runs
 
 - `darwin-site`: Caddy serving static files from `/srv/usedarwin/site/current`
-- `darwin-cloudflared`: Cloudflare Tunnel agent
+- `darwin-cloudflared`: Cloudflare Tunnel agent using a local ingress config plus tunnel credentials file
 
 For host-local verification only, the stack binds:
 
@@ -94,7 +91,7 @@ The compose stack lives in [ops/pi/docker-compose.public-site.yml](../ops/pi/doc
 
 - do not expose port `8080` to the public internet
 - keep SSH limited to your admin path
-- keep the tunnel token only in the Pi `.env`
+- keep the tunnel credentials JSON only on the Pi
 - use Cloudflare access controls later if you add private admin subdomains
 
 ## Operational Notes
