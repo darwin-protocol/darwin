@@ -2261,6 +2261,61 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("[peer-wallet] Ready", result.stdout)
             print("  Ops: init_peer_wallet creates a shareable DRW peer-to-peer wallet bundle")
 
+    def test_30c_init_recovery_wallets_script(self):
+        """Ops: init_recovery_wallets creates fresh future governance and deployer wallet bundles."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            wallet_dir = tmp / "wallets"
+            wallet_dir.mkdir()
+            deployment = tmp / "base-sepolia.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000001",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000b",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000c",
+                },
+            }))
+
+            env = {
+                **os.environ,
+                "DARWIN_WALLET_DIR": str(wallet_dir),
+                "DARWIN_DEPLOYMENT_FILE": str(deployment),
+                "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM),
+            }
+            result = subprocess.run(
+                ["bash", str(ROOT / "ops" / "init_recovery_wallets.sh")],
+                cwd=str(ROOT),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            governance_public = wallet_dir / "darwin-future-governance.account.json"
+            deployer_public = wallet_dir / "darwin-future-deployer.account.json"
+            governance_share = wallet_dir / "darwin-future-governance.share.md"
+            deployer_share = wallet_dir / "darwin-future-deployer.share.md"
+            summary = wallet_dir / "recovery-wallets-summary.md"
+            self.assertTrue(governance_public.exists())
+            self.assertTrue(deployer_public.exists())
+            self.assertTrue(governance_share.exists())
+            self.assertTrue(deployer_share.exists())
+            self.assertTrue(summary.exists())
+            self.assertIn("[recovery-wallets] Ready", result.stdout)
+            self.assertIn("future-governance", summary.read_text())
+            self.assertIn("future-deployer", summary.read_text())
+            print("  Ops: init_recovery_wallets creates future governance and deployer wallet bundles")
+
     def test_31_prepare_external_packets(self):
         """Ops: prepare_external_packets emits sendable operator and reviewer tarballs."""
         with tempfile.TemporaryDirectory() as tmpdir:

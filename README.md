@@ -9,6 +9,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Public status: [LIVE_STATUS.md](LIVE_STATUS.md)
 - Market runbook: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
 - Security reporting: [docs/SECURITY.md](docs/SECURITY.md)
+- Recovery runbook: [docs/GOVERNANCE_RECOVERY.md](docs/GOVERNANCE_RECOVERY.md)
 
 ## What Is Live
 
@@ -23,6 +24,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - The current public market is on Base Sepolia, not mainnet.
 - Use small amounts and expect testnet conditions.
 - Operators can locally re-audit live privileged roles with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
+- Operators can bootstrap fresh local recovery wallets with `./ops/init_recovery_wallets.sh`.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 
 ## Repository Layout

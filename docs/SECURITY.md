@@ -12,6 +12,7 @@ Use the repository contact path first while a dedicated security mailbox is bein
 - The public deployment is on Base Sepolia.
 - The system has not undergone a formal external audit.
 - Operators can locally verify live privileged-role bindings with `darwinctl role-audit --deployment-file ops/deployments/base-sepolia.json`.
+- Fresh local recovery wallets can be prepared with `./ops/init_recovery_wallets.sh`.
 
 ## Scope
 
@@ -25,3 +26,4 @@ Security reports may cover:
 ## Note
 
 This public file intentionally omits private operator and internal review workflow detail.
+See `docs/GOVERNANCE_RECOVERY.md` for the public-safe recovery boundary and wallet bootstrap path.
