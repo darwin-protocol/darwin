@@ -11,7 +11,7 @@ name: pages-https
     - cron: "*/30 * * * *"
 
 permissions:
-  contents: read
+  contents: write
   pages: write
 
 jobs:
@@ -35,3 +35,28 @@ jobs:
           else
             echo "Certificate still pending for $DARWIN_SITE_DOMAIN; leaving workflow green so schedule can retry."
           fi
+
+      - name: Export runtime hosting status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DARWIN_SITE_DOMAIN: ${{ vars.DARWIN_SITE_DOMAIN }}
+        shell: bash
+        run: |
+          python3 ops/export_runtime_status.py \
+            --out web/public/runtime-status.json
+
+      - name: Commit runtime status if it changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if git diff --quiet -- web/public/runtime-status.json; then
+            echo "runtime status unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/runtime-status.json
+          git commit -m "Refresh public runtime status"
+          git push

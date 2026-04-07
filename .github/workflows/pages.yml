@@ -44,6 +44,16 @@ jobs:
             --deployment-file ops/deployments/base-sepolia.json \
             --out web/public/market-config.json
 
+      - name: Export runtime hosting status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DARWIN_SITE_DOMAIN: ${{ vars.DARWIN_SITE_DOMAIN }}
+        shell: bash
+        run: |
+          python3 ops/export_runtime_status.py \
+            --out web/public/runtime-status.json
+
       - name: Write custom domain
         shell: bash
         run: |

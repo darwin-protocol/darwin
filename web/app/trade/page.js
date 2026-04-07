@@ -9,7 +9,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260406-portal2";
+const tradeScriptVersion = "20260406-portal3";
 
 export default function TradePage() {
   return (
@@ -41,8 +41,9 @@ export default function TradePage() {
               open a direct peer-to-peer transfer request.
             </p>
             <p className="hero-status-line">
-              <code>usedarwin.xyz</code> is live now. HTTPS will turn on automatically when GitHub
-              Pages finishes issuing the certificate.
+              <span id="runtimeHostStatus">
+                <code>usedarwin.xyz</code> is live now. Checking certificate status.
+              </span>
             </p>
             <div className="hero-actions">
               <button id="connectButton" className="button button-primary">

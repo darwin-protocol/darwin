@@ -31,6 +31,7 @@ const FAUCET_ABI = [
 
 const state = {
   config: null,
+  runtimeStatus: null,
   rpcProvider: null,
   browserProvider: null,
   injectedProvider: null,
@@ -223,6 +224,21 @@ async function loadConfig() {
   state.pool = new ethers.Contract(state.config.pool.address, POOL_ABI, state.rpcProvider);
   if (state.config.faucet?.enabled && state.config.faucet.address) {
     state.faucet = new ethers.Contract(state.config.faucet.address, FAUCET_ABI, state.rpcProvider);
+  }
+}
+
+async function loadRuntimeStatus() {
+  try {
+    const response = await fetch(`../runtime-status.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    state.runtimeStatus = await response.json();
+    if (els.runtimeHostStatus && state.runtimeStatus?.summary) {
+      els.runtimeHostStatus.textContent = state.runtimeStatus.summary;
+    }
+  } catch {
+    // Keep the built-in fallback text if runtime status cannot be loaded.
   }
 }
 
@@ -558,6 +574,7 @@ async function boot() {
     tokenLink: $("tokenLink"),
     chainBadge: $("chainBadge"),
     feeBadge: $("feeBadge"),
+    runtimeHostStatus: $("runtimeHostStatus"),
     poolAddress: $("poolAddress"),
     drwAddress: $("drwAddress"),
     wethAddress: $("wethAddress"),
@@ -575,6 +592,7 @@ async function boot() {
   });
 
   await loadConfig();
+  await loadRuntimeStatus();
   bindStaticConfig();
   syncModeButtons();
   installCopyHandlers();

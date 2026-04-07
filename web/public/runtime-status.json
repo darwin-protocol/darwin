@@ -1,0 +1,15 @@
+{
+  "certificate_ready": false,
+  "details": {
+    "cname": "usedarwin.xyz",
+    "pending_domain_unverified_at": null,
+    "protected_domain_state": null
+  },
+  "generated_at": "2026-04-07T00:00:04.400508Z",
+  "html_url": "http://usedarwin.xyz/",
+  "https_enforced": false,
+  "repo": "darwin-protocol/darwin",
+  "site_domain": "usedarwin.xyz",
+  "summary": "usedarwin.xyz is live over HTTP. GitHub Pages TLS is still pending.",
+  "transport": "http"
+}
