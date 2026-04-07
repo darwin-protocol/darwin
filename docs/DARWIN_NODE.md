@@ -89,3 +89,6 @@ DARWIN_RPC_URL=http://127.0.0.1:8547 \
 
 The runner pins the gateway to the deployment artifact's `chain_id` and
 `settlement_hub`, so the RPC transport and the DARWIN artifact must match.
+
+For an Arbitrum Sepolia-specific deploy and node wrapper, see
+[ARBITRUM_SEPOLIA.md](ARBITRUM_SEPOLIA.md).

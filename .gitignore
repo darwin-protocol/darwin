@@ -14,6 +14,7 @@ cache/
 lib/
 ops/deployments/*.json
 !ops/deployments/base-sepolia.json
+!ops/deployments/arbitrum-sepolia.json
 ops/deployments/secrets/
 ops/audit-bundles/
 ops/operator-bundles/
@@ -38,5 +39,6 @@ sim/intent-base-sepolia.json
 darwin_wallet.json
 .env.external-watcher
 .env.base-sepolia
+.env.arbitrum-sepolia
 .env.recovery
 .env.recovery.*

@@ -54,3 +54,13 @@ load_base_sepolia_env() {
   env_file="${DARWIN_ENV_FILE:-$(resolve_darwin_env_file "$config_dir/base-sepolia.env" "$root/.env.base-sepolia")}"
   load_env_defaults "$env_file"
 }
+
+load_arbitrum_sepolia_env() {
+  local root="$1"
+  local config_dir
+  local env_file
+
+  config_dir="$(darwin_config_dir)"
+  env_file="${DARWIN_ARBITRUM_ENV_FILE:-$(resolve_darwin_env_file "$config_dir/arbitrum-sepolia.env" "$root/.env.arbitrum-sepolia")}"
+  load_env_defaults "$env_file"
+}

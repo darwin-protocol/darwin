@@ -4489,6 +4489,153 @@ exit 0
             self.assertEqual(config["project"]["tagline"], "Trade DRW on the DARWIN reference pool")
             print("  Ops: market portal config export supports Arbitrum-family chain defaults")
 
+    def test_56_prepare_arbitrum_sepolia_env_script(self):
+        """Ops: prepare_arbitrum_sepolia_env derives a local-only Arbitrum Sepolia env from recovery wallets."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            wallet_dir = tmp / "wallets"
+            wallet_dir.mkdir()
+            env_path = tmp / "arbitrum-sepolia.env"
+            deployment = tmp / "arbitrum-sepolia.json"
+
+            gov_wallet = create_wallet(label="future-governance", chain_id=84532)
+            deployer_wallet = create_wallet(label="future-deployer", chain_id=84532)
+            save_wallet(gov_wallet, wallet_dir / "darwin-future-governance.wallet.json", "gov-pass")
+            save_wallet(deployer_wallet, wallet_dir / "darwin-future-deployer.wallet.json", "dep-pass")
+            (wallet_dir / "darwin-future-governance.passphrase").write_text("gov-pass\n")
+            (wallet_dir / "darwin-future-deployer.passphrase").write_text("dep-pass\n")
+
+            result = subprocess.run(
+                ["bash", str(ROOT / "ops" / "prepare_arbitrum_sepolia_env.sh")],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_WALLET_DIR": str(wallet_dir),
+                    "DARWIN_ARBITRUM_ENV_FILE": str(env_path),
+                    "DARWIN_ARBITRUM_DEPLOYMENT_FILE": str(deployment),
+                    "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM),
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertTrue(env_path.exists())
+            env_text = env_path.read_text()
+            self.assertIn('export DARWIN_NETWORK="arbitrum-sepolia"', env_text)
+            self.assertIn('export DARWIN_EXPECT_CHAIN_ID="421614"', env_text)
+            self.assertIn('export DARWIN_DEPLOYMENT_FILE="' + str(deployment) + '"', env_text)
+            self.assertIn('export DARWIN_DEPLOY_BOND_ASSET_MOCK="1"', env_text)
+            self.assertIn("DARWIN_GOVERNANCE_PRIVATE_KEY", env_text)
+            self.assertIn("DARWIN_DEPLOYER_PRIVATE_KEY", env_text)
+            self.assertIn("[arbitrum-env] Ready", result.stdout)
+            print("  Ops: prepare_arbitrum_sepolia_env derives a local-only Arbitrum Sepolia env")
+
+    def test_57_preflight_arbitrum_sepolia_loads_env_file(self):
+        """Ops: Arbitrum Sepolia preflight loads a saved env file and validates the chain."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            env_file = tmp / ".env.arbitrum-sepolia"
+            deployment = tmp / "arbitrum-sepolia.json"
+
+            deployment.write_text(json.dumps({
+                "network": "arbitrum-sepolia",
+                "chain_id": 421614,
+                "contracts": {
+                    "settlement_hub": "0x0000000000000000000000000000000000000042",
+                },
+            }))
+
+            class ArbRpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                    method = body.get("method")
+                    if method == "eth_chainId":
+                        result = hex(421614)
+                    elif method == "eth_getBalance":
+                        result = hex(10**16)
+                    else:
+                        result = "0x0"
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            class SepoliaRpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                    method = body.get("method")
+                    if method == "eth_chainId":
+                        result = hex(11155111)
+                    elif method == "eth_getBalance":
+                        result = hex(5 * 10**15)
+                    else:
+                        result = "0x0"
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            arb_server = HTTPServer(("127.0.0.1", 0), ArbRpcHandler)
+            arb_thread = Thread(target=arb_server.serve_forever, daemon=True)
+            arb_thread.start()
+
+            sepolia_server = HTTPServer(("127.0.0.1", 0), SepoliaRpcHandler)
+            sepolia_thread = Thread(target=sepolia_server.serve_forever, daemon=True)
+            sepolia_thread.start()
+
+            env_file.write_text(
+                "\n".join([
+                    f'export ARBITRUM_SEPOLIA_RPC_URL="http://127.0.0.1:{arb_server.server_port}"',
+                    f'export SEPOLIA_RPC_URL="http://127.0.0.1:{sepolia_server.server_port}"',
+                    'export DARWIN_DEPLOYER_ADDRESS="0x00000000000000000000000000000000000000aa"',
+                    'export DARWIN_GOVERNANCE="0x00000000000000000000000000000000000000bb"',
+                    'export DARWIN_EPOCH_OPERATOR="0x00000000000000000000000000000000000000cc"',
+                    'export DARWIN_SAFE_MODE_AUTHORITY="0x00000000000000000000000000000000000000dd"',
+                    'export DARWIN_DEPLOY_BOND_ASSET_MOCK="1"',
+                    "",
+                ])
+            )
+
+            try:
+                result = subprocess.run(
+                    ["bash", str(ROOT / "ops" / "preflight_arbitrum_sepolia.sh")],
+                    cwd=str(ROOT),
+                    env={
+                        **os.environ,
+                        "DARWIN_ARBITRUM_ENV_FILE": str(env_file),
+                        "DARWIN_DEPLOYMENT_FILE": str(deployment),
+                    },
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                arb_server.shutdown()
+                arb_server.server_close()
+                arb_thread.join(timeout=5)
+                sepolia_server.shutdown()
+                sepolia_server.server_close()
+                sepolia_thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            self.assertIn("DARWIN Arbitrum Sepolia preflight", result.stdout)
+            self.assertIn("arbitrum_chain_id:    421614", result.stdout)
+            self.assertIn("bond_asset_mode:      mock", result.stdout)
+            self.assertIn("ready_to_deploy:      yes", result.stdout)
+            print("  Ops: Arbitrum Sepolia preflight accepts a local env file and matching chain")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
