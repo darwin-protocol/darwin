@@ -1,11 +1,45 @@
 import Link from "next/link";
 
+const siteUrl = "https://usedarwin.xyz";
+const miniAppEmbed = JSON.stringify({
+  version: "1",
+  imageUrl: `${siteUrl}/og-card.png`,
+  button: {
+    title: "Open DARWIN",
+    action: {
+      type: "launch_miniapp",
+      url: siteUrl,
+      name: "Use Darwin",
+      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashBackgroundColor: "#f4efe5",
+    },
+  },
+});
+const frameEmbed = JSON.stringify({
+  version: "next",
+  imageUrl: `${siteUrl}/og-card.png`,
+  button: {
+    title: "Open DARWIN",
+    action: {
+      type: "launch_frame",
+      name: "Use Darwin",
+      url: siteUrl,
+      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashBackgroundColor: "#f4efe5",
+    },
+  },
+});
+
 export const metadata = {
   title: "Use Darwin",
   description:
     "Claim testnet DRW and use a tiny first swap on the live Base Sepolia DARWIN reference pool.",
   alternates: {
     canonical: "/",
+  },
+  other: {
+    "fc:miniapp": miniAppEmbed,
+    "fc:frame": frameEmbed,
   },
 };
 

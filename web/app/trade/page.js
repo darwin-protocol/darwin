@@ -1,6 +1,37 @@
 import Link from "next/link";
 import Script from "next/script";
 
+const siteUrl = "https://usedarwin.xyz";
+const tradeUrl = `${siteUrl}/trade/?preset=tiny-sell`;
+const miniAppEmbed = JSON.stringify({
+  version: "1",
+  imageUrl: `${siteUrl}/og-card.png`,
+  button: {
+    title: "Tiny swap",
+    action: {
+      type: "launch_miniapp",
+      url: tradeUrl,
+      name: "Use Darwin",
+      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashBackgroundColor: "#f4efe5",
+    },
+  },
+});
+const frameEmbed = JSON.stringify({
+  version: "next",
+  imageUrl: `${siteUrl}/og-card.png`,
+  button: {
+    title: "Tiny swap",
+    action: {
+      type: "launch_frame",
+      name: "Use Darwin",
+      url: tradeUrl,
+      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashBackgroundColor: "#f4efe5",
+    },
+  },
+});
+
 export const metadata = {
   title: "Trade DRW",
   description:
@@ -8,9 +39,13 @@ export const metadata = {
   alternates: {
     canonical: "/trade/",
   },
+  other: {
+    "fc:miniapp": miniAppEmbed,
+    "fc:frame": frameEmbed,
+  },
 };
 
-const tradeScriptVersion = "20260407-portal5";
+const tradeScriptVersion = "20260407-portal6";
 
 export default function TradePage() {
   return (

@@ -17,12 +17,14 @@ NETWORK_DEFAULTS = {
         "network_name": "Base Sepolia",
         "chain_hex": "0x14a34",
         "rpc_url": "https://sepolia.base.org",
+        "read_rpc_url": "https://sepolia-preconf.base.org",
         "explorer_base_url": "https://sepolia-explorer.base.org",
     },
     8453: {
         "network_name": "Base",
         "chain_hex": "0x2105",
         "rpc_url": "https://mainnet.base.org",
+        "read_rpc_url": "https://mainnet-preconf.base.org",
         "explorer_base_url": "https://basescan.org",
     },
 }
@@ -104,6 +106,7 @@ def main() -> int:
             "slug": deployment["network"],
             "name": network_defaults["network_name"],
             "rpc_url": network_defaults["rpc_url"],
+            "read_rpc_url": network_defaults["read_rpc_url"],
             "explorer_base_url": network_defaults["explorer_base_url"],
             "native_symbol": "ETH",
         },
@@ -142,7 +145,7 @@ def main() -> int:
             "market_bootstrap": f"{args.repo_url}/blob/main/docs/MARKET_BOOTSTRAP.md",
         },
         "activity": {
-            "lookback_blocks": 200_000,
+            "lookback_blocks": 50_000,
         },
         "notes": {
             "alpha_stage": True,

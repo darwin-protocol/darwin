@@ -576,6 +576,21 @@ code {
   gap: 0.8rem;
 }
 
+.contract-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.contract-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(20, 62, 108, 0.08);
+}
+
 .activity-card {
   display: grid;
   gap: 0.45rem;
@@ -634,7 +649,8 @@ code {
   .wallet-grid,
   .quote-box,
   .inline-fields,
-  .qr-layout {
+  .qr-layout,
+  .contract-grid {
     grid-template-columns: 1fr;
   }
 

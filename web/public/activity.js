@@ -8,6 +8,7 @@ const activityState = {
 };
 
 const activityEls = {};
+const TINY_SWAP_PATH = "/trade/?preset=tiny-sell";
 
 const POOL_IFACE = new ethers.Interface([
   "event SwapExecuted(address indexed trader,address indexed tokenIn,uint256 amountIn,address indexed tokenOut,uint256 amountOut,address to)",
@@ -24,7 +25,7 @@ const EVENT_TOPICS = {
   faucet: ethers.id("Claimed(address,address,uint256,uint256,uint256)"),
   distributor: ethers.id("Claimed(uint256,address,uint256)"),
 };
-const LOG_CHUNK_SIZE = 10000;
+const LOG_CHUNK_SIZE = 2000;
 
 function activity$(id) {
   return document.getElementById(id);
@@ -42,6 +43,11 @@ function explorerLink(addressOrTx) {
   return `${base}/tx/${addressOrTx}`;
 }
 
+async function copyText(value, successMessage) {
+  await navigator.clipboard.writeText(value);
+  activityEls.activityFeedStatus.textContent = successMessage;
+}
+
 function formatUnits(value, decimals, precision = 6) {
   const text = ethers.formatUnits(value, decimals);
   const [whole, frac = ""] = text.split(".");
@@ -56,7 +62,8 @@ async function loadActivityConfig() {
     throw new Error(`Failed to load market config: ${response.status}`);
   }
   activityState.config = await response.json();
-  activityState.provider = new ethers.JsonRpcProvider(activityState.config.network.rpc_url);
+  const readRpcUrl = activityState.config.network.read_rpc_url || activityState.config.network.rpc_url;
+  activityState.provider = new ethers.JsonRpcProvider(readRpcUrl);
 }
 
 async function loadRuntimeStatus() {
@@ -77,6 +84,77 @@ function bindActivityStatics() {
   activityEls.activityLookback.textContent = `${activityState.config.activity.lookback_blocks.toLocaleString()} blocks`;
   activityEls.activityMarketDocLink.href = activityState.config.links.market_bootstrap;
   activityEls.activityRepoLink.href = activityState.config.links.repo;
+}
+
+function renderContracts() {
+  const mount = activityEls.activityContracts;
+  mount.innerHTML = "";
+
+  const entries = [
+    {
+      label: "DRW token",
+      detail: "Public token contract",
+      address: activityState.config.token.address,
+    },
+    {
+      label: "Reference pool",
+      detail: "Live DRW / WETH pool",
+      address: activityState.config.pool.address,
+    },
+  ];
+
+  if (activityState.config.faucet?.enabled && activityState.config.faucet.address) {
+    entries.push({
+      label: "Faucet",
+      detail: "Public DRW claim path",
+      address: activityState.config.faucet.address,
+    });
+  }
+
+  if (activityState.config.vnext?.enabled && activityState.config.vnext.distributor) {
+    entries.push({
+      label: "Distributor",
+      detail: "Merkle claim surface",
+      address: activityState.config.vnext.distributor,
+    });
+  }
+
+  if (activityState.config.vnext?.enabled && activityState.config.vnext.timelock) {
+    entries.push({
+      label: "Timelock",
+      detail: "Mutable governance root",
+      address: activityState.config.vnext.timelock,
+    });
+  }
+
+  for (const entry of entries) {
+    const card = document.createElement("article");
+    card.className = "contract-card";
+
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = entry.label;
+    card.appendChild(label);
+
+    const title = document.createElement("strong");
+    title.textContent = shortAddress(entry.address);
+    card.appendChild(title);
+
+    const detail = document.createElement("p");
+    detail.className = "caption";
+    detail.textContent = entry.detail;
+    card.appendChild(detail);
+
+    const link = document.createElement("a");
+    link.className = "mono";
+    link.href = explorerLink(entry.address);
+    link.target = "_blank";
+    link.rel = "noreferrer";
+    link.textContent = "Open in explorer";
+    card.appendChild(link);
+
+    mount.appendChild(card);
+  }
 }
 
 async function blockTimestamp(blockNumber) {
@@ -322,14 +400,19 @@ async function bootActivity() {
     activityFeedStatus: activity$("activityFeedStatus"),
     activityUpdatedAt: activity$("activityUpdatedAt"),
     activityList: activity$("activityList"),
+    activityContracts: activity$("activityContracts"),
     activityRefreshButton: activity$("activityRefreshButton"),
     activityMarketDocLink: activity$("activityMarketDocLink"),
     activityRepoLink: activity$("activityRepoLink"),
+    copyActivityLinkButton: activity$("copyActivityLinkButton"),
+    copyTinySwapLinkButton: activity$("copyTinySwapLinkButton"),
+    copyTinySwapButton: activity$("copyTinySwapButton"),
   });
 
   await loadActivityConfig();
   await loadRuntimeStatus();
   bindActivityStatics();
+  renderContracts();
   await refreshActivity();
 
   document.querySelectorAll("[data-activity-filter]").forEach((button) => {
@@ -339,6 +422,18 @@ async function bootActivity() {
     activityEls.activityFeedStatus.textContent = "error";
     activityEls.activityUpdatedAt.textContent = error?.message || "Failed to refresh activity.";
   }));
+  activityEls.copyActivityLinkButton?.addEventListener("click", () => {
+    copyText(`${window.location.origin}/activity/`, "activity link copied").catch((error) => {
+      activityEls.activityFeedStatus.textContent = error?.message || "copy failed";
+    });
+  });
+  const tinySwapHandler = () => {
+    copyText(`${window.location.origin}${TINY_SWAP_PATH}`, "tiny-swap link copied").catch((error) => {
+      activityEls.activityFeedStatus.textContent = error?.message || "copy failed";
+    });
+  };
+  activityEls.copyTinySwapLinkButton?.addEventListener("click", tinySwapHandler);
+  activityEls.copyTinySwapButton?.addEventListener("click", tinySwapHandler);
 }
 
 bootActivity().catch((error) => {

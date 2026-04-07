@@ -255,7 +255,9 @@ async function loadConfig() {
     throw new Error(`Failed to load market config: ${response.status}`);
   }
   state.config = await response.json();
-  state.rpcProvider = new ethers.JsonRpcProvider(state.config.network.rpc_url);
+  state.rpcProvider = new ethers.JsonRpcProvider(
+    state.config.network.read_rpc_url || state.config.network.rpc_url,
+  );
   state.token = new ethers.Contract(state.config.token.address, ERC20_ABI, state.rpcProvider);
   state.quoteToken = new ethers.Contract(state.config.quote_token.address, WETH_ABI, state.rpcProvider);
   state.pool = new ethers.Contract(state.config.pool.address, POOL_ABI, state.rpcProvider);

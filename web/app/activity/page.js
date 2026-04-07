@@ -1,6 +1,37 @@
 import Link from "next/link";
 import Script from "next/script";
 
+const siteUrl = "https://usedarwin.xyz";
+const activityUrl = `${siteUrl}/activity/`;
+const miniAppEmbed = JSON.stringify({
+  version: "1",
+  imageUrl: `${siteUrl}/og-card.png`,
+  button: {
+    title: "View DARWIN",
+    action: {
+      type: "launch_miniapp",
+      url: activityUrl,
+      name: "Use Darwin",
+      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashBackgroundColor: "#f4efe5",
+    },
+  },
+});
+const frameEmbed = JSON.stringify({
+  version: "next",
+  imageUrl: `${siteUrl}/og-card.png`,
+  button: {
+    title: "View DARWIN",
+    action: {
+      type: "launch_frame",
+      name: "Use Darwin",
+      url: activityUrl,
+      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashBackgroundColor: "#f4efe5",
+    },
+  },
+});
+
 export const metadata = {
   title: "DARWIN Activity",
   description:
@@ -8,9 +39,13 @@ export const metadata = {
   alternates: {
     canonical: "/activity/",
   },
+  other: {
+    "fc:miniapp": miniAppEmbed,
+    "fc:frame": frameEmbed,
+  },
 };
 
-const activityScriptVersion = "20260407-activity1";
+const activityScriptVersion = "20260407-activity3";
 
 export default function ActivityPage() {
   return (
@@ -50,6 +85,9 @@ export default function ActivityPage() {
               <Link className="button button-secondary" href="/trade/">
                 Open market
               </Link>
+              <button id="copyTinySwapButton" className="button button-secondary">
+                Copy tiny-swap link
+              </button>
             </div>
           </div>
 
@@ -141,10 +179,28 @@ export default function ActivityPage() {
             </div>
           </section>
 
+          <section className="card panel activity-panel">
+            <div className="section-heading">
+              <h2>Contract surface</h2>
+              <span className="badge">public addresses</span>
+            </div>
+            <div id="activityContracts" className="contract-grid">
+              <p className="caption">Loading contract addresses.</p>
+            </div>
+          </section>
+
           <section className="card panel">
             <div className="section-heading">
-              <h2>Useful links</h2>
+              <h2>Share and links</h2>
               <span className="badge">public</span>
+            </div>
+            <div className="tiny-actions">
+              <button id="copyActivityLinkButton" className="button button-secondary tiny-button">
+                Copy activity link
+              </button>
+              <button id="copyTinySwapLinkButton" className="button button-secondary tiny-button">
+                Copy tiny-swap link
+              </button>
             </div>
             <div className="link-row">
               <a id="activityMarketDocLink" href="#" target="_blank" rel="noreferrer">

@@ -1,6 +1,6 @@
 {
   "activity": {
-    "lookback_blocks": 200000
+    "lookback_blocks": 50000
   },
   "faucet": {
     "address": "0xB08e9dfaD5C64CC29DA82D2d4a42AaA64Fe1E9c1",
@@ -12,7 +12,7 @@
     "initial_token_funding": "123000000000000000000",
     "native_drip_amount": "10000000000000"
   },
-  "generated_at": "2026-04-07T14:20:43.556373Z",
+  "generated_at": "2026-04-07T16:04:09.448772Z",
   "links": {
     "live_status": "https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md",
     "market_bootstrap": "https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md",
@@ -24,6 +24,7 @@
     "id": 84532,
     "name": "Base Sepolia",
     "native_symbol": "ETH",
+    "read_rpc_url": "https://sepolia-preconf.base.org",
     "rpc_url": "https://sepolia.base.org",
     "slug": "base-sepolia-recovery"
   },

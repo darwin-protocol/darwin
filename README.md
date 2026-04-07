@@ -9,6 +9,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Activity: `https://usedarwin.xyz/activity/`
 - Public status: [LIVE_STATUS.md](LIVE_STATUS.md)
 - Market runbook: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
+- Community bootstrap: [docs/COMMUNITY_BOOTSTRAP.md](docs/COMMUNITY_BOOTSTRAP.md)
 - Security reporting: [docs/SECURITY.md](docs/SECURITY.md)
 - Recovery runbook: [docs/GOVERNANCE_RECOVERY.md](docs/GOVERNANCE_RECOVERY.md)
 - vNext governance: [docs/VNEXT_GOVERNANCE.md](docs/VNEXT_GOVERNANCE.md)
