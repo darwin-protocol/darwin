@@ -12,7 +12,7 @@ const miniAppEmbed = JSON.stringify({
       type: "launch_miniapp",
       url: tradeUrl,
       name: "Use Darwin",
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -26,7 +26,7 @@ const frameEmbed = JSON.stringify({
       type: "launch_frame",
       name: "Use Darwin",
       url: tradeUrl,
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -35,7 +35,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "Trade DRW",
   description:
-    "Connect a wallet, claim DRW from the live Darwin faucet, and start with a tiny DRW swap against the current DARWIN reference pool.",
+    "Claim DRW from the public faucet and make a tiny first swap through the canonical Darwin reference pool.",
   alternates: {
     canonical: "/trade/",
   },

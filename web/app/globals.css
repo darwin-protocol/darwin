@@ -112,6 +112,20 @@ a:hover {
   margin-bottom: 1rem;
 }
 
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-mark {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 1.15rem;
+  box-shadow: 0 14px 32px rgba(20, 62, 108, 0.16);
+  flex: 0 0 auto;
+}
+
 .compact-banner {
   margin-bottom: 1rem;
 }

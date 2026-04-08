@@ -13,7 +13,7 @@ const miniAppEmbed = JSON.stringify({
       type: "launch_miniapp",
       url: epochUrl,
       name: "Use Darwin",
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -27,7 +27,7 @@ const frameEmbed = JSON.stringify({
       type: "launch_frame",
       name: "Use Darwin",
       url: epochUrl,
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -36,7 +36,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "DARWIN Epoch",
   description:
-    "Claim DRW, make one tiny swap, and share the public Darwin activity surface.",
+    "Claim DRW, make one tiny swap, and build visible epoch traction on the public Darwin activity surface.",
   alternates: {
     canonical: "/epoch/",
   },

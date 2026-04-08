@@ -1,6 +1,8 @@
 # DARWIN
 
-DARWIN is a peer-to-peer market experiment built around live testnet infrastructure on Base Sepolia.
+<img src="web/public/drw-logo.svg" alt="DRW coin logo" width="72" />
+
+DARWIN is a public testnet market and activity surface for `DRW` across the live Base and Arbitrum lanes.
 
 ## Public Surface
 

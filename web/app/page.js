@@ -11,7 +11,7 @@ const miniAppEmbed = JSON.stringify({
       type: "launch_miniapp",
       url: siteUrl,
       name: "Use Darwin",
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -25,7 +25,7 @@ const frameEmbed = JSON.stringify({
       type: "launch_frame",
       name: "Use Darwin",
       url: siteUrl,
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -34,7 +34,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "Use Darwin",
   description:
-    "Claim testnet DRW and use a tiny first swap on the live DARWIN reference pools.",
+    "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.",
   alternates: {
     canonical: "/",
   },
@@ -52,7 +52,7 @@ const structuredData = {
   name: "Use Darwin",
   url: "https://usedarwin.xyz",
   description:
-    "Claim testnet DRW and use a tiny first swap on the live DARWIN reference pools.",
+    "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.",
 };
 
 export default function HomePage() {
@@ -74,13 +74,16 @@ export default function HomePage() {
 
       <main className="home-shell">
         <section className="card status-banner">
-          <div>
-            <p className="eyebrow">USE DARWIN</p>
-            <h1 className="plain-title">Live DRW market lanes.</h1>
-            <p id="homeHeroStatusLine" className="plain-note">
-              Public host: <code>usedarwin.xyz</code>. Base recovery is live now, and the Arbitrum
-              Sepolia lane is ready in the same portal.
-            </p>
+          <div className="brand-row">
+            <img className="brand-mark" src="/drw-logo.svg" alt="DRW coin logo" width="72" height="72" />
+            <div>
+              <p className="eyebrow">USE DARWIN</p>
+              <h1 className="plain-title">Live DRW market lanes.</h1>
+              <p id="homeHeroStatusLine" className="plain-note">
+                Public host: <code>usedarwin.xyz</code>. Base recovery is live now, and the Arbitrum
+                Sepolia lane is ready in the same portal.
+              </p>
+            </div>
           </div>
           <div className="status-banner-meta">
             <span id="homePrimaryLaneBadge" className="badge">Base Sepolia</span>

@@ -6,7 +6,7 @@ const siteUrl = "https://usedarwin.xyz";
 export const metadata = {
   title: "Join Starter Cohort",
   description:
-    "Prepare a public-safe wallet row for the Darwin starter cohort and route that wallet into the canonical tiny-swap path.",
+    "Prepare a public-safe DRW starter-cohort row and route that wallet into the canonical tiny-swap path.",
   alternates: {
     canonical: "/join/",
   },

@@ -12,7 +12,7 @@ const miniAppEmbed = JSON.stringify({
       type: "launch_miniapp",
       url: searchUrl,
       name: "Use Darwin",
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -26,7 +26,7 @@ const frameEmbed = JSON.stringify({
       type: "launch_frame",
       name: "Use Darwin",
       url: searchUrl,
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -35,7 +35,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "Search DARWIN",
   description:
-    "Search Darwin transactions, wallets, token contracts, pools, faucet claims, and lane-specific public activity from the live public RPCs.",
+    "Search DRW transactions, wallets, pools, claims, and governance surfaces across the public Darwin lanes.",
   alternates: {
     canonical: "/search/",
   },

@@ -55,10 +55,10 @@ def main() -> int:
         "generated_at": utc_now(),
         "app": {
             "name": "Use Darwin",
-            "description": "Claim testnet DRW and start with a tiny first swap on the live DARWIN reference pools.",
+            "description": "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.",
             "site_url": site_url,
             "manifest_url": join_url(site_url, "/manifest.webmanifest"),
-            "icon_url": join_url(site_url, "/icon.svg"),
+            "icon_url": join_url(site_url, "/drw-logo.svg"),
             "social_image_url": join_url(site_url, "/og-card.png"),
             "primary_routes": {
                 "home": join_url(site_url, "/"),

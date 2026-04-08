@@ -12,7 +12,7 @@ const miniAppEmbed = JSON.stringify({
       type: "launch_miniapp",
       url: activityUrl,
       name: "Use Darwin",
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -26,7 +26,7 @@ const frameEmbed = JSON.stringify({
       type: "launch_frame",
       name: "Use Darwin",
       url: activityUrl,
-      splashImageUrl: `${siteUrl}/icon.svg`,
+      splashImageUrl: `${siteUrl}/drw-logo.svg`,
       splashBackgroundColor: "#f4efe5",
     },
   },
@@ -35,7 +35,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "DARWIN Activity",
   description:
-    "Recent DARWIN onchain activity: swaps, faucet claims, and community distribution claims.",
+    "Track live DRW swaps, claims, and Darwin lane activity across the public Base and Arbitrum testnet surfaces.",
   alternates: {
     canonical: "/activity/",
   },

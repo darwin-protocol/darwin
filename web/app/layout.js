@@ -14,7 +14,7 @@ const mono = IBM_Plex_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://usedarwin.xyz";
 const siteDescription =
-  "Claim testnet DRW and start with a tiny first swap on the live DARWIN reference pools.";
+  "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.";
 const socialImage = "/og-card.png";
 const baseAppId = process.env.DARWIN_BASE_APP_ID || "";
 
@@ -33,7 +33,7 @@ export const metadata = {
     url: siteUrl,
     siteName: "Use Darwin",
     type: "website",
-    images: [{ url: socialImage, width: 1200, height: 630, alt: "Use Darwin DRW market" }],
+    images: [{ url: socialImage, width: 1200, height: 630, alt: "DRW coin and Darwin market lanes" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -42,9 +42,9 @@ export const metadata = {
     images: [socialImage],
   },
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/drw-logo.svg",
+    shortcut: "/drw-logo.svg",
+    apple: "/drw-logo.svg",
   },
   other: baseAppId
     ? {

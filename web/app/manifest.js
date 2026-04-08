@@ -5,7 +5,7 @@ export default function manifest() {
     name: "Use Darwin",
     short_name: "Darwin",
     description:
-      "Claim DRW, use a tiny first swap, and follow live DARWIN contract activity across the public Darwin lanes.",
+      "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.",
     start_url: "/",
     display: "standalone",
     background_color: "#f4efe5",
@@ -30,7 +30,7 @@ export default function manifest() {
     ],
     icons: [
       {
-        src: "/icon.svg",
+        src: "/drw-logo.svg",
         sizes: "any",
         type: "image/svg+xml",
       },
