@@ -66,6 +66,7 @@ Completed:
    - `https://usedarwin.xyz/base-app/screenshot-activity.png`
 4. `https://usedarwin.xyz/market-config.json` now reports Builder Code attribution instead of `direct`.
 5. The preview tool on `base.dev` now validates the manifest metadata and the signed `accountAssociation` payload.
+6. The repo can export a public-safe readiness report via `ops/export_base_app_readiness.py`, and the publish path now refreshes `https://usedarwin.xyz/base-app-readiness.json`.
 
 Remaining boundary:
 

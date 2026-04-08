@@ -5277,6 +5277,144 @@ exit 0
             self.assertEqual(rows[0]["lane"], "base-sepolia-recovery")
             print("  Ops: starter-cohort intake upserts repeated wallet rows")
 
+    def test_62_export_base_app_readiness_reports_green_standard_web(self):
+        """Ops: Base App readiness exporter reports green when Builder Code, signed association, and Base-first wallet selection are present."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            market_config = tmp / "market-config.json"
+            farcaster = tmp / "farcaster.json"
+            layout = tmp / "layout.js"
+            trade = tmp / "trade.js"
+            join = tmp / "join.js"
+            out = tmp / "base-app-readiness.json"
+
+            market_config.write_text(json.dumps({
+                "attribution": {
+                    "mode": "builder-code",
+                    "builder_code": "bc_test",
+                },
+            }))
+            farcaster.write_text(json.dumps({
+                "accountAssociation": {
+                    "header": "header",
+                    "payload": "payload",
+                    "signature": "signature",
+                },
+                "miniapp": {
+                    "version": "1",
+                    "name": "Use Darwin",
+                    "iconUrl": "https://usedarwin.xyz/base-app/icon.png",
+                    "homeUrl": "https://usedarwin.xyz/",
+                    "splashImageUrl": "https://usedarwin.xyz/base-app/icon.png",
+                    "splashBackgroundColor": "#f4efe5",
+                    "primaryCategory": "finance",
+                    "tags": ["defi"],
+                    "screenshotUrls": ["a", "b", "c"],
+                },
+            }))
+            layout.write_text('export const metadata = { other: { "base:app_id": "abc" } };')
+            trade.write_text('provider.isCoinbaseWallet || rdns.includes("base")')
+            join.write_text('provider.isBaseAccount || name.includes("base")')
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_base_app_readiness.py"),
+                    "--market-config",
+                    str(market_config),
+                    "--farcaster-manifest",
+                    str(farcaster),
+                    "--layout-source",
+                    str(layout),
+                    "--trade-source",
+                    str(trade),
+                    "--join-source",
+                    str(join),
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                env={**os.environ, "DARWIN_BASE_APP_ID": "69d6124ae928b52707868702"},
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            readiness = json.loads(out.read_text())
+            self.assertTrue(readiness["status"]["standard_web_ready"])
+            self.assertEqual(readiness["blockers"], [])
+            self.assertTrue(readiness["checks"]["provider_priority_trade"])
+            self.assertTrue(readiness["checks"]["provider_priority_join"])
+            print("  Ops: Base App readiness export reports green once Base-first wallet selection and signed association are in place")
+
+    def test_63_export_base_app_readiness_flags_unsigned_manifest(self):
+        """Ops: Base App readiness exporter flags unsigned account association as a blocker."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            market_config = tmp / "market-config.json"
+            farcaster = tmp / "farcaster.json"
+            layout = tmp / "layout.js"
+            trade = tmp / "trade.js"
+            join = tmp / "join.js"
+            out = tmp / "base-app-readiness.json"
+
+            market_config.write_text(json.dumps({
+                "attribution": {
+                    "mode": "direct",
+                    "builder_code": "",
+                },
+            }))
+            farcaster.write_text(json.dumps({
+                "accountAssociation": {
+                    "header": "",
+                    "payload": "",
+                    "signature": "",
+                },
+                "miniapp": {
+                    "version": "1",
+                    "name": "Use Darwin",
+                    "iconUrl": "https://usedarwin.xyz/base-app/icon.png",
+                    "homeUrl": "https://usedarwin.xyz/",
+                    "splashImageUrl": "https://usedarwin.xyz/base-app/icon.png",
+                    "splashBackgroundColor": "#f4efe5",
+                    "primaryCategory": "finance",
+                    "tags": ["defi"],
+                    "screenshotUrls": ["only-one"],
+                },
+            }))
+            layout.write_text("export const metadata = {};")
+            trade.write_text("provider.isMetaMask")
+            join.write_text("provider.isMetaMask")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_base_app_readiness.py"),
+                    "--market-config",
+                    str(market_config),
+                    "--farcaster-manifest",
+                    str(farcaster),
+                    "--layout-source",
+                    str(layout),
+                    "--trade-source",
+                    str(trade),
+                    "--join-source",
+                    str(join),
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            readiness = json.loads(out.read_text())
+            self.assertFalse(readiness["status"]["standard_web_ready"])
+            self.assertIn("account_association_unsigned", readiness["blockers"])
+            self.assertIn("market_config_not_in_builder_code_mode", readiness["blockers"])
+            print("  Ops: Base App readiness export flags unsigned manifest and direct attribution as blockers")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

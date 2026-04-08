@@ -261,11 +261,34 @@ async function discoverInjectedProvider() {
   await new Promise((resolve) => setTimeout(resolve, 300));
 
   const pick =
-    providers.find((entry) => /metamask/i.test(entry.info?.name || "")) ||
-    providers.find((entry) => entry.provider?.isMetaMask) ||
+    providers
+      .filter((entry) => entry?.provider)
+      .sort((left, right) => rankInjectedProvider(left) - rankInjectedProvider(right))[0] ||
     providers[0];
 
   return pick?.provider || window.ethereum || null;
+}
+
+function rankInjectedProvider(entry) {
+  const provider = entry?.provider || {};
+  const info = entry?.info || {};
+  const rdns = String(info.rdns || "").toLowerCase();
+  const name = String(info.name || "").toLowerCase();
+
+  if (
+    provider.isBaseAccount ||
+    provider.isCoinbaseWallet ||
+    rdns.includes("coinbase") ||
+    rdns.includes("base") ||
+    name.includes("coinbase") ||
+    name.includes("base")
+  ) {
+    return 0;
+  }
+  if (provider.isMetaMask || rdns.includes("metamask") || name.includes("metamask")) {
+    return 1;
+  }
+  return 2;
 }
 
 async function ensureWallet() {

@@ -1,0 +1,32 @@
+{
+  "attribution": {
+    "builder_code": "bc_bjndzrq6",
+    "builder_code_suffix": "0x62635f626a6e647a7271360b0080218021802180218021802180218021",
+    "mode": "builder-code",
+    "smart_start_enabled": true,
+    "wallet_send_calls_enabled": true
+  },
+  "blockers": [],
+  "checks": {
+    "account_association_signed": true,
+    "base_app_id_configured": true,
+    "base_app_id_support": true,
+    "builder_code_mode": true,
+    "builder_code_present": true,
+    "manifest_required_fields": true,
+    "provider_priority_join": true,
+    "provider_priority_trade": true,
+    "screenshot_count": 3
+  },
+  "generated_at": "2026-04-08T09:37:21.006543Z",
+  "recommended_next_steps": [
+    "Keep using the live Builder Code path for Base attribution.",
+    "Use the preview tool to confirm metadata and account-association validity after each publish.",
+    "Treat any remaining Base.dev mini-app import failure as an upstream or account-linking issue once these checks are green."
+  ],
+  "site_url": "https://usedarwin.xyz",
+  "status": {
+    "legacy_modal_ready": true,
+    "standard_web_ready": true
+  }
+}

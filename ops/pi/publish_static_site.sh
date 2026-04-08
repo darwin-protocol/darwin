@@ -21,6 +21,7 @@ ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary.json"
 ARBITRUM_ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary-arbitrum-sepolia.json"
 COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share.json"
 ARBITRUM_COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share-arbitrum-sepolia.json"
+BASE_APP_READINESS_PATH="$REPO_ROOT/web/public/base-app-readiness.json"
 TMP_DIR="$(mktemp -d)"
 ARBITRUM_DEPLOYMENT_FILE="$REPO_ROOT/ops/deployments/arbitrum-sepolia.json"
 source "$REPO_ROOT/ops/load_env_defaults.sh"
@@ -55,6 +56,9 @@ restore_files() {
   if [[ -f "$TMP_DIR/community-share-arbitrum-sepolia.json" ]]; then
     cp "$TMP_DIR/community-share-arbitrum-sepolia.json" "$ARBITRUM_COMMUNITY_SHARE_PATH"
   fi
+  if [[ -f "$TMP_DIR/base-app-readiness.json" ]]; then
+    cp "$TMP_DIR/base-app-readiness.json" "$BASE_APP_READINESS_PATH"
+  fi
   rm -rf "$TMP_DIR"
 }
 
@@ -80,6 +84,9 @@ fi
 cp "$COMMUNITY_SHARE_PATH" "$TMP_DIR/community-share.json"
 if [[ -f "$ARBITRUM_COMMUNITY_SHARE_PATH" ]]; then
   cp "$ARBITRUM_COMMUNITY_SHARE_PATH" "$TMP_DIR/community-share-arbitrum-sepolia.json"
+fi
+if [[ -f "$BASE_APP_READINESS_PATH" ]]; then
+  cp "$BASE_APP_READINESS_PATH" "$TMP_DIR/base-app-readiness.json"
 fi
 
 pushd "$REPO_ROOT" >/dev/null
@@ -145,6 +152,15 @@ if [[ -f "$ARBITRUM_MARKET_CONFIG_PATH" ]] && [[ -f "$ARBITRUM_ACTIVITY_SUMMARY_
   else
     echo "[darwin-pi] warning: failed to refresh Arbitrum community share bundle; keeping existing file" >&2
   fi
+fi
+if "$PYTHON_BIN" ops/export_base_app_readiness.py \
+  --market-config web/public/market-config.json \
+  --farcaster-manifest web/public/.well-known/farcaster.json \
+  --site-url "https://${SITE_DOMAIN}" \
+  --out web/public/base-app-readiness.json >/dev/null; then
+  echo "[darwin-pi] Base app readiness exported"
+else
+  echo "[darwin-pi] warning: failed to refresh Base app readiness; keeping existing file" >&2
 fi
 DARWIN_SITE_DOMAIN="$SITE_DOMAIN" DARWIN_SITE_BASE_PATH="" npm --prefix web run build
 rsync -az --delete web/out/ "${PI_USER}@${PI_HOST}:${DEST_DIR}/"
