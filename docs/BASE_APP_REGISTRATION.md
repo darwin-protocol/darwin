@@ -72,3 +72,18 @@ Remaining boundary:
 
 - the legacy `Enable Mini App Analytics` modal on `base.dev` no longer fails on missing site artifacts; it now reaches a Base-side conflict on `POST /v1/builders/.../resources` and the preview tool reports `Account associated: Failed to fetch signer` while `Signature: Valid`.
 - the standard web-app registration path and Base Builder Code path are already live.
+
+## Live Proof
+
+The standard web path has now been proven live on Base Sepolia from the public portal:
+
+- faucet claim: `0xfa5e8058020f8f9a9af861a70eb7516a59a6f06959521637bc12751f3f277b2e`
+- tiny sell: `0x66fb5948482b818282f647a4e0295f98be245e64afc4729a4c8eff08d1f747ea`
+
+Both transactions carry the Builder Code suffix in calldata:
+
+```text
+62635f626a6e647a7271360b0080218021802180218021802180218021
+```
+
+That proves the live standard-web Darwin portal is appending attribution on-chain even though the Base dashboard charts may lag before indexing the activity.
