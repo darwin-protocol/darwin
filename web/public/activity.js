@@ -53,6 +53,10 @@ function absoluteUrl(path) {
   return new URL(path, window.location.origin).toString();
 }
 
+function rewardPolicy() {
+  return activityState.config?.community?.epoch?.reward_policy || null;
+}
+
 async function copyText(value, successMessage) {
   await navigator.clipboard.writeText(value);
   activityEls.activityFeedStatus.textContent = successMessage;
@@ -157,6 +161,68 @@ function renderCommunitySummary() {
     `Updated ${generatedAt}. This snapshot is derived from the local project-wallet allowlist, not guessed in the browser.`;
 }
 
+function formatProgressLine(progress) {
+  if (!progress) return "-";
+  if (!progress.target) return String(progress.current ?? 0);
+  return `${progress.current ?? 0}/${progress.target}`;
+}
+
+function progressDetail(progress, noun) {
+  if (!progress || !progress.target) return `No ${noun} target configured yet.`;
+  if ((progress.remaining ?? 0) <= 0) return `${noun} goal reached in the current window.`;
+  return `${progress.remaining} more ${noun} needed in the current window.`;
+}
+
+function renderProgress() {
+  const progress = activityState.activitySummary?.progress;
+  if (!progress) {
+    activityEls.activityProgressBadge.textContent = "unavailable";
+    activityEls.activityWalletProgress.textContent = "-";
+    activityEls.activityWalletProgressDetail.textContent = "Waiting for wallet-goal progress.";
+    activityEls.activitySwapProgress.textContent = "-";
+    activityEls.activitySwapProgressDetail.textContent = "Waiting for swap-goal progress.";
+    activityEls.activityProgressNote.textContent = "The public snapshot will fill this once the local classifier refreshes.";
+    return;
+  }
+
+  const wallets = progress.wallets || {};
+  const swaps = progress.swaps || {};
+  activityEls.activityProgressBadge.textContent = progress.traction_ready ? "unlock ready" : "canonical only";
+  activityEls.activityWalletProgress.textContent = formatProgressLine(wallets);
+  activityEls.activityWalletProgressDetail.textContent = progressDetail(wallets, "outside wallet");
+  activityEls.activitySwapProgress.textContent = formatProgressLine(swaps);
+  activityEls.activitySwapProgressDetail.textContent = progressDetail(swaps, "outside swap");
+  activityEls.activityProgressNote.textContent = progress.traction_ready
+    ? "The canonical traction gate is met. Experimental and incentivized routes can open without pretending demand."
+    : "Experimental and incentivized routes stay locked until both outside-wallet and outside-swap goals are real.";
+}
+
+function formatRewardAmount(rule, reward) {
+  const amount = Number(rule?.amount || 0);
+  if (!amount) {
+    return `${rule?.label || "Reward"}: ${rule?.detail || "Locked for a later phase."}`;
+  }
+  return `${rule.label || "Reward"}: ${amount} ${reward?.currency_symbol || "DRW"}. ${rule.detail || ""}`.trim();
+}
+
+function renderEpochRewards() {
+  const reward = rewardPolicy();
+  activityEls.epochRewardRules.innerHTML = "";
+  if (!reward || !(reward.rules || []).length) {
+    activityEls.epochRewardWindow.textContent = "No public reward pilot configured.";
+    activityEls.epochRewardRules.innerHTML = "<li>Set reward_policy in ops/community_epoch.json.</li>";
+    return;
+  }
+
+  activityEls.epochRewardWindow.textContent =
+    `${reward.window_label || "Current window"} scoring uses ${(reward.scoring_label || "outside activity score").toLowerCase()}.`;
+  for (const rule of reward.rules || []) {
+    const li = document.createElement("li");
+    li.textContent = formatRewardAmount(rule, reward);
+    activityEls.epochRewardRules.appendChild(li);
+  }
+}
+
 function renderEpoch() {
   const epoch = activityState.config.community?.epoch;
   if (!epoch) {
@@ -165,6 +231,8 @@ function renderEpoch() {
     activityEls.epochSummary.textContent = "Add a community epoch config to the portal export to drive the public campaign.";
     activityEls.epochGoals.innerHTML = "<li>Set a new epoch in ops/community_epoch.json.</li>";
     activityEls.epochFocus.textContent = "";
+    activityEls.epochRewardWindow.textContent = "";
+    activityEls.epochRewardRules.innerHTML = "";
     return;
   }
 
@@ -188,6 +256,7 @@ function renderEpoch() {
     li.textContent = goal;
     activityEls.epochGoals.appendChild(li);
   }
+  renderEpochRewards();
 }
 
 function poolEntryHref(pool) {
@@ -242,6 +311,70 @@ function renderMarketStructure() {
     }
 
     activityEls.activityStructureGrid.appendChild(card);
+  }
+}
+
+function leaderboardRow(entry, scoringLabel) {
+  const row = document.createElement("article");
+  row.className = "leaderboard-row";
+
+  const top = document.createElement("div");
+  top.className = "leaderboard-top";
+
+  const rank = document.createElement("span");
+  rank.className = "badge";
+  rank.textContent = `#${entry.rank}`;
+  top.appendChild(rank);
+
+  const actor = document.createElement("a");
+  actor.className = "mono";
+  actor.href = explorerLink(entry.actor);
+  actor.target = "_blank";
+  actor.rel = "noreferrer";
+  actor.textContent = shortAddress(entry.actor);
+  top.appendChild(actor);
+  row.appendChild(top);
+
+  const title = document.createElement("strong");
+  title.textContent = `${entry.points} ${scoringLabel || "points"}`;
+  row.appendChild(title);
+
+  const detail = document.createElement("p");
+  detail.className = "caption";
+  detail.textContent = `${entry.events} events, ${entry.swaps} swaps, ${entry.claims} claims.${entry.return_swap_qualified ? " Return swap bonus qualified." : ""}`;
+  row.appendChild(detail);
+
+  const meta = document.createElement("div");
+  meta.className = "leaderboard-meta";
+  const firstSeen = document.createElement("span");
+  firstSeen.className = "mono";
+  firstSeen.textContent = entry.first_seen_at ? `First: ${new Date(entry.first_seen_at).toLocaleString()}` : `Block ${entry.first_block}`;
+  meta.appendChild(firstSeen);
+  const latestSeen = document.createElement("span");
+  latestSeen.className = "mono";
+  latestSeen.textContent = entry.latest_seen_at ? `Latest: ${new Date(entry.latest_seen_at).toLocaleString()}` : `Block ${entry.latest_block}`;
+  meta.appendChild(latestSeen);
+  row.appendChild(meta);
+
+  return row;
+}
+
+function renderLeaderboard() {
+  const board = activityState.activitySummary?.leaderboard;
+  activityEls.activityLeaderboardList.innerHTML = "";
+  if (!board || !(board.entries || []).length) {
+    activityEls.activityLeaderboardBadge.textContent = "waiting";
+    const empty = document.createElement("p");
+    empty.className = "caption";
+    empty.textContent = "No outside wallets are on the Darwin leaderboard yet. The first real outside claim and swap will appear here.";
+    activityEls.activityLeaderboardList.appendChild(empty);
+    return;
+  }
+
+  activityEls.activityLeaderboardBadge.textContent = board.scoring_label || "live";
+  const scoringLabel = (board.scoring_label || "outside activity score").toLowerCase();
+  for (const entry of board.entries) {
+    activityEls.activityLeaderboardList.appendChild(leaderboardRow(entry, scoringLabel));
   }
 }
 
@@ -558,6 +691,8 @@ async function refreshActivity() {
   await fetchEvents();
   renderStats();
   renderCommunitySummary();
+  renderProgress();
+  renderLeaderboard();
   renderEvents();
 }
 
@@ -593,11 +728,19 @@ async function bootActivity() {
     externalWalletCount: activity$("externalWalletCount"),
     externalSwapCount: activity$("externalSwapCount"),
     externalClaimCount: activity$("externalClaimCount"),
+    activityProgressBadge: activity$("activityProgressBadge"),
+    activityWalletProgress: activity$("activityWalletProgress"),
+    activityWalletProgressDetail: activity$("activityWalletProgressDetail"),
+    activitySwapProgress: activity$("activitySwapProgress"),
+    activitySwapProgressDetail: activity$("activitySwapProgressDetail"),
+    activityProgressNote: activity$("activityProgressNote"),
     epochBadge: activity$("epochBadge"),
     epochTitle: activity$("epochTitle"),
     epochSummary: activity$("epochSummary"),
     epochFocus: activity$("epochFocus"),
     epochGoals: activity$("epochGoals"),
+    epochRewardWindow: activity$("epochRewardWindow"),
+    epochRewardRules: activity$("epochRewardRules"),
     epochCtaLink: activity$("epochCtaLink"),
     epochActivityLink: activity$("epochActivityLink"),
     copyEpochLinkButton: activity$("copyEpochLinkButton"),
@@ -605,6 +748,8 @@ async function bootActivity() {
     activityStructureBadge: activity$("activityStructureBadge"),
     activityStructureNote: activity$("activityStructureNote"),
     activityStructureGrid: activity$("activityStructureGrid"),
+    activityLeaderboardBadge: activity$("activityLeaderboardBadge"),
+    activityLeaderboardList: activity$("activityLeaderboardList"),
     explorerLookupInput: activity$("explorerLookupInput"),
     openExplorerLookupButton: activity$("openExplorerLookupButton"),
     openSearchLookupButton: activity$("openSearchLookupButton"),

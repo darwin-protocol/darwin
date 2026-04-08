@@ -82,6 +82,8 @@ The public portal now exposes:
 - live DARWIN contract activity
 - a canonical / experimental / incentivized pool map
 - a public-safe outside-activity counter
+- a public reward-pilot surface for the current epoch
+- a public-safe outside-wallet leaderboard for the current epoch window
 - public contract explorer links for token, pool, faucet, distributor, and timelock
 
 ## Tracking Real Outside Activity
@@ -120,12 +122,18 @@ The publish path now also exports public-safe lane summaries:
 - `web/public/activity-summary.json`
 - `web/public/activity-summary-arbitrum-sepolia.json`
 
+Those lane summaries now carry:
+
+- outside-vs-project counts
+- epoch traction progress toward unlock gates
+- a public-safe outside-wallet leaderboard for the current window
+
 It also exports public-safe outreach bundles:
 
 - `web/public/community-share.json`
 - `web/public/community-share-arbitrum-sepolia.json`
 
-Those bundles include the current epoch, public links, and honest invite text derived from the live outside-activity snapshot. They are safe for operators or external agents to consume because they contain only public campaign data and public URLs.
+Those bundles include the current epoch, public links, reward-pilot copy, and honest invite text derived from the live outside-activity snapshot. They are safe for operators or external agents to consume because they contain only public campaign data and public URLs.
 
 ## Farcaster and Base App
 

@@ -147,6 +147,7 @@ The portal supports:
 - tiny-swap presets and shareable `?preset=` links for community onboarding
 - a `Smart start` button that tries an atomic claim-plus-tiny-sell batch on supporting wallets
 - public `/activity` view for recent DARWIN onchain events
+- public epoch traction and outside-wallet leaderboard surfaces
 - public pool-role cards showing `Canonical`, `Experimental`, and `Incentivized`
 
 ## Tiny Swap Path
@@ -204,6 +205,8 @@ and local deployment overlays. The allowlist itself lives outside the repo in:
 ```
 
 That file should remain local-only.
+
+The public-safe activity summary now also exports epoch traction progress and an outside-wallet leaderboard so the public portal can show real demand without exposing the local operator allowlist.
 
 ## Transparent Distribution
 

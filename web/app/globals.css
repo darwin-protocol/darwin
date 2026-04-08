@@ -601,6 +601,29 @@ code {
   gap: 0.8rem;
 }
 
+.leaderboard-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.leaderboard-row {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(21, 70, 160, 0.07), rgba(255, 255, 255, 0.7));
+  border: 1px solid rgba(20, 62, 108, 0.08);
+}
+
+.leaderboard-top,
+.leaderboard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.55rem;
+  align-items: center;
+}
+
 .route-card {
   display: grid;
   gap: 0.45rem;

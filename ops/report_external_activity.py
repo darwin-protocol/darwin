@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
@@ -34,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--deployment-file", default=str(DEFAULT_DEPLOYMENT))
     parser.add_argument("--vnext-file", default="")
+    parser.add_argument("--epoch-file", default=str(REPO_ROOT / "ops" / "community_epoch.json"))
     parser.add_argument("--project-wallets-file", default=str(DEFAULT_PROJECT_WALLETS))
     parser.add_argument("--rpc-url", default="")
     parser.add_argument("--lookback-blocks", type=int, default=200000)
@@ -46,6 +48,12 @@ def parse_args() -> argparse.Namespace:
 
 def load_json(path: Path) -> dict:
     return json.loads(path.read_text())
+
+
+def load_optional_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return load_json(path)
 
 
 def normalize_address(value: str) -> str:
@@ -86,6 +94,13 @@ def rpc_json(url: str, method: str, params: list) -> dict:
 
 def rpc_block_number(url: str) -> int:
     return int(rpc_json(url, "eth_blockNumber", [])["result"], 16)
+
+
+def rpc_block_timestamp(url: str, block_number: int, cache: dict[int, int]) -> int:
+    if block_number not in cache:
+        result = rpc_json(url, "eth_getBlockByNumber", [hex(block_number), False]).get("result") or {}
+        cache[block_number] = int(result.get("timestamp", "0x0"), 16)
+    return cache[block_number]
 
 
 def rpc_get_logs(
@@ -138,6 +153,12 @@ def format_units(value: int, decimals: int = 18, precision: int = 6) -> str:
     scaled = value / (10**decimals)
     text = f"{scaled:.{precision}f}"
     return text.rstrip("0").rstrip(".")
+
+
+def format_iso_timestamp(value: int) -> str:
+    if value <= 0:
+        return ""
+    return datetime.fromtimestamp(value, timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def parse_swap(log: dict, token_address: str, quote_address: str) -> dict:
@@ -223,12 +244,147 @@ def write_report(path_value: str, content: str) -> None:
     path.write_text(content)
 
 
+def progress_snapshot(current: int, target: int) -> dict:
+    if target <= 0:
+        return {
+            "current": current,
+            "target": target,
+            "remaining": None,
+            "pct_complete": 0.0,
+        }
+    remaining = max(target - current, 0)
+    pct_complete = round(min(current / target, 1) * 100, 2)
+    return {
+        "current": current,
+        "target": target,
+        "remaining": remaining,
+        "pct_complete": pct_complete,
+    }
+
+
+def build_progress(summary: dict, epoch: dict) -> dict:
+    milestones = epoch.get("milestones") or {}
+    wallets = progress_snapshot(int(summary.get("external_wallets", 0) or 0), int(milestones.get("external_wallets_target", 0) or 0))
+    swaps = progress_snapshot(int(summary.get("external_swaps", 0) or 0), int(milestones.get("external_swaps_target", 0) or 0))
+    traction_ready = bool(
+        wallets["target"]
+        and swaps["target"]
+        and wallets["current"] >= wallets["target"]
+        and swaps["current"] >= swaps["target"]
+    )
+    return {
+        "wallets": wallets,
+        "swaps": swaps,
+        "traction_ready": traction_ready,
+        "unlocks": {
+            "experimental": traction_ready,
+            "incentivized": traction_ready,
+        },
+    }
+
+
+def reward_scoring(epoch: dict) -> dict:
+    scoring = ((epoch.get("reward_policy") or {}).get("scoring") or {})
+    return {
+        "claim_points": int(scoring.get("claim_points", 1) or 1),
+        "swap_points": int(scoring.get("swap_points", 3) or 3),
+        "return_after_hours": int(scoring.get("return_after_hours", 24) or 24),
+        "return_swap_bonus_points": int(scoring.get("return_swap_bonus_points", 2) or 2),
+    }
+
+
+def qualifies_return_swap(swap_timestamps: list[int], hours: int) -> bool:
+    if len(swap_timestamps) < 2:
+        return False
+    threshold = max(hours, 0) * 3600
+    ordered = sorted(swap_timestamps)
+    return ordered[-1] - ordered[0] >= threshold
+
+
+def build_leaderboard(events: list[dict], epoch: dict) -> dict:
+    scoring = reward_scoring(epoch)
+    rows: dict[str, dict] = defaultdict(dict)
+    for event in events:
+        actor = normalize_address(event["actor"])
+        row = rows.setdefault(
+            actor,
+            {
+                "actor": actor,
+                "events": 0,
+                "swaps": 0,
+                "claims": 0,
+                "first_block": event["block_number"],
+                "latest_block": event["block_number"],
+                "first_seen_at": event.get("timestamp", 0),
+                "latest_seen_at": event.get("timestamp", 0),
+                "swap_timestamps": [],
+            },
+        )
+        row["events"] += 1
+        row["first_block"] = min(row["first_block"], event["block_number"])
+        row["latest_block"] = max(row["latest_block"], event["block_number"])
+        event_timestamp = int(event.get("timestamp", 0) or 0)
+        if event_timestamp:
+            if not row["first_seen_at"]:
+                row["first_seen_at"] = event_timestamp
+            else:
+                row["first_seen_at"] = min(row["first_seen_at"], event_timestamp)
+            row["latest_seen_at"] = max(row["latest_seen_at"], event_timestamp)
+        if event["type"] == "swap":
+            row["swaps"] += 1
+            if event_timestamp:
+                row["swap_timestamps"].append(event_timestamp)
+        if event["type"] in {"faucet", "distributor"}:
+            row["claims"] += 1
+
+    leaderboard_rows = []
+    for row in rows.values():
+        return_swap_qualified = qualifies_return_swap(row["swap_timestamps"], scoring["return_after_hours"])
+        points = row["claims"] * scoring["claim_points"] + row["swaps"] * scoring["swap_points"]
+        if return_swap_qualified:
+            points += scoring["return_swap_bonus_points"]
+        leaderboard_rows.append(
+            {
+                "actor": row["actor"],
+                "points": points,
+                "events": row["events"],
+                "swaps": row["swaps"],
+                "claims": row["claims"],
+                "return_swap_qualified": return_swap_qualified,
+                "first_block": row["first_block"],
+                "latest_block": row["latest_block"],
+                "first_seen_at": format_iso_timestamp(int(row["first_seen_at"] or 0)),
+                "latest_seen_at": format_iso_timestamp(int(row["latest_seen_at"] or 0)),
+            }
+        )
+
+    leaderboard_rows.sort(
+        key=lambda item: (
+            -item["points"],
+            -item["swaps"],
+            -item["claims"],
+            -item["latest_block"],
+            item["actor"],
+        )
+    )
+
+    for index, row in enumerate(leaderboard_rows, start=1):
+        row["rank"] = index
+
+    return {
+        "scoring_label": ((epoch.get("reward_policy") or {}).get("scoring_label")) or "Outside activity score",
+        "return_after_hours": scoring["return_after_hours"],
+        "entries": leaderboard_rows[:10],
+    }
+
+
 def main() -> int:
     args = parse_args()
     deployment_path = Path(args.deployment_file).expanduser().resolve()
     deployment = load_json(deployment_path)
     vnext_path = Path(args.vnext_file).expanduser().resolve() if args.vnext_file else deployment_path.with_suffix(".vnext.json")
     vnext = load_json(vnext_path) if vnext_path.exists() else {}
+    epoch = load_optional_json(Path(args.epoch_file).expanduser().resolve())
 
     rpc_url = args.rpc_url or os.environ.get("DARWIN_RPC_URL") or os.environ.get("BASE_SEPOLIA_RPC_URL") or NETWORK_DEFAULTS[int(deployment["chain_id"])]
     latest_block = rpc_block_number(rpc_url)
@@ -281,6 +437,10 @@ def main() -> int:
         )
 
     events.sort(key=lambda item: (item["block_number"], item["tx_hash"]), reverse=True)
+    timestamp_cache: dict[int, int] = {}
+    for event in events:
+        event["timestamp"] = rpc_block_timestamp(rpc_url, event["block_number"], timestamp_cache)
+        event["seen_at"] = format_iso_timestamp(event["timestamp"])
 
     project_wallets = collect_addresses(deployment) | collect_addresses(vnext) | parse_project_wallets(Path(args.project_wallets_file))
     total_wallets = sorted({normalize_address(event["actor"]) for event in events})
@@ -290,22 +450,32 @@ def main() -> int:
     project_wallets_seen = sorted({normalize_address(event["actor"]) for event in project_events})
     external_swaps = [event for event in external_events if event["type"] == "swap"]
     external_claims = [event for event in external_events if event["type"] in {"faucet", "distributor"}]
+    summary = {
+        "total_events": len(events),
+        "total_wallets": len(total_wallets),
+        "external_events": len(external_events),
+        "external_wallets": len(external_wallets),
+        "external_swaps": len(external_swaps),
+        "external_claims": len(external_claims),
+        "project_events": len(project_events),
+        "project_wallets": len(project_wallets_seen),
+    }
+    progress = build_progress(summary, epoch)
+    leaderboard = build_leaderboard(external_events, epoch)
 
     report = {
         "generated_at": utc_now(),
         "network": deployment["network"],
         "rpc_url": rpc_url,
         "lookback_blocks": args.lookback_blocks,
-        "summary": {
-            "total_events": len(events),
-            "total_wallets": len(total_wallets),
-            "external_events": len(external_events),
-            "external_wallets": len(external_wallets),
-            "external_swaps": len(external_swaps),
-            "external_claims": len(external_claims),
-            "project_events": len(project_events),
-            "project_wallets": len(project_wallets_seen),
+        "epoch": {
+            "id": epoch.get("id", ""),
+            "status": epoch.get("status", ""),
+            "title": epoch.get("title", ""),
         },
+        "summary": summary,
+        "progress": progress,
+        "leaderboard": leaderboard,
         "recent_events": events[:50],
         "recent_external": external_events[:50],
     }
@@ -322,7 +492,10 @@ def main() -> int:
             "generated_at": report["generated_at"],
             "network": report["network"],
             "lookback_blocks": report["lookback_blocks"],
+            "epoch": report["epoch"],
             "summary": report["summary"],
+            "progress": report["progress"],
+            "leaderboard": report["leaderboard"],
             "recent_external": [
                 {
                     "type": event["type"],
@@ -331,6 +504,7 @@ def main() -> int:
                     "detail": event["detail"],
                     "tx_hash": event["tx_hash"],
                     "block_number": event["block_number"],
+                    "seen_at": event.get("seen_at", ""),
                 }
                 for event in report["recent_external"][:10]
             ],

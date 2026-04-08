@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const activityScriptVersion = "20260408-activity7";
+const activityScriptVersion = "20260408-activity8";
 
 export default function ActivityPage() {
   return (
@@ -187,6 +187,30 @@ export default function ActivityPage() {
 
           <section className="card panel">
             <div className="section-heading">
+              <h2>Epoch traction</h2>
+              <span id="activityProgressBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <div className="stat-grid">
+              <article className="metric">
+                <span className="label">Wallet goal</span>
+                <strong id="activityWalletProgress">-</strong>
+                <small id="activityWalletProgressDetail">Waiting for wallet-goal progress.</small>
+              </article>
+              <article className="metric">
+                <span className="label">Swap goal</span>
+                <strong id="activitySwapProgress">-</strong>
+                <small id="activitySwapProgressDetail">Waiting for swap-goal progress.</small>
+              </article>
+            </div>
+            <p id="activityProgressNote" className="tiny-hint">
+              Experimental and incentivized routes stay locked until the canonical route has real outside traction.
+            </p>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
               <h2>Current epoch</h2>
               <span id="epochBadge" className="badge">
                 loading
@@ -201,6 +225,12 @@ export default function ActivityPage() {
             </p>
             <ul id="epochGoals" className="truth-list">
               <li>Loading epoch goals.</li>
+            </ul>
+            <p id="epochRewardWindow" className="tiny-hint">
+              Loading reward pilot.
+            </p>
+            <ul id="epochRewardRules" className="truth-list">
+              <li>Loading reward rules.</li>
             </ul>
             <div className="tiny-actions">
               <a id="epochCtaLink" className="button button-primary tiny-button" href="/trade/?preset=tiny-sell">
@@ -227,6 +257,18 @@ export default function ActivityPage() {
             </p>
             <div id="activityStructureGrid" className="route-grid">
               <p className="caption">Loading market structure.</p>
+            </div>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
+              <h2>Outside leaderboard</h2>
+              <span id="activityLeaderboardBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <div id="activityLeaderboardList" className="leaderboard-list">
+              <p className="caption">Loading outside-wallet leaderboard.</p>
             </div>
           </section>
 

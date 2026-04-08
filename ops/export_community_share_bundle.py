@@ -46,6 +46,20 @@ def load_json(path: Path) -> dict:
     return json.loads(path.read_text())
 
 
+def reward_line(epoch: dict) -> str:
+    reward_policy = epoch.get("reward_policy") or {}
+    currency = reward_policy.get("currency_symbol", "DRW")
+    snippets = []
+    for rule in reward_policy.get("rules") or []:
+        amount = rule.get("amount", 0)
+        if not amount:
+            continue
+        snippets.append(f"{rule.get('label', 'reward')} {amount} {currency}")
+    if not snippets:
+        return ""
+    return "Pilot rewards: " + ", ".join(snippets) + "."
+
+
 def join_url(site_url: str, path: str, lane_slug: str) -> str:
     absolute = f"{site_url.rstrip('/')}/{path.lstrip('/')}"
     if not lane_slug or lane_slug == "base-sepolia-recovery":
@@ -81,6 +95,9 @@ def main() -> int:
     total_events = int(summary.get("total_events", 0) or 0)
     wallet_target = int(((epoch.get("milestones") or {}).get("external_wallets_target")) or 0)
     swap_target = int(((epoch.get("milestones") or {}).get("external_swaps_target")) or 0)
+    reward_policy_line = reward_line(epoch)
+    leaderboard = activity_summary.get("leaderboard") or {}
+    leader = ((leaderboard.get("entries") or [])[:1] or [None])[0]
 
     if external_wallets > 0:
         status_line = (
@@ -97,22 +114,32 @@ def main() -> int:
         f"Epoch progress: {external_wallets}/{wallet_target or '?'} outside wallets, "
         f"{external_swaps}/{swap_target or '?'} outside swaps, {total_events} total Darwin events."
     )
-    invite_long = " ".join(
+    message_parts = [
+        epoch.get("summary", "Claim DRW, make one tiny swap, and share the public proof surface."),
+        reward_policy_line,
+        status_line,
+        progress_line,
+    ]
+    if leader:
+        message_parts.append(
+            f"Top outside wallet this window: {leader.get('actor', '')} with score {leader.get('points', 0)}."
+        )
+    message_parts.extend(
         [
-            epoch.get("summary", "Claim DRW, make one tiny swap, and share the public proof surface."),
-            status_line,
-            progress_line,
             f"Starter cohort intake: {starter_cohort_url}",
             f"Start at {epoch_url} or jump directly to the tiny swap: {tiny_swap_url}",
             f"Public proof: {activity_url}",
         ]
     )
+    invite_long = " ".join(part for part in message_parts if part)
 
     payload = {
         "generated_at": utc_now(),
         "site_url": site_url,
         "epoch": epoch,
         "stats": summary,
+        "progress": activity_summary.get("progress") or {},
+        "leaderboard": leaderboard,
         "links": {
             "site": site_url,
             "epoch": epoch_url,
@@ -123,6 +150,7 @@ def main() -> int:
         "messages": {
             "status_line": status_line,
             "progress_line": progress_line,
+            "reward_line": reward_policy_line,
             "invite_short": invite_short,
             "invite_long": invite_long,
         },

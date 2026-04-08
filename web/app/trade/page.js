@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260408-portal11";
+const tradeScriptVersion = "20260408-portal12";
 
 export default function TradePage() {
   return (
@@ -300,6 +300,12 @@ export default function TradePage() {
                 <small>recent non-project swaps</small>
               </article>
             </div>
+            <p id="tradeEpochProgress" className="tiny-hint">
+              Loading traction gate and reward pilot.
+            </p>
+            <ul id="tradeRewardRules" className="truth-list">
+              <li>Loading reward rules.</li>
+            </ul>
             <div className="tiny-actions">
               <a id="tradeEpochLink" className="button button-secondary tiny-button" href="/epoch/">
                 Open epoch

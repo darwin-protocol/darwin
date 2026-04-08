@@ -11,9 +11,50 @@
   "share_text": "I claimed DRW and made a tiny Darwin swap.",
   "goals": [
     "Claim 100 DRW from the public faucet.",
-    "Use the canonical tiny sell preset for one first swap, then try tiny buy where the lane supports it.",
-    "Share the public activity link and bring one more wallet."
+    "Use the canonical tiny sell preset for one first swap, then come back for a second tiny swap after 24 hours.",
+    "Share the public activity or epoch link and bring one more wallet."
   ],
+  "reward_policy": {
+    "window_label": "7-day pilot",
+    "currency_symbol": "DRW",
+    "scoring_label": "Outside activity score",
+    "rules": [
+      {
+        "id": "starter_claim",
+        "label": "Starter claim",
+        "amount": 100,
+        "eligibility": "claim",
+        "detail": "Public faucet amount for a first outside Darwin action."
+      },
+      {
+        "id": "first_swap_bonus",
+        "label": "First tiny swap bonus",
+        "amount": 25,
+        "eligibility": "first_swap",
+        "detail": "One first outside tiny swap through the canonical pool."
+      },
+      {
+        "id": "return_swap_bonus",
+        "label": "Return swap bonus",
+        "amount": 50,
+        "eligibility": "return_swap",
+        "detail": "A second outside tiny swap at least 24 hours after the first."
+      },
+      {
+        "id": "maker_unlock",
+        "label": "LP / maker unlock",
+        "amount": 0,
+        "eligibility": "future_unlock",
+        "detail": "Only opens after the canonical traction targets are met."
+      }
+    ],
+    "scoring": {
+      "claim_points": 1,
+      "swap_points": 3,
+      "return_after_hours": 24,
+      "return_swap_bonus_points": 2
+    }
+  },
   "milestones": {
     "external_wallets_target": 25,
     "external_swaps_target": 40

@@ -5415,6 +5415,329 @@ exit 0
             self.assertIn("market_config_not_in_builder_code_mode", readiness["blockers"])
             print("  Ops: Base App readiness export flags unsigned manifest and direct attribution as blockers")
 
+    def test_64_report_external_activity_exports_progress_and_leaderboard(self):
+        """Ops: external activity report emits progress gates and a public-safe leaderboard."""
+        from Crypto.Hash import keccak
+
+        def hash_topic(signature: str) -> str:
+            digest = keccak.new(digest_bits=256)
+            digest.update(signature.encode())
+            return "0x" + digest.hexdigest()
+
+        def topic_address(address: str) -> str:
+            return "0x" + address.lower().removeprefix("0x").rjust(64, "0")
+
+        def word(value: int) -> str:
+            return hex(value)[2:].rjust(64, "0")
+
+        def address_word(address: str) -> str:
+            return address.lower().removeprefix("0x").rjust(64, "0")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia-recovery.json"
+            vnext = tmp / "base-sepolia-recovery.vnext.json"
+            project_wallets = tmp / "project-wallets.json"
+            epoch = tmp / "epoch.json"
+            public_out = tmp / "activity-summary.json"
+
+            token = "0x0000000000000000000000000000000000000011"
+            quote = "0x0000000000000000000000000000000000000022"
+            pool = "0x0000000000000000000000000000000000000042"
+            faucet = "0x0000000000000000000000000000000000000055"
+            distributor = "0x0000000000000000000000000000000000000066"
+            external = "0x00000000000000000000000000000000000000aa"
+            project = "0x00000000000000000000000000000000000000bb"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia-recovery",
+                "chain_id": 84532,
+                "contracts": {
+                    "drw_token": token,
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "quote_token": quote,
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "contracts": {
+                        "reference_pool": pool,
+                    },
+                },
+                "faucet": {
+                    "enabled": True,
+                    "contracts": {
+                        "drw_faucet": faucet,
+                    },
+                },
+            }))
+            vnext.write_text(json.dumps({
+                "vnext": {
+                    "contracts": {
+                        "drw_merkle_distributor": distributor,
+                    },
+                },
+            }))
+            project_wallets.write_text(json.dumps({
+                "wallets": [project],
+            }))
+            epoch.write_text(json.dumps({
+                "id": "epoch-alpha",
+                "status": "live",
+                "title": "Epoch Alpha",
+                "milestones": {
+                    "external_wallets_target": 2,
+                    "external_swaps_target": 3,
+                },
+                "reward_policy": {
+                    "scoring_label": "Outside activity score",
+                    "scoring": {
+                        "claim_points": 1,
+                        "swap_points": 3,
+                        "return_after_hours": 24,
+                        "return_swap_bonus_points": 2,
+                    },
+                },
+            }))
+
+            swap_topic = hash_topic("SwapExecuted(address,address,uint256,address,uint256,address)")
+            faucet_topic = hash_topic("Claimed(address,address,uint256,uint256,uint256)")
+            distributor_topic = hash_topic("Claimed(uint256,address,uint256)")
+
+            logs = {
+                (pool.lower(), swap_topic): [
+                    {
+                        "address": pool,
+                        "blockNumber": hex(70),
+                        "transactionHash": "0x" + "1" * 64,
+                        "topics": [
+                            swap_topic,
+                            topic_address(external),
+                            topic_address(token),
+                            topic_address(quote),
+                        ],
+                        "data": "0x" + word(10 * 10**18) + word(4_800_000_000_000) + address_word(external),
+                    },
+                    {
+                        "address": pool,
+                        "blockNumber": hex(95),
+                        "transactionHash": "0x" + "2" * 64,
+                        "topics": [
+                            swap_topic,
+                            topic_address(external),
+                            topic_address(token),
+                            topic_address(quote),
+                        ],
+                        "data": "0x" + word(15 * 10**18) + word(7_200_000_000_000) + address_word(external),
+                    },
+                ],
+                (faucet.lower(), faucet_topic): [
+                    {
+                        "address": faucet,
+                        "blockNumber": hex(90),
+                        "transactionHash": "0x" + "3" * 64,
+                        "topics": [
+                            faucet_topic,
+                            topic_address(project),
+                            topic_address(project),
+                        ],
+                        "data": "0x" + word(100 * 10**18) + word(10**13) + word(0),
+                    },
+                ],
+                (distributor.lower(), distributor_topic): [
+                    {
+                        "address": distributor,
+                        "blockNumber": hex(65),
+                        "transactionHash": "0x" + "4" * 64,
+                        "topics": [
+                            distributor_topic,
+                            "0x" + word(0),
+                            topic_address(external),
+                        ],
+                        "data": "0x" + word(25 * 10**18),
+                    },
+                ],
+            }
+            block_timestamps = {
+                65: 1_710_000_000,
+                70: 1_710_003_600,
+                90: 1_710_007_200,
+                95: 1_710_093_600,
+            }
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    size = int(self.headers.get("Content-Length", "0"))
+                    payload = json.loads(self.rfile.read(size).decode())
+                    method = payload.get("method")
+                    params = payload.get("params") or []
+                    result = None
+
+                    if method == "eth_blockNumber":
+                        result = hex(100)
+                    elif method == "eth_getLogs":
+                        query = params[0]
+                        address = str(query.get("address", "")).lower()
+                        topic0 = (query.get("topics") or [""])[0]
+                        from_block = int(str(query.get("fromBlock", "0x0")), 16)
+                        to_block = int(str(query.get("toBlock", "0x0")), 16)
+                        result = [
+                            item for item in logs.get((address, topic0), [])
+                            if from_block <= int(item["blockNumber"], 16) <= to_block
+                        ]
+                    elif method == "eth_getBlockByNumber":
+                        block_number = int(str(params[0]), 16)
+                        result = {
+                            "number": params[0],
+                            "timestamp": hex(block_timestamps.get(block_number, 0)),
+                        }
+                    else:
+                        self.send_response(500)
+                        self.end_headers()
+                        return
+
+                    body = json.dumps({"jsonrpc": "2.0", "id": payload.get("id", 1), "result": result}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            thread = Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(ROOT / "ops" / "report_external_activity.py"),
+                        "--deployment-file",
+                        str(deployment),
+                        "--vnext-file",
+                        str(vnext),
+                        "--epoch-file",
+                        str(epoch),
+                        "--project-wallets-file",
+                        str(project_wallets),
+                        "--rpc-url",
+                        f"http://127.0.0.1:{server.server_port}",
+                        "--lookback-blocks",
+                        "50",
+                        "--public-json-out",
+                        str(public_out),
+                    ],
+                    cwd=str(ROOT),
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            report = json.loads(public_out.read_text())
+            self.assertEqual(report["summary"]["total_events"], 4)
+            self.assertEqual(report["summary"]["external_events"], 3)
+            self.assertEqual(report["summary"]["external_wallets"], 1)
+            self.assertEqual(report["summary"]["external_swaps"], 2)
+            self.assertEqual(report["summary"]["external_claims"], 1)
+            self.assertEqual(report["progress"]["wallets"]["current"], 1)
+            self.assertEqual(report["progress"]["wallets"]["target"], 2)
+            self.assertEqual(report["progress"]["swaps"]["current"], 2)
+            self.assertEqual(report["progress"]["swaps"]["target"], 3)
+            self.assertFalse(report["progress"]["traction_ready"])
+            self.assertEqual(len(report["leaderboard"]["entries"]), 1)
+            self.assertEqual(report["leaderboard"]["entries"][0]["actor"], external)
+            self.assertEqual(report["leaderboard"]["entries"][0]["points"], 9)
+            self.assertTrue(report["leaderboard"]["entries"][0]["return_swap_qualified"])
+            print("  Ops: external activity export emits public progress gates and leaderboard rows")
+
+    def test_65_export_community_share_bundle_includes_reward_and_leaderboard_context(self):
+        """Ops: community share bundle carries reward copy and top-leader context when available."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            market_config = tmp / "market-config.json"
+            activity_summary = tmp / "activity-summary.json"
+            out = tmp / "community-share.json"
+
+            market_config.write_text(json.dumps({
+                "network": {
+                    "name": "Base Sepolia",
+                    "slug": "base-sepolia-recovery",
+                },
+                "community": {
+                    "tiny_swap_path": "/trade/?preset=tiny-sell",
+                    "activity_path": "/activity/",
+                    "epoch_path": "/epoch/",
+                    "starter_cohort_path": "/join/",
+                    "epoch": {
+                        "summary": "Claim DRW, use the canonical tiny-swap path, and share the public proof surface.",
+                        "milestones": {
+                            "external_wallets_target": 25,
+                            "external_swaps_target": 40,
+                        },
+                        "reward_policy": {
+                            "currency_symbol": "DRW",
+                            "rules": [
+                                {"label": "Starter claim", "amount": 100},
+                                {"label": "First tiny swap bonus", "amount": 25},
+                                {"label": "Return swap bonus", "amount": 50},
+                            ],
+                        },
+                    },
+                },
+            }))
+            activity_summary.write_text(json.dumps({
+                "summary": {
+                    "external_wallets": 2,
+                    "external_swaps": 3,
+                    "total_events": 6,
+                },
+                "progress": {
+                    "wallets": {"current": 2, "target": 25},
+                    "swaps": {"current": 3, "target": 40},
+                },
+                "leaderboard": {
+                    "entries": [
+                        {"actor": "0x00000000000000000000000000000000000000aa", "points": 9},
+                    ],
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_community_share_bundle.py"),
+                    "--market-config",
+                    str(market_config),
+                    "--activity-summary",
+                    str(activity_summary),
+                    "--site-url",
+                    "https://usedarwin.xyz",
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            payload = json.loads(out.read_text())
+            self.assertIn("Starter claim 100 DRW", payload["messages"]["reward_line"])
+            self.assertIn("Top outside wallet this window", payload["messages"]["invite_long"])
+            self.assertEqual(payload["leaderboard"]["entries"][0]["points"], 9)
+            print("  Ops: community share bundle carries reward copy and top-leader context")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

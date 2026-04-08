@@ -34,7 +34,7 @@ const frameEmbed = JSON.stringify({
 });
 
 export const metadata = {
-  title: "DARWIN Epoch Alpha",
+  title: "DARWIN Epoch",
   description:
     "Claim DRW, make one tiny swap, and share the public Darwin activity surface.",
   alternates: {
@@ -56,8 +56,8 @@ export const metadata = {
 export default function EpochPage() {
   return (
     <div className="background-shell">
-      <Script src="../lane.js?v=20260407-epoch1" strategy="afterInteractive" />
-      <Script src="../epoch.js?v=20260407-epoch1" strategy="afterInteractive" />
+      <Script src="../lane.js?v=20260408-epoch2" strategy="afterInteractive" />
+      <Script src="../epoch.js?v=20260408-epoch2" strategy="afterInteractive" />
       <div className="background">
         <div className="orb orb-a"></div>
         <div className="orb orb-b"></div>
@@ -115,6 +115,56 @@ export default function EpochPage() {
               <small>Share the activity page so the next wallet can follow.</small>
             </div>
           </aside>
+        </section>
+
+        <section className="home-grid">
+          <article className="card home-panel">
+            <div className="section-heading">
+              <h2>Epoch progress</h2>
+              <span id="epochProgressBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <div className="stat-grid">
+              <article className="metric">
+                <span className="label">Wallet goal</span>
+                <strong id="epochWalletProgress">-</strong>
+                <small id="epochWalletProgressDetail">Waiting for wallet progress.</small>
+              </article>
+              <article className="metric">
+                <span className="label">Swap goal</span>
+                <strong id="epochSwapProgress">-</strong>
+                <small id="epochSwapProgressDetail">Waiting for swap progress.</small>
+              </article>
+            </div>
+            <p id="epochProgressNote" className="tiny-hint">
+              Canonical traction should be earned by real outside wallets, not internal churn.
+            </p>
+          </article>
+
+          <article className="card home-panel">
+            <div className="section-heading">
+              <h2>Reward pilot</h2>
+              <span id="epochRewardWindow" className="badge">
+                loading
+              </span>
+            </div>
+            <ul id="epochRewardRules" className="truth-list">
+              <li>Loading reward rules.</li>
+            </ul>
+          </article>
+        </section>
+
+        <section className="card home-panel activity-panel">
+          <div className="section-heading">
+            <h2>Outside leaderboard</h2>
+            <span id="epochLeaderboardBadge" className="badge">
+              loading
+            </span>
+          </div>
+          <div id="epochLeaderboardList" className="leaderboard-list">
+            <p className="caption">Loading outside-wallet leaderboard.</p>
+          </div>
         </section>
 
         <section className="home-grid">

@@ -252,6 +252,40 @@ function actionSharePayload(kind, txHash = "") {
   };
 }
 
+function epochRewardPolicy() {
+  return state.config?.community?.epoch?.reward_policy || null;
+}
+
+function renderTradeRewardRules() {
+  if (!els.tradeRewardRules || !els.tradeEpochProgress) return;
+  const reward = epochRewardPolicy();
+  const progress = state.activitySummary?.progress;
+  els.tradeRewardRules.innerHTML = "";
+  if (!reward || !(reward.rules || []).length) {
+    els.tradeEpochProgress.textContent = "No public reward pilot configured yet.";
+    els.tradeRewardRules.innerHTML = "<li>The current Darwin lane is live without a public reward pilot.</li>";
+    return;
+  }
+
+  const walletProgress = progress?.wallets?.target
+    ? `${progress.wallets.current}/${progress.wallets.target} wallets`
+    : `${progress?.wallets?.current ?? 0} wallets`;
+  const swapProgress = progress?.swaps?.target
+    ? `${progress.swaps.current}/${progress.swaps.target} swaps`
+    : `${progress?.swaps?.current ?? 0} swaps`;
+  els.tradeEpochProgress.textContent =
+    `${reward.window_label || "Current window"}: ${walletProgress}, ${swapProgress}. Incentivized routes stay locked until the canonical traction gate is real.`;
+
+  for (const rule of reward.rules || []) {
+    const li = document.createElement("li");
+    const amount = Number(rule.amount || 0);
+    li.textContent = amount
+      ? `${rule.label || "Reward"}: ${amount} ${reward.currency_symbol || "DRW"}. ${rule.detail || ""}`.trim()
+      : `${rule.label || "Reward"}: ${rule.detail || "Locked for a later phase."}`;
+    els.tradeRewardRules.appendChild(li);
+  }
+}
+
 async function discoverInjectedProvider() {
   const providers = [];
   window.addEventListener("eip6963:announceProvider", (event) => {
@@ -591,6 +625,7 @@ function bindStaticConfig() {
     els.tradeExternalWalletCount.textContent = String(summary.external_wallets ?? 0);
     els.tradeExternalSwapCount.textContent = String(summary.external_swaps ?? 0);
   }
+  renderTradeRewardRules();
 
   const builderCode = state.config.attribution?.builder_code;
   const smartStartEnabled = Boolean(state.config.attribution?.smart_start_enabled && state.config.faucet?.enabled);
@@ -1123,6 +1158,8 @@ async function boot() {
     tradeEpochBadge: $("tradeEpochBadge"),
     tradeEpochTitle: $("tradeEpochTitle"),
     tradeEpochSummary: $("tradeEpochSummary"),
+    tradeEpochProgress: $("tradeEpochProgress"),
+    tradeRewardRules: $("tradeRewardRules"),
     tradeExternalWalletCount: $("tradeExternalWalletCount"),
     tradeExternalSwapCount: $("tradeExternalSwapCount"),
     tradeEpochLink: $("tradeEpochLink"),
