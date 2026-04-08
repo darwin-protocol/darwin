@@ -145,6 +145,7 @@ The portal supports:
 - direct `WETH -> DRW` and `DRW -> WETH` swaps
 - direct `ETH -> WETH` wrapping for the quote side
 - tiny-swap presets and shareable `?preset=` links for community onboarding
+- a `Smart start` button that tries an atomic claim-plus-tiny-sell batch on supporting wallets
 - public `/activity` view for recent DARWIN onchain events
 - public pool-role cards showing `Canonical`, `Experimental`, and `Incentivized`
 
@@ -157,6 +158,12 @@ Recommended first path for outside users:
 1. connect a Base Sepolia wallet
 2. claim `100 DRW` from the faucet
 3. use the `tiny sell 10 DRW` preset in the portal
+
+If the wallet supports `wallet_sendCalls`, the trade page can also attempt `Smart start`, which batches:
+
+1. `claim()`
+2. `approve()`
+3. `swapExactInput()`
 
 Shareable community link:
 

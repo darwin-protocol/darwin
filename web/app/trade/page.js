@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260407-portal9";
+const tradeScriptVersion = "20260407-portal10";
 
 export default function TradePage() {
   return (
@@ -99,6 +99,9 @@ export default function TradePage() {
               </Link>
               <Link id="tradeViewEpochLink" className="button button-secondary" href="/epoch/">
                 View epoch
+              </Link>
+              <Link id="tradeJoinCohortLink" className="button button-secondary" href="/join/">
+                Join cohort
               </Link>
             </div>
           </div>
@@ -209,6 +212,9 @@ export default function TradePage() {
                   Claim 100 DRW, then use <code>tiny sell</code> for a first public swap. If you
                   already hold the lane quote asset, <code>tiny buy</code> uses a minimal input.
                 </p>
+                <p id="tinyAttributionHint" className="tiny-hint">
+                  Loading transaction attribution and smart-start support for this lane.
+                </p>
               </div>
               <div className="tiny-actions">
                 <button className="button button-secondary tiny-button" data-tiny-preset="tiny-sell">
@@ -222,6 +228,9 @@ export default function TradePage() {
                 </button>
                 <button id="copyTinySwapLinkButton" className="button button-secondary tiny-button">
                   Copy share link
+                </button>
+                <button id="smartStartButton" className="button button-primary tiny-button">
+                  Smart start
                 </button>
               </div>
               <p id="tinySwapHint" className="tiny-hint">

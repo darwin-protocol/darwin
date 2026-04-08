@@ -35,6 +35,7 @@ Until those gates are met, adding duplicate pools is more likely to fragment thi
 
 - Site: `https://usedarwin.xyz/`
 - Epoch: `https://usedarwin.xyz/epoch/`
+- Join starter cohort: `https://usedarwin.xyz/join/`
 - Tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell`
 - Activity portal: `https://usedarwin.xyz/activity/`
 - Share bundle: `https://usedarwin.xyz/community-share.json`
@@ -42,6 +43,7 @@ Until those gates are met, adding duplicate pools is more likely to fragment thi
 Additional lane:
 
 - Arbitrum epoch: `https://usedarwin.xyz/epoch/?lane=arbitrum-sepolia`
+- Arbitrum starter cohort: `https://usedarwin.xyz/join/?lane=arbitrum-sepolia`
 - Arbitrum tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia`
 - Arbitrum activity: `https://usedarwin.xyz/activity/?lane=arbitrum-sepolia`
 - Arbitrum share bundle: `https://usedarwin.xyz/community-share-arbitrum-sepolia.json`
@@ -58,12 +60,20 @@ For real outside onboarding, use:
 The tracked cohort template and runbook are now in:
 
 - [`ops/community-starter-cohort.example.csv`](../ops/community-starter-cohort.example.csv)
+- [`ops/normalize_starter_cohort.py`](../ops/normalize_starter_cohort.py)
 - [`ops/prepare_starter_cohort.sh`](../ops/prepare_starter_cohort.sh)
 - [`docs/STARTER_COHORT.md`](./STARTER_COHORT.md)
+
+The public intake helper is now:
+
+- `https://usedarwin.xyz/join/`
+
+It does not submit wallets anywhere. It prepares a clean cohort row that can be copied into the local starter cohort flow.
 
 The public portal now exposes:
 
 - a shareable epoch landing page
+- a shareable starter-cohort intake page
 - a shareable tiny-swap preset
 - live DARWIN contract activity
 - a canonical / experimental / incentivized pool map

@@ -6,6 +6,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 
 - Site: `https://usedarwin.xyz/`
 - Epoch: `https://usedarwin.xyz/epoch/`
+- Join starter cohort: `https://usedarwin.xyz/join/`
 - Market: `https://usedarwin.xyz/trade/`
 - Activity: `https://usedarwin.xyz/activity/`
 - Community share bundle: `https://usedarwin.xyz/community-share.json`
@@ -41,7 +42,9 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Shared deployment artifacts are kept public-safe; local operator roles and deployer identity live in `~/.config/darwin/deployments/`.
 - Operators can build a local activity allowlist with `python3 ops/build_project_wallet_allowlist.py` before running `ops/report_external_activity.py`.
 - The public site now exposes a public-safe outside-activity snapshot while keeping the operator allowlist and full classification local.
+- The public site now also exposes a lane-aware starter-cohort intake page that prepares a clean wallet row without collecting private operator data.
 - The vNext promotion path now supports both Safe batch export and direct EOA execution for mutable DRW-era handoff.
+- Operators can normalize rough cohort intake into a clean CSV with `python3 ops/normalize_starter_cohort.py`.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 
 ## Repository Layout

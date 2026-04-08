@@ -12,6 +12,13 @@ Good cohort size for the current alpha stage:
 - `100-250 DRW` each
 - one canonical pool per lane
 
+The public intake helper is:
+
+- Base: `https://usedarwin.xyz/join/`
+- Arbitrum: `https://usedarwin.xyz/join/?lane=arbitrum-sepolia`
+
+That page is intentionally static and public-safe. It prepares a wallet row for operators to review; it does not submit anything automatically.
+
 ## Inputs
 
 Start from the tracked template:
@@ -21,6 +28,14 @@ cp ops/community-starter-cohort.example.csv ops/state/base-sepolia-recovery-star
 ```
 
 Replace the placeholder addresses with real outside wallet addresses. Do not include project-controlled wallets.
+
+If you collect rough rows from the public intake helper or a spreadsheet, normalize them first:
+
+```bash
+python3 ops/normalize_starter_cohort.py \
+  --intake-file ops/state/base-sepolia-recovery-starter-cohort-intake.csv \
+  --out ops/state/base-sepolia-recovery-starter-cohort.csv
+```
 
 CSV format:
 
@@ -80,6 +95,8 @@ Send recipients to the canonical pool only:
 
 - Base tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell`
 - Arbitrum tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia`
+
+The trade portal also exposes a `Smart start` button on lanes where a live faucet exists. That path tries an atomic claim-plus-tiny-sell batch on wallets that support `wallet_sendCalls`, then falls back to the manual claim and tiny-sell flow.
 
 Public proof:
 

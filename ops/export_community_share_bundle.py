@@ -69,10 +69,12 @@ def main() -> int:
     tiny_swap_path = (market_config.get("community") or {}).get("tiny_swap_path", "/trade/?preset=tiny-sell")
     activity_path = (market_config.get("community") or {}).get("activity_path", "/activity/")
     epoch_path = (market_config.get("community") or {}).get("epoch_path", "/epoch/")
+    starter_cohort_path = (market_config.get("community") or {}).get("starter_cohort_path", "/join/")
 
     tiny_swap_url = join_url(site_url, tiny_swap_path, lane_slug)
     activity_url = join_url(site_url, activity_path, lane_slug)
     epoch_url = join_url(site_url, epoch_path, lane_slug)
+    starter_cohort_url = join_url(site_url, starter_cohort_path, lane_slug)
 
     external_wallets = int(summary.get("external_wallets", 0) or 0)
     external_swaps = int(summary.get("external_swaps", 0) or 0)
@@ -100,6 +102,7 @@ def main() -> int:
             epoch.get("summary", "Claim DRW, make one tiny swap, and share the public proof surface."),
             status_line,
             progress_line,
+            f"Starter cohort intake: {starter_cohort_url}",
             f"Start at {epoch_url} or jump directly to the tiny swap: {tiny_swap_url}",
             f"Public proof: {activity_url}",
         ]
@@ -115,6 +118,7 @@ def main() -> int:
             "epoch": epoch_url,
             "tiny_swap": tiny_swap_url,
             "activity": activity_url,
+            "starter_cohort": starter_cohort_url,
         },
         "messages": {
             "status_line": status_line,

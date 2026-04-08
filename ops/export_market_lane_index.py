@@ -54,6 +54,7 @@ def main() -> int:
                 },
                 "activity_summary_path": config.get("activity", {}).get("summary_path", "/activity-summary.json"),
                 "community_share_path": config.get("community", {}).get("share_bundle_path", "/community-share.json"),
+                "starter_cohort_path": config.get("community", {}).get("starter_cohort_path", "/join/"),
                 "vnext": config.get("vnext", {"enabled": False}),
                 "notes": config.get("notes", {}),
             }

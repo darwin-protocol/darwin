@@ -76,6 +76,12 @@ function bindCommunityPanel() {
   const tinySwapHref = window.DarwinLane && homeState.laneSelection
     ? window.DarwinLane.laneRelativeHref("/trade/?preset=tiny-sell", homeState.laneSelection)
     : (links.tiny_swap || "/trade/?preset=tiny-sell");
+  const joinHref = window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref(
+      homeState.marketConfig?.community?.starter_cohort_path || "/join/",
+      homeState.laneSelection,
+    )
+    : (links.starter_cohort || homeState.marketConfig?.community?.starter_cohort_path || "/join/");
   const marketHref = window.DarwinLane && homeState.laneSelection
     ? window.DarwinLane.laneRelativeHref("/trade/", homeState.laneSelection)
     : "/trade/";
@@ -83,10 +89,12 @@ function bindCommunityPanel() {
   homeEls.homeOpenMarketLink.href = marketHref;
   homeEls.homeHeroTinySwapLink.href = tinySwapHref;
   homeEls.homeHeroEpochLink.href = epochHref;
+  homeEls.homeHeroJoinLink.href = joinHref;
   homeEls.homeHeroActivityLink.href = activityHref;
   homeEls.homeEpochLink.href = epochHref;
   homeEls.homeActivityLink.href = activityHref;
   homeEls.homeTinySwapLink.href = tinySwapHref;
+  homeEls.homeJoinLink.href = joinHref;
   homeEls.homeMarketPageLink.href = marketHref;
   homeEls.homeActivityPageLink.href = activityHref;
 
@@ -192,9 +200,11 @@ async function bootHome() {
     homeOpenMarketLink: home$("homeOpenMarketLink"),
     homeHeroTinySwapLink: home$("homeHeroTinySwapLink"),
     homeHeroEpochLink: home$("homeHeroEpochLink"),
+    homeHeroJoinLink: home$("homeHeroJoinLink"),
     homeHeroActivityLink: home$("homeHeroActivityLink"),
     homeMarketPageLink: home$("homeMarketPageLink"),
     homeActivityPageLink: home$("homeActivityPageLink"),
+    homeJoinLink: home$("homeJoinLink"),
     homeLaneSwitcher: home$("homeLaneSwitcher"),
     copyInviteButton: home$("copyInviteButton"),
     copyTinySwapHomeButton: home$("copyTinySwapHomeButton"),

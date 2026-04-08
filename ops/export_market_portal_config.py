@@ -5,12 +5,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_COMMUNITY_EPOCH_FILE = REPO_ROOT / "ops" / "community_epoch.json"
+BUILDER_SUFFIX_ENCODER = REPO_ROOT / "web" / "scripts" / "encode_builder_code_suffix.mjs"
 
 
 NETWORK_DEFAULTS = {
@@ -84,6 +87,20 @@ def load_optional_json(path: Path) -> dict:
     return load_json(path)
 
 
+def compute_builder_code_suffix(builder_code: str) -> str:
+    if not builder_code:
+        return ""
+    result = subprocess.run(
+        ["node", str(BUILDER_SUFFIX_ENCODER), builder_code],
+        cwd=str(REPO_ROOT / "web"),
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise SystemExit(result.stderr.strip() or result.stdout.strip() or "failed to encode builder code")
+    return result.stdout.strip()
+
+
 def repo_relative_or_absolute(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
@@ -133,6 +150,17 @@ def main() -> int:
     milestones = community_epoch.get("milestones") or {}
     external_wallets_target = int(milestones.get("external_wallets_target", 25) or 25)
     external_swaps_target = int(milestones.get("external_swaps_target", 40) or 40)
+    builder_code = os.environ.get("DARWIN_BUILDER_CODE", "").strip()
+    builder_code_suffix = os.environ.get("DARWIN_BUILDER_CODE_SUFFIX", "").strip()
+    if builder_code and not builder_code_suffix:
+        builder_code_suffix = compute_builder_code_suffix(builder_code)
+    if builder_code_suffix and not builder_code_suffix.startswith("0x"):
+        raise SystemExit("DARWIN_BUILDER_CODE_SUFFIX must be a 0x-prefixed hex string")
+    paymaster_service_url = os.environ.get("DARWIN_PAYMASTER_SERVICE_URL", "").strip()
+    starter_cohort_amount = os.environ.get(
+        "DARWIN_STARTER_COHORT_AMOUNT",
+        str(faucet.get("claim_amount", "") or "100000000000000000000"),
+    ).strip()
 
     config = {
         "generated_at": utc_now(),
@@ -199,8 +227,17 @@ def main() -> int:
             "tiny_swap_path": "/trade/?preset=tiny-sell",
             "activity_path": "/activity/",
             "epoch_path": "/epoch/",
+            "starter_cohort_path": "/join/",
+            "starter_cohort_amount": starter_cohort_amount,
             "share_bundle_path": community_share_path,
             "share_text": "Claim DRW, make one tiny swap, and share the Darwin activity page.",
+        },
+        "attribution": {
+            "mode": "builder-code" if builder_code_suffix else "direct",
+            "builder_code": builder_code,
+            "builder_code_suffix": builder_code_suffix,
+            "wallet_send_calls_enabled": True,
+            "smart_start_enabled": bool(faucet.get("enabled")),
         },
         "market_structure": {
             "strategy": "single_canonical_until_traction",
@@ -279,6 +316,8 @@ def main() -> int:
             "warning": f"This is a DARWIN-owned {network_defaults['network_name']} reference pool. It is live and tradeable, but it is still alpha infrastructure.",
         },
     }
+    if paymaster_service_url:
+        config["attribution"]["paymaster_service_url"] = paymaster_service_url
 
     vnext_contracts = ((vnext.get("vnext") or {}).get("contracts") or {})
     if vnext_contracts.get("drw_merkle_distributor"):

@@ -35,6 +35,7 @@ const state = {
   runtimeStatus: null,
   activitySummary: null,
   marketStructure: null,
+  walletCapabilities: null,
   rpcProvider: null,
   browserProvider: null,
   injectedProvider: null,
@@ -156,6 +157,31 @@ function absoluteUrl(path) {
     return window.DarwinLane.laneAbsoluteHref(path, state.laneSelection);
   }
   return new URL(path, window.location.origin).toString();
+}
+
+function attributionSuffix() {
+  return state.config?.attribution?.builder_code_suffix || "";
+}
+
+function appendDataSuffix(data) {
+  const suffix = attributionSuffix();
+  if (!suffix || !data || !data.startsWith("0x")) {
+    return data;
+  }
+  return `${data}${suffix.slice(2)}`;
+}
+
+function buildContractRequest(contract, methodName, args = [], overrides = {}) {
+  return {
+    to: contract.target,
+    data: appendDataSuffix(contract.interface.encodeFunctionData(methodName, args)),
+    ...overrides,
+  };
+}
+
+async function sendContractTransaction(contract, methodName, args = [], overrides = {}) {
+  const request = buildContractRequest(contract, methodName, args, overrides);
+  return state.signer.sendTransaction(request);
 }
 
 function setMessage(kind, text, txHash = "") {
@@ -296,6 +322,7 @@ async function connectWallet() {
   state.browserProvider = new ethers.BrowserProvider(provider);
   state.signer = await state.browserProvider.getSigner();
   state.account = await state.signer.getAddress();
+  await loadWalletCapabilities();
   els.walletStatus.textContent = "Connected";
   els.walletAddress.textContent = state.account;
   setMessage("wallet", `Connected ${shortAddress(state.account)} on ${state.config.network.name}.`);
@@ -334,6 +361,37 @@ async function loadConfig() {
   if (state.config.faucet?.enabled && state.config.faucet.address) {
     state.faucet = new ethers.Contract(state.config.faucet.address, FAUCET_ABI, state.rpcProvider);
   }
+}
+
+async function loadWalletCapabilities() {
+  state.walletCapabilities = null;
+  if (!state.account) return null;
+  try {
+    const provider = await ensureWallet();
+    state.walletCapabilities = await provider.request({
+      method: "wallet_getCapabilities",
+      params: [state.account],
+    });
+  } catch {
+    state.walletCapabilities = null;
+  }
+  return state.walletCapabilities;
+}
+
+function currentChainCapabilities() {
+  if (!state.walletCapabilities) return null;
+  const candidateKeys = [
+    state.config.network.hex,
+    state.config.network.hex?.toLowerCase(),
+    String(state.config.network.chain_id),
+    String(Number.parseInt(state.config.network.hex || "0x0", 16)),
+  ].filter(Boolean);
+  for (const key of candidateKeys) {
+    if (state.walletCapabilities[key]) {
+      return state.walletCapabilities[key];
+    }
+  }
+  return null;
 }
 
 async function loadRuntimeStatus() {
@@ -465,6 +523,14 @@ function bindStaticConfig() {
       ? window.DarwinLane.laneRelativeHref("/epoch/", state.laneSelection)
       : "/epoch/";
   }
+  if (els.tradeJoinCohortLink) {
+    els.tradeJoinCohortLink.href = window.DarwinLane && state.laneSelection
+      ? window.DarwinLane.laneRelativeHref(
+        state.config.community?.starter_cohort_path || "/join/",
+        state.laneSelection,
+      )
+      : (state.config.community?.starter_cohort_path || "/join/");
+  }
   els.liveStatusLink.href = state.config.links.live_status;
   els.marketDocLink.href = state.config.links.market_bootstrap;
   els.repoLink.href = state.config.links.repo;
@@ -497,6 +563,13 @@ function bindStaticConfig() {
     els.tradeExternalWalletCount.textContent = String(summary.external_wallets ?? 0);
     els.tradeExternalSwapCount.textContent = String(summary.external_swaps ?? 0);
   }
+
+  const builderCode = state.config.attribution?.builder_code;
+  const smartStartEnabled = Boolean(state.config.attribution?.smart_start_enabled && state.config.faucet?.enabled);
+  els.smartStartButton.disabled = !smartStartEnabled;
+  els.tinyAttributionHint.textContent = builderCode
+    ? `Builder Code ${builderCode} is configured for this lane. Standard calls append attribution and supported wallets can batch the first claim-plus-swap path.`
+    : "Direct mode is live. Supported wallets can still try a one-click smart start, but transaction attribution is not configured for this lane yet.";
 
   renderPoolStructure();
 }
@@ -631,7 +704,7 @@ async function loadTinyPresetFromUrl() {
 async function maybeApprove(tokenContract, amount, spender) {
   const allowance = await tokenContract.allowance(state.account, spender);
   if (allowance >= amount) return null;
-  const tx = await tokenContract.connect(state.signer).approve(spender, amount);
+  const tx = await sendContractTransaction(tokenContract, "approve", [spender, amount]);
   setMessage("approval", "Approval submitted.", tx.hash);
   await tx.wait();
   return tx.hash;
@@ -664,11 +737,10 @@ async function handleSwap() {
   els.swapButton.disabled = true;
   try {
     await maybeApprove(tokenInContract, amountIn, state.config.pool.address);
-    const tx = await state.pool.connect(state.signer).swapExactInput(
-      tokenInAddress,
-      amountIn,
-      minOut,
-      state.account,
+    const tx = await sendContractTransaction(
+      state.pool,
+      "swapExactInput",
+      [tokenInAddress, amountIn, minOut, state.account],
     );
     setMessage(
       "swap",
@@ -709,7 +781,7 @@ async function handleWrap() {
   const amount = ethers.parseEther(rawAmount);
   els.wrapButton.disabled = true;
   try {
-    const tx = await state.quoteToken.connect(state.signer).deposit({ value: amount });
+    const tx = await sendContractTransaction(state.quoteToken, "deposit", [], { value: amount });
     setMessage("wrap", `Wrap submitted for ${rawAmount} ETH.`, tx.hash);
     await tx.wait();
     setMessage("wrap", `Wrap confirmed on ${state.config.network.name}.`, tx.hash);
@@ -738,7 +810,7 @@ async function handleClaim() {
   await ensureCorrectNetwork();
   els.claimButton.disabled = true;
   try {
-    const tx = await state.faucet.connect(state.signer).claim();
+    const tx = await sendContractTransaction(state.faucet, "claim", []);
     setMessage("faucet", "Faucet claim submitted.", tx.hash);
     await tx.wait();
     setMessage("faucet", "Faucet claim confirmed.", tx.hash);
@@ -752,6 +824,140 @@ async function handleClaim() {
     setMessage("error", error?.shortMessage || error?.message || "Faucet claim failed.");
   } finally {
     els.claimButton.disabled = false;
+  }
+}
+
+function resolveCallsId(result) {
+  if (typeof result === "string") return result;
+  return result?.id || result?.callsId || result?.callId || "";
+}
+
+function callsReceipts(status) {
+  if (Array.isArray(status?.receipts)) return status.receipts;
+  if (Array.isArray(status?.result?.receipts)) return status.result.receipts;
+  return [];
+}
+
+function callsStatusCode(status) {
+  return status?.status ?? status?.result?.status ?? "";
+}
+
+function callsTransactionHash(status) {
+  const receipts = callsReceipts(status);
+  return receipts.at(-1)?.transactionHash || receipts[0]?.transactionHash || "";
+}
+
+async function waitForCallsStatus(callsId, timeoutMs = 120000) {
+  const provider = await ensureWallet();
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const status = await provider.request({
+      method: "wallet_getCallsStatus",
+      params: [callsId],
+    });
+    const code = callsStatusCode(status);
+    if (code === 200 || code === "confirmed" || code === "CONFIRMED") {
+      return status;
+    }
+    if (code === 500 || code === "failed" || code === "FAILED") {
+      throw new Error("Smart start batch failed.");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+  }
+  throw new Error("Timed out waiting for smart start confirmation.");
+}
+
+function walletSupportsSendCalls() {
+  const capabilities = currentChainCapabilities();
+  if (!capabilities) {
+    return true;
+  }
+  return Boolean(
+    capabilities?.atomicBatch ||
+    capabilities?.atomic ||
+    capabilities?.paymasterService ||
+    capabilities?.auxiliaryFunds,
+  );
+}
+
+async function handleSmartStart() {
+  if (!state.config.faucet?.enabled || !state.faucet) {
+    setMessage("smart-start", "Smart start is only available on lanes with a live faucet.");
+    return;
+  }
+  if (!state.account) {
+    await connectWallet();
+    return;
+  }
+
+  await ensureCorrectNetwork();
+  await applyTinyPreset("tiny-sell", { announce: false, persist: true });
+  const rawAmount = els.swapAmount.value.trim() || TINY_SWAP_PRESETS["tiny-sell"].amount;
+  const slippageBps = Number.parseInt(els.slippageBps.value || "150", 10);
+  const sellAmount = ethers.parseUnits(rawAmount, state.config.token.decimals);
+  const quoted = await state.pool.quoteExactInput(state.config.token.address, sellAmount);
+  const minOut = (quoted * BigInt(10_000 - slippageBps)) / 10_000n;
+  const provider = await ensureWallet();
+  const capabilities = currentChainCapabilities();
+
+  if (!walletSupportsSendCalls()) {
+    setMessage(
+      "smart-start",
+      "This wallet does not expose batch calls on the current lane. Use Claim DRW, then Tiny sell.",
+    );
+    return;
+  }
+
+  const request = {
+    version: "1.0",
+    chainId: state.config.network.hex,
+    from: state.account,
+    atomicRequired: true,
+    calls: [
+      buildContractRequest(state.faucet, "claim", []),
+      buildContractRequest(state.token, "approve", [state.config.pool.address, sellAmount]),
+      buildContractRequest(
+        state.pool,
+        "swapExactInput",
+        [state.config.token.address, sellAmount, minOut, state.account],
+      ),
+    ],
+  };
+
+  if (state.config.attribution?.paymaster_service_url && capabilities?.paymasterService) {
+    request.capabilities = {
+      paymasterService: {
+        url: state.config.attribution.paymaster_service_url,
+      },
+    };
+  }
+
+  els.smartStartButton.disabled = true;
+  try {
+    const result = await provider.request({
+      method: "wallet_sendCalls",
+      params: [request],
+    });
+    const callsId = resolveCallsId(result);
+    if (!callsId) {
+      throw new Error("wallet_sendCalls did not return a batch identifier.");
+    }
+    setMessage("smart-start", "Smart start submitted. Waiting for claim, approval, and tiny sell confirmation.");
+    const status = await waitForCallsStatus(callsId);
+    const txHash = callsTransactionHash(status);
+    setMessage("smart-start", "Smart start confirmed on-chain.", txHash);
+    setSharePayload(
+      actionSharePayload("swap", txHash),
+      "Smart start confirmed. Share the public activity page so another outside wallet can follow the same path.",
+    );
+    await Promise.all([refreshWallet(), refreshMarket(), refreshQuote(), refreshFaucet()]);
+  } catch (error) {
+    setMessage(
+      "smart-start",
+      error?.shortMessage || error?.message || "Smart start failed. Use Claim DRW, then Tiny sell.",
+    );
+  } finally {
+    els.smartStartButton.disabled = !Boolean(state.config.attribution?.smart_start_enabled && state.config.faucet?.enabled);
   }
 }
 
@@ -895,11 +1101,14 @@ async function boot() {
     tradeLaneSwitcher: $("tradeLaneSwitcher"),
     tradeViewActivityLink: $("tradeViewActivityLink"),
     tradeViewEpochLink: $("tradeViewEpochLink"),
+    tradeJoinCohortLink: $("tradeJoinCohortLink"),
     shareEpochButton: $("shareEpochButton"),
     tradeCommunityHint: $("tradeCommunityHint"),
     shareActionButton: $("shareActionButton"),
     copyActionLinkButton: $("copyActionLinkButton"),
     sharePrompt: $("sharePrompt"),
+    tinyAttributionHint: $("tinyAttributionHint"),
+    smartStartButton: $("smartStartButton"),
   });
 
   await loadConfig();
@@ -955,6 +1164,7 @@ async function boot() {
   els.swapButton.addEventListener("click", () => handleSwap());
   els.wrapButton.addEventListener("click", () => handleWrap());
   els.claimButton?.addEventListener("click", () => handleClaim());
+  els.smartStartButton?.addEventListener("click", () => handleSmartStart());
   els.copyQrUriButton.addEventListener("click", async () => {
     if (!els.copyQrUriButton.disabled) {
       await navigator.clipboard.writeText(els.qrUri.value);
