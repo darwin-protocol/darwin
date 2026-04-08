@@ -65,7 +65,9 @@ Completed:
    - `https://usedarwin.xyz/base-app/screenshot-trade.png`
    - `https://usedarwin.xyz/base-app/screenshot-activity.png`
 4. `https://usedarwin.xyz/market-config.json` now reports Builder Code attribution instead of `direct`.
+5. The preview tool on `base.dev` now validates the manifest metadata and the signed `accountAssociation` payload.
 
 Remaining boundary:
 
-- the legacy `Enable Mini App Analytics` modal on `base.dev` no longer fails on missing site artifacts; it now fails server-side with a generic Base.dev error after manifest discovery. The standard web-app and Builder Code path is already live.
+- the legacy `Enable Mini App Analytics` modal on `base.dev` no longer fails on missing site artifacts; it now reaches a Base-side conflict on `POST /v1/builders/.../resources` and the preview tool reports `Account associated: Failed to fetch signer` while `Signature: Valid`.
+- the standard web-app registration path and Base Builder Code path are already live.
