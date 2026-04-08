@@ -23,6 +23,8 @@ COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share.json"
 ARBITRUM_COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share-arbitrum-sepolia.json"
 TMP_DIR="$(mktemp -d)"
 ARBITRUM_DEPLOYMENT_FILE="$REPO_ROOT/ops/deployments/arbitrum-sepolia.json"
+source "$REPO_ROOT/ops/load_env_defaults.sh"
+load_site_publish_env "$REPO_ROOT"
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
   PYTHON_BIN="$(command -v python3)"

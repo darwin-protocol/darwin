@@ -5165,6 +5165,118 @@ exit 0
             self.assertEqual(rows[1]["account"], "0x00000000000000000000000000000000000000bb")
             print("  Ops: starter-cohort normalizer dedupes rough intake rows into a clean CSV")
 
+    def test_60_market_portal_config_export_prefers_network_specific_builder_env(self):
+        """Ops: market config export can use network-specific Builder Code env vars."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "arbitrum-sepolia.json"
+            out = tmp / "market-config.json"
+
+            deployment.write_text(json.dumps({
+                "network": "arbitrum-sepolia",
+                "chain_id": 421614,
+                "bond_asset_mode": "external",
+                "contracts": {
+                    "bond_asset": "0x0000000000000000000000000000000000000006",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x0000000000000000000000000000000000000006",
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+                "drw": {
+                    "total_supply": "1000000000000000000000000000",
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_market_portal_config.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--out",
+                    str(out),
+                ],
+                cwd=str(ROOT),
+                env={
+                    **os.environ,
+                    "DARWIN_BUILDER_CODE": "generic-code",
+                    "DARWIN_ARBITRUM_BUILDER_CODE": "arb-code",
+                },
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            config = json.loads(out.read_text())
+            self.assertEqual(config["attribution"]["builder_code"], "arb-code")
+            self.assertTrue(config["attribution"]["builder_code_suffix"].startswith("0x"))
+            print("  Ops: market config export prefers network-specific Builder Code env values")
+
+    def test_61_intake_starter_cohort_upserts_rows(self):
+        """Ops: starter-cohort intake appends and updates rows into a local intake CSV."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            intake = tmp / "starter-cohort-intake.csv"
+
+            first = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "intake_starter_cohort.py"),
+                    "--network",
+                    "base-sepolia-recovery",
+                    "--out",
+                    str(intake),
+                    "--row",
+                    json.dumps({
+                        "account": "0x00000000000000000000000000000000000000AA",
+                        "label": "alice",
+                        "source": "join",
+                    }),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+            second = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "intake_starter_cohort.py"),
+                    "--network",
+                    "base-sepolia-recovery",
+                    "--out",
+                    str(intake),
+                    "--row",
+                    "0x00000000000000000000000000000000000000aa,100000000000000000123,alice-updated,join,updated note,base-sepolia-recovery",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(first.returncode, 0, msg=first.stdout + first.stderr)
+            self.assertEqual(second.returncode, 0, msg=second.stdout + second.stderr)
+            with intake.open(newline="") as handle:
+                rows = list(csv.DictReader(handle))
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["account"], "0x00000000000000000000000000000000000000aa")
+            self.assertEqual(rows[0]["amount"], "100000000000000000123")
+            self.assertEqual(rows[0]["label"], "alice-updated")
+            self.assertEqual(rows[0]["notes"], "updated note")
+            self.assertEqual(rows[0]["lane"], "base-sepolia-recovery")
+            print("  Ops: starter-cohort intake upserts repeated wallet rows")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

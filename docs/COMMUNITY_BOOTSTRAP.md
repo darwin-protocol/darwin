@@ -60,8 +60,10 @@ For real outside onboarding, use:
 The tracked cohort template and runbook are now in:
 
 - [`ops/community-starter-cohort.example.csv`](../ops/community-starter-cohort.example.csv)
+- [`ops/intake_starter_cohort.py`](../ops/intake_starter_cohort.py)
 - [`ops/normalize_starter_cohort.py`](../ops/normalize_starter_cohort.py)
 - [`ops/prepare_starter_cohort.sh`](../ops/prepare_starter_cohort.sh)
+- [`ops/build_starter_cohort_from_intake.sh`](../ops/build_starter_cohort_from_intake.sh)
 - [`docs/STARTER_COHORT.md`](./STARTER_COHORT.md)
 
 The public intake helper is now:
@@ -135,6 +137,27 @@ That means the next promotion path is:
 2. keep page-level embeds on the shareable URLs
 3. keep the standard web app manifest live
 4. register the app in Base.dev when you are ready for Base App distribution
+
+The repo-side production hook is now ready too. The static publish path auto-loads:
+
+```text
+~/.config/darwin/site.env
+```
+
+Recommended entries there:
+
+```bash
+export DARWIN_BASE_BUILDER_CODE="your-base-builder-code"
+export DARWIN_ARBITRUM_BUILDER_CODE="your-arbitrum-builder-code"
+export DARWIN_BASE_PAYMASTER_SERVICE_URL="https://..."
+export DARWIN_ARBITRUM_PAYMASTER_SERVICE_URL="https://..."
+```
+
+Tracked template:
+
+- [`ops/site.env.example`](../ops/site.env.example)
+
+If those are present, the exported market config stops shipping in unattributed `direct` mode and starts emitting lane-specific Builder Code metadata.
 
 ## Useful Official References
 

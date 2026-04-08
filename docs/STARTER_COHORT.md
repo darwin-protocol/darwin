@@ -21,7 +21,29 @@ That page is intentionally static and public-safe. It prepares a wallet row for 
 
 ## Inputs
 
-Start from the tracked template:
+If you are collecting rows from the public intake helper, append them into the local intake CSV first:
+
+```bash
+python3 ops/intake_starter_cohort.py \
+  --network base-sepolia-recovery \
+  --row '{"account":"0x...","label":"friend-1","source":"join"}'
+```
+
+That writes to:
+
+```text
+ops/state/<network>-starter-cohort-intake.csv
+```
+
+You can also pipe or load a file of copied rows:
+
+```bash
+python3 ops/intake_starter_cohort.py \
+  --network arbitrum-sepolia \
+  --in ops/state/arbitrum-sepolia-starter-cohort-intake.csv
+```
+
+If you already have a clean CSV, start from the tracked template instead:
 
 ```bash
 cp ops/community-starter-cohort.example.csv ops/state/base-sepolia-recovery-starter-cohort.csv
@@ -35,6 +57,12 @@ If you collect rough rows from the public intake helper or a spreadsheet, normal
 python3 ops/normalize_starter_cohort.py \
   --intake-file ops/state/base-sepolia-recovery-starter-cohort-intake.csv \
   --out ops/state/base-sepolia-recovery-starter-cohort.csv
+```
+
+Or do the whole intake-to-manifest path in one command:
+
+```bash
+./ops/build_starter_cohort_from_intake.sh
 ```
 
 CSV format:
@@ -60,6 +88,7 @@ Amounts are in wei-style token units, so `100 DRW` is:
 Defaults:
 
 - network from the active Darwin env
+- intake CSV: `ops/state/<network>-starter-cohort-intake.csv`
 - input CSV: `ops/state/<network>-starter-cohort.csv`
 - output manifest: `ops/state/<network>-starter-cohort-merkle.json`
 - deadline: `30 days` from build time

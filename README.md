@@ -44,7 +44,11 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - The public site now exposes a public-safe outside-activity snapshot while keeping the operator allowlist and full classification local.
 - The public site now also exposes a lane-aware starter-cohort intake page that prepares a clean wallet row without collecting private operator data.
 - The vNext promotion path now supports both Safe batch export and direct EOA execution for mutable DRW-era handoff.
+- Operators can keep Builder Code and paymaster settings in `~/.config/darwin/site.env`; the static-site publish path now loads that file automatically.
+- A tracked template for that file is in `ops/site.env.example`.
+- Operators can append or update copied starter-cohort rows with `python3 ops/intake_starter_cohort.py`.
 - Operators can normalize rough cohort intake into a clean CSV with `python3 ops/normalize_starter_cohort.py`.
+- Operators can go from intake CSV to Merkle manifest with `./ops/build_starter_cohort_from_intake.sh`.
 - This repository intentionally keeps public-facing documentation lightweight and does not publish private operator workflow detail.
 
 ## Repository Layout

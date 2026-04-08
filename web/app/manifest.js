@@ -10,6 +10,24 @@ export default function manifest() {
     display: "standalone",
     background_color: "#f4efe5",
     theme_color: "#f4efe5",
+    categories: ["finance", "utilities"],
+    shortcuts: [
+      {
+        name: "Join Starter Cohort",
+        short_name: "Join",
+        url: "/join/",
+      },
+      {
+        name: "Tiny Swap",
+        short_name: "Trade",
+        url: "/trade/?preset=tiny-sell",
+      },
+      {
+        name: "Live Activity",
+        short_name: "Activity",
+        url: "/activity/",
+      },
+    ],
     icons: [
       {
         src: "/icon.svg",

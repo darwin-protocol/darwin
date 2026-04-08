@@ -65,6 +65,16 @@ load_arbitrum_sepolia_env() {
   load_env_defaults "$env_file"
 }
 
+load_site_publish_env() {
+  local root="$1"
+  local config_dir
+  local env_file
+
+  config_dir="$(darwin_config_dir)"
+  env_file="${DARWIN_SITE_ENV_FILE:-$(resolve_darwin_env_file "$config_dir/site.env" "$root/.env.site")}"
+  load_env_defaults "$env_file"
+}
+
 load_darwin_network_env() {
   local root="$1"
   case "${DARWIN_NETWORK:-}" in

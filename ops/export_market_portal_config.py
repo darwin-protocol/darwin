@@ -14,6 +14,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_COMMUNITY_EPOCH_FILE = REPO_ROOT / "ops" / "community_epoch.json"
 BUILDER_SUFFIX_ENCODER = REPO_ROOT / "web" / "scripts" / "encode_builder_code_suffix.mjs"
+NETWORK_ENV_PREFIXES = {
+    "base-sepolia-recovery": ("DARWIN_BASE", "DARWIN_BASE_SEPOLIA", "DARWIN_BASE_SEPOLIA_RECOVERY"),
+    "base-sepolia": ("DARWIN_BASE", "DARWIN_BASE_SEPOLIA"),
+    "base": ("DARWIN_BASE",),
+    "arbitrum-sepolia": ("DARWIN_ARBITRUM", "DARWIN_ARBITRUM_SEPOLIA"),
+    "arbitrum": ("DARWIN_ARBITRUM",),
+}
 
 
 NETWORK_DEFAULTS = {
@@ -101,6 +108,16 @@ def compute_builder_code_suffix(builder_code: str) -> str:
     return result.stdout.strip()
 
 
+def attribution_env(network_slug: str, suffix: str) -> str:
+    candidates = [f"{prefix}_{suffix}" for prefix in NETWORK_ENV_PREFIXES.get(network_slug, ())]
+    candidates.append(f"DARWIN_{suffix}")
+    for name in candidates:
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return ""
+
+
 def repo_relative_or_absolute(path: Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
@@ -150,13 +167,13 @@ def main() -> int:
     milestones = community_epoch.get("milestones") or {}
     external_wallets_target = int(milestones.get("external_wallets_target", 25) or 25)
     external_swaps_target = int(milestones.get("external_swaps_target", 40) or 40)
-    builder_code = os.environ.get("DARWIN_BUILDER_CODE", "").strip()
-    builder_code_suffix = os.environ.get("DARWIN_BUILDER_CODE_SUFFIX", "").strip()
+    builder_code = attribution_env(network_slug, "BUILDER_CODE")
+    builder_code_suffix = attribution_env(network_slug, "BUILDER_CODE_SUFFIX")
     if builder_code and not builder_code_suffix:
         builder_code_suffix = compute_builder_code_suffix(builder_code)
     if builder_code_suffix and not builder_code_suffix.startswith("0x"):
         raise SystemExit("DARWIN_BUILDER_CODE_SUFFIX must be a 0x-prefixed hex string")
-    paymaster_service_url = os.environ.get("DARWIN_PAYMASTER_SERVICE_URL", "").strip()
+    paymaster_service_url = attribution_env(network_slug, "PAYMASTER_SERVICE_URL")
     starter_cohort_amount = os.environ.get(
         "DARWIN_STARTER_COHORT_AMOUNT",
         str(faucet.get("claim_amount", "") or "100000000000000000000"),
