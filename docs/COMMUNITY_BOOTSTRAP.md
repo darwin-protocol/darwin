@@ -53,6 +53,13 @@ For real outside onboarding, use:
 1. a short public message with the tiny-swap link
 2. the activity page as proof of recent DARWIN usage
 3. a clear note that this is Darwin testnet alpha on the selected lane
+4. a real starter cohort of outside wallets, not project wallets
+
+The tracked cohort template and runbook are now in:
+
+- [`ops/community-starter-cohort.example.csv`](../ops/community-starter-cohort.example.csv)
+- [`ops/prepare_starter_cohort.sh`](../ops/prepare_starter_cohort.sh)
+- [`docs/STARTER_COHORT.md`](./STARTER_COHORT.md)
 
 The public portal now exposes:
 

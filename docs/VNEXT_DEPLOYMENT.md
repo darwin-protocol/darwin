@@ -44,6 +44,12 @@ The output manifest contains:
 - `total_amount`
 - per-claim proofs
 
+For a real outside-wallet cohort, use the tracked starter-cohort path instead of building from project wallets:
+
+- [`ops/community-starter-cohort.example.csv`](../ops/community-starter-cohort.example.csv)
+- [`ops/prepare_starter_cohort.sh`](../ops/prepare_starter_cohort.sh)
+- [`docs/STARTER_COHORT.md`](./STARTER_COHORT.md)
+
 ## Preflight
 
 Set the constitutional operators locally:
