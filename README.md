@@ -51,6 +51,8 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - The vNext promotion path now supports both Safe batch export and direct EOA execution for mutable DRW-era handoff.
 - Operators can keep Builder Code and paymaster settings in `~/.config/darwin/site.env`; the static-site publish path now loads that file automatically.
 - A tracked template for that file is in `ops/site.env.example`.
+- The static-site publish path now also loads the Base and Arbitrum lane env files and prefers lane-specific local RPC URLs when they match the deployment chain ID.
+- Public browser reads still need a reachable public read RPC because `usedarwin.xyz` is a static site, but publish-time exports can now stay local-first.
 - Operators can append or update copied starter-cohort rows with `python3 ops/intake_starter_cohort.py`.
 - Operators can normalize rough cohort intake into a clean CSV with `python3 ops/normalize_starter_cohort.py`.
 - Operators can go from intake CSV to Merkle manifest with `./ops/build_starter_cohort_from_intake.sh`.

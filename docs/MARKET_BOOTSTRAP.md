@@ -208,6 +208,8 @@ That file should remain local-only.
 
 The public-safe activity summary now also exports epoch traction progress and an outside-wallet leaderboard so the public portal can show real demand without exposing the local operator allowlist.
 
+For local operators, the activity exporter now prefers lane-specific local RPC URLs when they are configured and match the deployment chain ID. That keeps the publish path local-first without breaking the public browser surface. The public site itself still needs a reachable read RPC for browser-side search and wallet-driven trading because `usedarwin.xyz` is served as a static site.
+
 ## Transparent Distribution
 
 The right way to get outside wallets into the system is distribution, not project-controlled volume.

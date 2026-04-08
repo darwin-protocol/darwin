@@ -24,7 +24,10 @@ ARBITRUM_COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share-arbitrum-se
 BASE_APP_READINESS_PATH="$REPO_ROOT/web/public/base-app-readiness.json"
 TMP_DIR="$(mktemp -d)"
 ARBITRUM_DEPLOYMENT_FILE="$REPO_ROOT/ops/deployments/arbitrum-sepolia.json"
+ACTIVITY_LOOKBACK_BLOCKS="${DARWIN_ACTIVITY_LOOKBACK_BLOCKS:-50000}"
 source "$REPO_ROOT/ops/load_env_defaults.sh"
+load_base_sepolia_env "$REPO_ROOT"
+load_arbitrum_sepolia_env "$REPO_ROOT"
 load_site_publish_env "$REPO_ROOT"
 
 if [[ ! -x "$PYTHON_BIN" ]]; then
@@ -93,6 +96,7 @@ pushd "$REPO_ROOT" >/dev/null
 if "$PYTHON_BIN" ops/build_project_wallet_allowlist.py >/dev/null && \
   "$PYTHON_BIN" ops/report_external_activity.py \
     --deployment-file "$PORTAL_DEPLOYMENT_FILE" \
+    --lookback-blocks "$ACTIVITY_LOOKBACK_BLOCKS" \
     --json-out ops/state/activity/external-activity.json \
     --markdown-out ops/state/activity/external-activity.md \
     --public-json-out web/public/activity-summary.json >/dev/null; then
@@ -115,6 +119,7 @@ if [[ -f "$ARBITRUM_DEPLOYMENT_FILE" ]]; then
     market_lane_args+=(--config "/market-config-arbitrum-sepolia.json=web/public/market-config-arbitrum-sepolia.json")
     if "$PYTHON_BIN" ops/report_external_activity.py \
       --deployment-file "$ARBITRUM_DEPLOYMENT_FILE" \
+      --lookback-blocks "$ACTIVITY_LOOKBACK_BLOCKS" \
       --json-out ops/state/activity/external-activity-arbitrum-sepolia.json \
       --markdown-out ops/state/activity/external-activity-arbitrum-sepolia.md \
       --public-json-out web/public/activity-summary-arbitrum-sepolia.json >/dev/null 2>&1; then

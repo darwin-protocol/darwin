@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from Crypto.Hash import keccak
@@ -25,6 +26,43 @@ NETWORK_DEFAULTS = {
     421614: "https://sepolia-rollup.arbitrum.io/rpc",
     42161: "https://arb1.arbitrum.io/rpc",
 }
+
+NETWORK_RPC_ENV_VARS = {
+    84532: (
+        "DARWIN_BASE_SEPOLIA_LOCAL_RPC_URL",
+        "BASE_SEPOLIA_LOCAL_RPC_URL",
+        "DARWIN_BASE_SEPOLIA_READ_RPC_URL",
+        "DARWIN_BASE_SEPOLIA_RPC_URL",
+        "BASE_SEPOLIA_RPC_URL",
+    ),
+    8453: (
+        "DARWIN_BASE_LOCAL_RPC_URL",
+        "BASE_LOCAL_RPC_URL",
+        "DARWIN_BASE_READ_RPC_URL",
+        "DARWIN_BASE_RPC_URL",
+        "BASE_RPC_URL",
+    ),
+    421614: (
+        "DARWIN_ARBITRUM_SEPOLIA_LOCAL_RPC_URL",
+        "ARBITRUM_SEPOLIA_LOCAL_RPC_URL",
+        "DARWIN_ARBITRUM_SEPOLIA_READ_RPC_URL",
+        "DARWIN_ARBITRUM_SEPOLIA_RPC_URL",
+        "ARBITRUM_SEPOLIA_RPC_URL",
+    ),
+    42161: (
+        "DARWIN_ARBITRUM_LOCAL_RPC_URL",
+        "ARBITRUM_LOCAL_RPC_URL",
+        "DARWIN_ARBITRUM_READ_RPC_URL",
+        "DARWIN_ARBITRUM_RPC_URL",
+        "ARBITRUM_RPC_URL",
+    ),
+}
+
+GENERIC_RPC_ENV_VARS = (
+    "DARWIN_LOCAL_RPC_URL",
+    "DARWIN_READ_RPC_URL",
+    "DARWIN_RPC_URL",
+)
 
 
 def utc_now() -> str:
@@ -92,19 +130,114 @@ def rpc_json(url: str, method: str, params: list) -> dict:
     return json.loads(urlopen(request, timeout=20).read().decode())
 
 
-def rpc_block_number(url: str) -> int:
-    return int(rpc_json(url, "eth_blockNumber", [])["result"], 16)
+def rpc_chain_id(url: str) -> int:
+    return int(rpc_json(url, "eth_chainId", [])["result"], 16)
 
 
-def rpc_block_timestamp(url: str, block_number: int, cache: dict[int, int]) -> int:
+def unique_values(values: Iterable[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        normalized = str(value or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        ordered.append(normalized)
+    return ordered
+
+
+def build_rpc_candidates(chain_id: int, explicit_url: str = "") -> list[tuple[str, str]]:
+    if explicit_url:
+        return [("explicit", explicit_url)]
+
+    candidates: list[tuple[str, str]] = []
+    for env_name in NETWORK_RPC_ENV_VARS.get(chain_id, ()):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            candidates.append((env_name, value))
+    for env_name in GENERIC_RPC_ENV_VARS:
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            candidates.append((env_name, value))
+    default_value = NETWORK_DEFAULTS.get(chain_id, "")
+    if default_value:
+        candidates.append((f"default:{chain_id}", default_value))
+    return [(source, url) for source, url in candidates if url]
+
+
+def resolve_rpc_endpoints(chain_id: int, explicit_url: str = "") -> list[dict]:
+    candidates = build_rpc_candidates(chain_id, explicit_url)
+    validated: list[dict] = []
+    failures: list[str] = []
+    seen_urls: set[str] = set()
+
+    for source, url in candidates:
+        normalized = url.strip()
+        if not normalized or normalized in seen_urls:
+            continue
+        seen_urls.add(normalized)
+        try:
+            observed = rpc_chain_id(normalized)
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"{source}={normalized} ({exc})")
+            continue
+        if observed != chain_id:
+            failures.append(f"{source}={normalized} (observed_chain={observed} expected={chain_id})")
+            continue
+        validated.append(
+            {
+                "source": source,
+                "url": normalized,
+                "chain_id": observed,
+            }
+        )
+
+    if validated:
+        return validated
+
+    if explicit_url:
+        raise RuntimeError(
+            "explicit rpc_url did not resolve to the deployment chain: "
+            + ("; ".join(failures) if failures else "no candidates were available")
+        )
+
+    raise RuntimeError(
+        f"no matching RPC endpoints found for chain {chain_id}: "
+        + ("; ".join(failures) if failures else "no candidates were configured")
+    )
+
+
+def rpc_json_any(urls: list[str], method: str, params: list) -> dict:
+    failures: list[str] = []
+    for url in unique_values(urls):
+        try:
+            payload = rpc_json(url, method, params)
+            if payload.get("error"):
+                failures.append(f"{url} ({payload['error']})")
+                continue
+            return payload
+        except (HTTPError, URLError, TimeoutError) as exc:
+            failures.append(f"{url} ({exc})")
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"{url} ({exc})")
+    raise RuntimeError(
+        f"all RPC endpoints failed for {method}: " + ("; ".join(failures) if failures else "no urls configured")
+    )
+
+
+def rpc_block_number(urls: list[str]) -> int:
+    return int(rpc_json_any(urls, "eth_blockNumber", [])["result"], 16)
+
+
+def rpc_block_timestamp(urls: list[str], block_number: int, cache: dict[int, int]) -> int:
     if block_number not in cache:
-        result = rpc_json(url, "eth_getBlockByNumber", [hex(block_number), False]).get("result") or {}
+        result = rpc_json_any(urls, "eth_getBlockByNumber", [hex(block_number), False]).get("result") or {}
         cache[block_number] = int(result.get("timestamp", "0x0"), 16)
     return cache[block_number]
 
 
 def rpc_get_logs(
-    url: str,
+    urls: list[str],
     *,
     address: str,
     from_block: int,
@@ -125,7 +258,7 @@ def rpc_get_logs(
             "toBlock": hex(chunk_end),
             "topics": [topic0],
         }
-        logs.extend(rpc_json(url, "eth_getLogs", [payload]).get("result", []))
+        logs.extend(rpc_json_any(urls, "eth_getLogs", [payload]).get("result", []))
         chunk_start = chunk_end + 1
     return logs
 
@@ -386,8 +519,10 @@ def main() -> int:
     vnext = load_json(vnext_path) if vnext_path.exists() else {}
     epoch = load_optional_json(Path(args.epoch_file).expanduser().resolve())
 
-    rpc_url = args.rpc_url or os.environ.get("DARWIN_RPC_URL") or os.environ.get("BASE_SEPOLIA_RPC_URL") or NETWORK_DEFAULTS[int(deployment["chain_id"])]
-    latest_block = rpc_block_number(rpc_url)
+    rpc_endpoints = resolve_rpc_endpoints(int(deployment["chain_id"]), explicit_url=args.rpc_url)
+    rpc_url = rpc_endpoints[0]["url"]
+    rpc_urls = [entry["url"] for entry in rpc_endpoints]
+    latest_block = rpc_block_number(rpc_urls)
     from_block = max(0, latest_block - args.lookback_blocks)
 
     pool_address = deployment["market"]["contracts"]["reference_pool"]
@@ -400,7 +535,7 @@ def main() -> int:
         *(
             parse_swap(log, token_address, quote_address)
             for log in rpc_get_logs(
-                rpc_url,
+                rpc_urls,
                 address=pool_address,
                 from_block=from_block,
                 to_block=latest_block,
@@ -414,7 +549,7 @@ def main() -> int:
         events.extend(
             parse_faucet_claim(log)
             for log in rpc_get_logs(
-                rpc_url,
+                rpc_urls,
                 address=faucet_address,
                 from_block=from_block,
                 to_block=latest_block,
@@ -427,7 +562,7 @@ def main() -> int:
         events.extend(
             parse_distributor_claim(log)
             for log in rpc_get_logs(
-                rpc_url,
+                rpc_urls,
                 address=distributor_address,
                 from_block=from_block,
                 to_block=latest_block,
@@ -439,7 +574,7 @@ def main() -> int:
     events.sort(key=lambda item: (item["block_number"], item["tx_hash"]), reverse=True)
     timestamp_cache: dict[int, int] = {}
     for event in events:
-        event["timestamp"] = rpc_block_timestamp(rpc_url, event["block_number"], timestamp_cache)
+        event["timestamp"] = rpc_block_timestamp(rpc_urls, event["block_number"], timestamp_cache)
         event["seen_at"] = format_iso_timestamp(event["timestamp"])
 
     project_wallets = collect_addresses(deployment) | collect_addresses(vnext) | parse_project_wallets(Path(args.project_wallets_file))
@@ -467,6 +602,8 @@ def main() -> int:
         "generated_at": utc_now(),
         "network": deployment["network"],
         "rpc_url": rpc_url,
+        "rpc_source": rpc_endpoints[0]["source"],
+        "rpc_candidates": rpc_endpoints,
         "lookback_blocks": args.lookback_blocks,
         "epoch": {
             "id": epoch.get("id", ""),

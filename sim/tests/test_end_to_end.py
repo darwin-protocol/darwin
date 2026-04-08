@@ -5579,6 +5579,8 @@ exit 0
 
                     if method == "eth_blockNumber":
                         result = hex(100)
+                    elif method == "eth_chainId":
+                        result = hex(84532)
                     elif method == "eth_getLogs":
                         query = params[0]
                         address = str(query.get("address", "")).lower()
@@ -5660,6 +5662,130 @@ exit 0
             self.assertEqual(report["leaderboard"]["entries"][0]["points"], 9)
             self.assertTrue(report["leaderboard"]["entries"][0]["return_swap_qualified"])
             print("  Ops: external activity export emits public progress gates and leaderboard rows")
+
+    def test_66_report_external_activity_prefers_matching_lane_rpc_over_mismatched_generic(self):
+        """Ops: activity export skips mismatched generic RPCs and prefers the matching lane RPC."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "arbitrum-sepolia.json"
+            full_out = tmp / "external-activity.json"
+
+            deployment.write_text(json.dumps({
+                "network": "arbitrum-sepolia",
+                "chain_id": 421614,
+                "contracts": {
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "quote_token": "0x0000000000000000000000000000000000000022",
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+            }))
+
+            class WrongChainHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    payload = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))).decode())
+                    method = payload.get("method")
+                    if method == "eth_chainId":
+                        result = hex(42161)
+                    elif method == "eth_blockNumber":
+                        result = hex(100)
+                    elif method == "eth_getLogs":
+                        result = []
+                    elif method == "eth_getBlockByNumber":
+                        result = {"number": payload["params"][0], "timestamp": hex(0)}
+                    else:
+                        self.send_response(500)
+                        self.end_headers()
+                        return
+                    body = json.dumps({"jsonrpc": "2.0", "id": payload.get("id", 1), "result": result}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            class MatchingChainHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    payload = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))).decode())
+                    method = payload.get("method")
+                    if method == "eth_chainId":
+                        result = hex(421614)
+                    elif method == "eth_blockNumber":
+                        result = hex(100)
+                    elif method == "eth_getLogs":
+                        result = []
+                    elif method == "eth_getBlockByNumber":
+                        result = {"number": payload["params"][0], "timestamp": hex(0)}
+                    else:
+                        self.send_response(500)
+                        self.end_headers()
+                        return
+                    body = json.dumps({"jsonrpc": "2.0", "id": payload.get("id", 1), "result": result}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            wrong_server = HTTPServer(("127.0.0.1", 0), WrongChainHandler)
+            wrong_thread = Thread(target=wrong_server.serve_forever, daemon=True)
+            wrong_thread.start()
+
+            matching_server = HTTPServer(("127.0.0.1", 0), MatchingChainHandler)
+            matching_thread = Thread(target=matching_server.serve_forever, daemon=True)
+            matching_thread.start()
+
+            try:
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(ROOT / "ops" / "report_external_activity.py"),
+                        "--deployment-file",
+                        str(deployment),
+                        "--lookback-blocks",
+                        "50",
+                        "--json-out",
+                        str(full_out),
+                    ],
+                    cwd=str(ROOT),
+                    env={
+                        **os.environ,
+                        "DARWIN_RPC_URL": f"http://127.0.0.1:{wrong_server.server_port}",
+                        "ARBITRUM_SEPOLIA_RPC_URL": f"http://127.0.0.1:{matching_server.server_port}",
+                    },
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                wrong_server.shutdown()
+                wrong_server.server_close()
+                wrong_thread.join(timeout=5)
+                matching_server.shutdown()
+                matching_server.server_close()
+                matching_thread.join(timeout=5)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            report = json.loads(full_out.read_text())
+            self.assertEqual(report["rpc_source"], "ARBITRUM_SEPOLIA_RPC_URL")
+            self.assertEqual(report["rpc_url"], f"http://127.0.0.1:{matching_server.server_port}")
+            self.assertEqual(report["summary"]["total_events"], 0)
+            print("  Ops: activity export prefers the matching lane RPC over a mismatched generic DARWIN RPC")
 
     def test_65_export_community_share_bundle_includes_reward_and_leaderboard_context(self):
         """Ops: community share bundle carries reward copy and top-leader context when available."""
