@@ -125,6 +125,11 @@ function bindActivityStatics() {
   activityEls.activityOpenMarketLink.href = window.DarwinLane && activityState.laneSelection
     ? window.DarwinLane.laneRelativeHref("/trade/", activityState.laneSelection)
     : "/trade/";
+  if (activityEls.activityOpenSearchLink) {
+    activityEls.activityOpenSearchLink.href = window.DarwinLane && activityState.laneSelection
+      ? window.DarwinLane.laneRelativeHref("/search/", activityState.laneSelection)
+      : "/search/";
+  }
   if (activityEls.explorerLookupStatus) {
     activityEls.explorerLookupStatus.textContent =
       `Paste any Darwin-related address or transaction hash to open the ${activityState.config.network.name} explorer.`;
@@ -577,6 +582,7 @@ async function bootActivity() {
     activityOpenTinySwapLink: activity$("activityOpenTinySwapLink"),
     activityOpenEpochLink: activity$("activityOpenEpochLink"),
     activityOpenMarketLink: activity$("activityOpenMarketLink"),
+    activityOpenSearchLink: activity$("activityOpenSearchLink"),
     copyActivityLinkButton: activity$("copyActivityLinkButton"),
     shareActivityButton: activity$("shareActivityButton"),
     copyTinySwapLinkButton: activity$("copyTinySwapLinkButton"),
@@ -601,6 +607,7 @@ async function bootActivity() {
     activityStructureGrid: activity$("activityStructureGrid"),
     explorerLookupInput: activity$("explorerLookupInput"),
     openExplorerLookupButton: activity$("openExplorerLookupButton"),
+    openSearchLookupButton: activity$("openSearchLookupButton"),
     explorerLookupStatus: activity$("explorerLookupStatus"),
   });
 
@@ -659,6 +666,17 @@ async function bootActivity() {
     const url = explorerLink(value);
     window.open(url, "_blank", "noopener,noreferrer");
     activityEls.explorerLookupStatus.textContent = `Opened ${isAddress ? "address" : "transaction"} in explorer.`;
+  });
+  activityEls.openSearchLookupButton?.addEventListener("click", () => {
+    const value = activityEls.explorerLookupInput.value.trim();
+    if (!value) {
+      activityEls.explorerLookupStatus.textContent = "Enter a Darwin alias, 0x address, or 0x transaction hash first.";
+      return;
+    }
+    const href = window.DarwinLane && activityState.laneSelection
+      ? window.DarwinLane.laneRelativeHref(`/search/?q=${encodeURIComponent(value)}`, activityState.laneSelection)
+      : `/search/?q=${encodeURIComponent(value)}`;
+    window.location.href = href;
   });
 }
 

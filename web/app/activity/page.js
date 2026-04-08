@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const activityScriptVersion = "20260407-activity6";
+const activityScriptVersion = "20260408-activity7";
 
 export default function ActivityPage() {
   return (
@@ -89,6 +89,9 @@ export default function ActivityPage() {
               </Link>
               <Link id="activityOpenMarketLink" className="button button-secondary" href="/trade/">
                 Open market
+              </Link>
+              <Link id="activityOpenSearchLink" className="button button-secondary" href="/search/">
+                Search Darwin
               </Link>
               <button id="copyTinySwapButton" className="button button-secondary">
                 Copy tiny-swap link
@@ -326,6 +329,9 @@ export default function ActivityPage() {
             <div className="tiny-actions">
               <button id="openExplorerLookupButton" className="button button-secondary tiny-button">
                 Open in explorer
+              </button>
+              <button id="openSearchLookupButton" className="button button-secondary tiny-button">
+                Open Darwin search
               </button>
             </div>
             <p id="explorerLookupStatus" className="tiny-hint">

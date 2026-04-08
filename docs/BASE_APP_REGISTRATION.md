@@ -71,7 +71,8 @@ Completed:
 Remaining boundary:
 
 - the legacy `Enable Mini App Analytics` modal on `base.dev` no longer fails on missing site artifacts; it now reaches a Base-side conflict on `POST /v1/builders/.../resources` and the preview tool reports `Account associated: Failed to fetch signer` while `Signature: Valid`.
-- the standard web-app registration path and Base Builder Code path are already live.
+- the standard web-app registration path and Base Builder Code path are already live, but the Base Build dashboard still shows `No Activity Yet` after the live browser claim and tiny swap.
+- the dashboard copy now makes the most likely reason explicit: those charts populate "after the first user transacts with your app in the Base App", while the proven live path here was standard web plus MetaMask, not an in-Base-App transaction.
 
 ## Live Proof
 
@@ -86,4 +87,4 @@ Both transactions carry the Builder Code suffix in calldata:
 62635f626a6e647a7271360b0080218021802180218021802180218021
 ```
 
-That proves the live standard-web Darwin portal is appending attribution on-chain even though the Base dashboard charts may lag before indexing the activity.
+That proves the live standard-web Darwin portal is appending attribution on-chain even though the Base dashboard charts still remain blank for this MetaMask-driven web session.

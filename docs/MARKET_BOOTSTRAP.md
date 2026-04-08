@@ -178,6 +178,7 @@ That path works better than `tiny buy` because faucet claimants already receive 
 Public community surface:
 
 - `https://usedarwin.xyz/activity/`
+- `https://usedarwin.xyz/search/`
 
 That page shows recent DARWIN-related Base Sepolia events:
 

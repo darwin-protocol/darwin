@@ -85,16 +85,21 @@ function bindCommunityPanel() {
   const marketHref = window.DarwinLane && homeState.laneSelection
     ? window.DarwinLane.laneRelativeHref("/trade/", homeState.laneSelection)
     : "/trade/";
+  const searchHref = window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref("/search/", homeState.laneSelection)
+    : "/search/";
 
   homeEls.homeOpenMarketLink.href = marketHref;
   homeEls.homeHeroTinySwapLink.href = tinySwapHref;
   homeEls.homeHeroEpochLink.href = epochHref;
   homeEls.homeHeroJoinLink.href = joinHref;
   homeEls.homeHeroActivityLink.href = activityHref;
+  homeEls.homeHeroSearchLink.href = searchHref;
   homeEls.homeEpochLink.href = epochHref;
   homeEls.homeActivityLink.href = activityHref;
   homeEls.homeTinySwapLink.href = tinySwapHref;
   homeEls.homeJoinLink.href = joinHref;
+  homeEls.homeSearchLink.href = searchHref;
   homeEls.homeMarketPageLink.href = marketHref;
   homeEls.homeActivityPageLink.href = activityHref;
 
@@ -202,9 +207,11 @@ async function bootHome() {
     homeHeroEpochLink: home$("homeHeroEpochLink"),
     homeHeroJoinLink: home$("homeHeroJoinLink"),
     homeHeroActivityLink: home$("homeHeroActivityLink"),
+    homeHeroSearchLink: home$("homeHeroSearchLink"),
     homeMarketPageLink: home$("homeMarketPageLink"),
     homeActivityPageLink: home$("homeActivityPageLink"),
     homeJoinLink: home$("homeJoinLink"),
+    homeSearchLink: home$("homeSearchLink"),
     homeLaneSwitcher: home$("homeLaneSwitcher"),
     copyInviteButton: home$("copyInviteButton"),
     copyTinySwapHomeButton: home$("copyTinySwapHomeButton"),

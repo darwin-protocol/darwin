@@ -38,6 +38,7 @@ Until those gates are met, adding duplicate pools is more likely to fragment thi
 - Join starter cohort: `https://usedarwin.xyz/join/`
 - Tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell`
 - Activity portal: `https://usedarwin.xyz/activity/`
+- Darwin search: `https://usedarwin.xyz/search/`
 - Share bundle: `https://usedarwin.xyz/community-share.json`
 
 Additional lane:
@@ -46,6 +47,7 @@ Additional lane:
 - Arbitrum starter cohort: `https://usedarwin.xyz/join/?lane=arbitrum-sepolia`
 - Arbitrum tiny swap: `https://usedarwin.xyz/trade/?preset=tiny-sell&lane=arbitrum-sepolia`
 - Arbitrum activity: `https://usedarwin.xyz/activity/?lane=arbitrum-sepolia`
+- Arbitrum search: `https://usedarwin.xyz/search/?lane=arbitrum-sepolia`
 - Arbitrum share bundle: `https://usedarwin.xyz/community-share-arbitrum-sepolia.json`
 
 ## Best Current Distribution Path

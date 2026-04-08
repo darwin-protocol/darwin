@@ -554,6 +554,11 @@ function bindStaticConfig() {
       )
       : (state.config.community?.starter_cohort_path || "/join/");
   }
+  if (els.tradeSearchLink) {
+    els.tradeSearchLink.href = window.DarwinLane && state.laneSelection
+      ? window.DarwinLane.laneRelativeHref("/search/", state.laneSelection)
+      : "/search/";
+  }
   els.liveStatusLink.href = state.config.links.live_status;
   els.marketDocLink.href = state.config.links.market_bootstrap;
   els.repoLink.href = state.config.links.repo;
@@ -1125,6 +1130,7 @@ async function boot() {
     tradeViewActivityLink: $("tradeViewActivityLink"),
     tradeViewEpochLink: $("tradeViewEpochLink"),
     tradeJoinCohortLink: $("tradeJoinCohortLink"),
+    tradeSearchLink: $("tradeSearchLink"),
     shareEpochButton: $("shareEpochButton"),
     tradeCommunityHint: $("tradeCommunityHint"),
     shareActionButton: $("shareActionButton"),

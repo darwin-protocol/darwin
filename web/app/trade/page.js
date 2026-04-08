@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260407-portal10";
+const tradeScriptVersion = "20260408-portal11";
 
 export default function TradePage() {
   return (
@@ -102,6 +102,9 @@ export default function TradePage() {
               </Link>
               <Link id="tradeJoinCohortLink" className="button button-secondary" href="/join/">
                 Join cohort
+              </Link>
+              <Link id="tradeSearchLink" className="button button-secondary" href="/search/">
+                Search Darwin
               </Link>
             </div>
           </div>

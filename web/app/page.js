@@ -44,7 +44,7 @@ export const metadata = {
   },
 };
 
-const homeScriptVersion = "20260407-home4";
+const homeScriptVersion = "20260408-home5";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -114,6 +114,9 @@ export default function HomePage() {
               </Link>
               <Link id="homeHeroActivityLink" className="button button-secondary" href="/activity/">
                 Live activity
+              </Link>
+              <Link id="homeHeroSearchLink" className="button button-secondary" href="/search/">
+                Search Darwin
               </Link>
               <a
                 className="button button-secondary"
@@ -197,6 +200,9 @@ export default function HomePage() {
               </a>
               <a id="homeJoinLink" className="button button-secondary" href="/join/">
                 Join cohort
+              </a>
+              <a id="homeSearchLink" className="button button-secondary" href="/search/">
+                Search Darwin
               </a>
               <button id="copyInviteButton" className="button button-secondary">
                 Copy invite text

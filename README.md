@@ -9,6 +9,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - Join starter cohort: `https://usedarwin.xyz/join/`
 - Market: `https://usedarwin.xyz/trade/`
 - Activity: `https://usedarwin.xyz/activity/`
+- Search: `https://usedarwin.xyz/search/`
 - Community share bundle: `https://usedarwin.xyz/community-share.json`
 - Public status: [LIVE_STATUS.md](LIVE_STATUS.md)
 - Market runbook: [docs/MARKET_BOOTSTRAP.md](docs/MARKET_BOOTSTRAP.md)
