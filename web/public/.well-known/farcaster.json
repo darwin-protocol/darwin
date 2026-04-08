@@ -1,0 +1,63 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Use Darwin",
+    "homeUrl": "https://usedarwin.xyz/",
+    "iconUrl": "https://usedarwin.xyz/base-app/icon.png",
+    "imageUrl": "https://usedarwin.xyz/og-card.png",
+    "buttonTitle": "Open Darwin",
+    "splashImageUrl": "https://usedarwin.xyz/base-app/icon.png",
+    "splashBackgroundColor": "#f4efe5",
+    "subtitle": "Claim DRW. Make a tiny swap.",
+    "description": "Claim testnet DRW, make a tiny first swap, and follow live Darwin activity across the public Base and Arbitrum lanes.",
+    "primaryCategory": "finance",
+    "tags": [
+      "defi",
+      "testnet",
+      "trading"
+    ],
+    "heroImageUrl": "https://usedarwin.xyz/og-card.png",
+    "tagline": "Claim DRW. Make a tiny swap.",
+    "ogTitle": "Use Darwin",
+    "ogDescription": "Claim testnet DRW and start with a tiny first swap on the live DARWIN reference pools.",
+    "ogImageUrl": "https://usedarwin.xyz/og-card.png",
+    "screenshotUrls": [
+      "https://usedarwin.xyz/base-app/screenshot-home.png",
+      "https://usedarwin.xyz/base-app/screenshot-trade.png",
+      "https://usedarwin.xyz/base-app/screenshot-activity.png"
+    ]
+  },
+  "frame": {
+    "version": "1",
+    "name": "Use Darwin",
+    "homeUrl": "https://usedarwin.xyz/",
+    "iconUrl": "https://usedarwin.xyz/base-app/icon.png",
+    "imageUrl": "https://usedarwin.xyz/og-card.png",
+    "buttonTitle": "Open Darwin",
+    "splashImageUrl": "https://usedarwin.xyz/base-app/icon.png",
+    "splashBackgroundColor": "#f4efe5",
+    "subtitle": "Claim DRW. Make a tiny swap.",
+    "description": "Claim testnet DRW, make a tiny first swap, and follow live Darwin activity across the public Base and Arbitrum lanes.",
+    "primaryCategory": "finance",
+    "tags": [
+      "defi",
+      "testnet",
+      "trading"
+    ],
+    "heroImageUrl": "https://usedarwin.xyz/og-card.png",
+    "tagline": "Claim DRW. Make a tiny swap.",
+    "ogTitle": "Use Darwin",
+    "ogDescription": "Claim testnet DRW and start with a tiny first swap on the live DARWIN reference pools.",
+    "ogImageUrl": "https://usedarwin.xyz/og-card.png",
+    "screenshotUrls": [
+      "https://usedarwin.xyz/base-app/screenshot-home.png",
+      "https://usedarwin.xyz/base-app/screenshot-trade.png",
+      "https://usedarwin.xyz/base-app/screenshot-activity.png"
+    ]
+  }
+}

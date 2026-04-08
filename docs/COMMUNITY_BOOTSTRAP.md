@@ -159,6 +159,14 @@ Tracked template:
 
 If those are present, the exported market config stops shipping in unattributed `direct` mode and starts emitting lane-specific Builder Code metadata.
 
+The registration summary helper is:
+
+- [`ops/export_base_app_registration.py`](../ops/export_base_app_registration.py)
+
+The operator runbook is:
+
+- [`docs/BASE_APP_REGISTRATION.md`](./BASE_APP_REGISTRATION.md)
+
 ## Useful Official References
 
 - Farcaster Mini Apps getting started:

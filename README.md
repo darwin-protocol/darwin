@@ -21,6 +21,7 @@ DARWIN is a peer-to-peer market experiment built around live testnet infrastruct
 - DRW issuance: [docs/DRW_ISSUANCE.md](docs/DRW_ISSUANCE.md)
 - vNext deployment: [docs/VNEXT_DEPLOYMENT.md](docs/VNEXT_DEPLOYMENT.md)
 - vNext promotion: [docs/VNEXT_PROMOTION.md](docs/VNEXT_PROMOTION.md)
+- Base App registration: [docs/BASE_APP_REGISTRATION.md](docs/BASE_APP_REGISTRATION.md)
 
 ## What Is Live
 

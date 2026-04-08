@@ -16,6 +16,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://usedarwin.xyz";
 const siteDescription =
   "Claim testnet DRW and start with a tiny first swap on the live DARWIN reference pools.";
 const socialImage = "/og-card.png";
+const baseAppId = process.env.DARWIN_BASE_APP_ID || "";
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
@@ -45,6 +46,11 @@ export const metadata = {
     shortcut: "/icon.svg",
     apple: "/icon.svg",
   },
+  other: baseAppId
+    ? {
+        "base:app_id": baseAppId,
+      }
+    : undefined,
 };
 
 export const viewport = {
