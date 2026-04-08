@@ -3997,6 +3997,9 @@ exit 1
             self.assertEqual(config["pool"]["address"], "0x0000000000000000000000000000000000000042")
             self.assertEqual(config["token"]["address"], "0x0000000000000000000000000000000000000011")
             self.assertEqual(config["quote_token"]["address"], "0x4200000000000000000000000000000000000006")
+            self.assertEqual(config["market_structure"]["default_entry"], "canonical")
+            self.assertEqual(config["market_structure"]["pools"][0]["status"], "live")
+            self.assertEqual(config["market_structure"]["pools"][1]["status"], "locked")
             self.assertNotIn("roles", config)
             print("  Ops: market portal config exports the public market surface from the live deployment artifact")
 
@@ -4126,6 +4129,7 @@ exit 1
             self.assertTrue(config["faucet"]["enabled"])
             self.assertEqual(config["faucet"]["address"], "0x0000000000000000000000000000000000000045")
             self.assertEqual(config["faucet"]["claim_amount"], "100000000000000000000")
+            self.assertEqual(config["market_structure"]["progress_targets"]["external_wallets_target"], 25)
             self.assertNotIn("operator_quickstart", config["links"])
             print("  Ops: market portal config exports faucet metadata without private operator links")
 
@@ -4893,6 +4897,7 @@ exit 0
             self.assertEqual(config["activity"]["summary_path"], "/activity-summary-arbitrum-sepolia.json")
             self.assertEqual(config["community"]["share_bundle_path"], "/community-share-arbitrum-sepolia.json")
             self.assertTrue(config["quote_token"]["wrap_enabled"])
+            self.assertEqual(config["market_structure"]["pools"][0]["pool_address"], "0x0000000000000000000000000000000000000042")
             print("  Ops: market portal config export supports Arbitrum-family chain defaults")
 
     def test_56_prepare_arbitrum_sepolia_env_script(self):

@@ -130,6 +130,9 @@ def main() -> int:
         else f"/community-share-{network_slug}.json"
     )
     wrap_enabled = deployment.get("bond_asset_mode", "external") != "mock"
+    milestones = community_epoch.get("milestones") or {}
+    external_wallets_target = int(milestones.get("external_wallets_target", 25) or 25)
+    external_swaps_target = int(milestones.get("external_swaps_target", 40) or 40)
 
     config = {
         "generated_at": utc_now(),
@@ -198,6 +201,74 @@ def main() -> int:
             "epoch_path": "/epoch/",
             "share_bundle_path": community_share_path,
             "share_text": "Claim DRW, make one tiny swap, and share the Darwin activity page.",
+        },
+        "market_structure": {
+            "strategy": "single_canonical_until_traction",
+            "summary": (
+                "Keep one canonical pool per Darwin lane until outside usage is real. "
+                "Only open experimental or incentivized routes after the canonical pool "
+                "proves outside demand."
+            ),
+            "default_entry": "canonical",
+            "progress_targets": {
+                "external_wallets_target": external_wallets_target,
+                "external_swaps_target": external_swaps_target,
+            },
+            "pools": [
+                {
+                    "id": "canonical",
+                    "label": "Canonical",
+                    "status": "live",
+                    "enabled": True,
+                    "purpose": (
+                        "Default DRW price-discovery and onboarding surface for claimants, "
+                        "tiny swaps, and public proof."
+                    ),
+                    "entry_label": "Open canonical pool",
+                    "entry_path": "/trade/?preset=tiny-sell",
+                    "pool_address": market["contracts"]["reference_pool"],
+                    "reason": (
+                        "Live and seeded on the selected lane. This is the only pool "
+                        "the public portal should route to by default."
+                    ),
+                },
+                {
+                    "id": "experimental",
+                    "label": "Experimental",
+                    "status": "locked",
+                    "enabled": False,
+                    "purpose": (
+                        "Future alternate quote assets, descendant Darwin experiments, "
+                        "or other opt-in market tests."
+                    ),
+                    "unlock_rule": {
+                        "external_wallets_target": external_wallets_target,
+                        "external_swaps_target": external_swaps_target,
+                    },
+                    "reason": (
+                        "Locked to avoid fragmenting thin alpha liquidity before the "
+                        "canonical route has genuine outside usage."
+                    ),
+                },
+                {
+                    "id": "incentivized",
+                    "label": "Incentivized",
+                    "status": "locked",
+                    "enabled": False,
+                    "purpose": (
+                        "Future liquidity incentives or epoch emissions for traders and LPs "
+                        "after real outside demand appears."
+                    ),
+                    "unlock_rule": {
+                        "external_wallets_target": external_wallets_target,
+                        "external_swaps_target": external_swaps_target,
+                    },
+                    "reason": (
+                        "Locked until the canonical route has real outside wallets and "
+                        "real outside swaps."
+                    ),
+                },
+            ],
         },
         "notes": {
             "alpha_stage": True,

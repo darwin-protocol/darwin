@@ -34,6 +34,7 @@ const state = {
   config: null,
   runtimeStatus: null,
   activitySummary: null,
+  marketStructure: null,
   rpcProvider: null,
   browserProvider: null,
   injectedProvider: null,
@@ -361,6 +362,71 @@ async function loadActivitySummary() {
   } catch {
     state.activitySummary = null;
   }
+  state.marketStructure = window.DarwinLane
+    ? window.DarwinLane.buildMarketStructure(state.config, state.activitySummary?.summary || {})
+    : null;
+}
+
+function poolEntryHref(pool) {
+  if (!pool?.entry_path) return "";
+  return window.DarwinLane && state.laneSelection
+    ? window.DarwinLane.laneRelativeHref(pool.entry_path, state.laneSelection)
+    : pool.entry_path;
+}
+
+function renderPoolStructure() {
+  if (!els.poolStructureGrid || !state.marketStructure) return;
+  const structure = state.marketStructure;
+  els.poolStructureGrid.innerHTML = "";
+  els.poolStructureBadge.textContent = structure.defaultEntry || "canonical";
+  els.poolStructureNote.textContent = structure.summary || "";
+
+  for (const pool of structure.pools || []) {
+    const card = document.createElement("article");
+    card.className = `route-card route-${pool.derivedStatus || pool.status || "locked"}`;
+
+    const top = document.createElement("div");
+    top.className = "route-top";
+
+    const title = document.createElement("strong");
+    title.textContent = pool.label || pool.id || "Pool";
+    top.appendChild(title);
+
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = pool.derivedStatus || pool.status || "locked";
+    top.appendChild(badge);
+    card.appendChild(top);
+
+    const purpose = document.createElement("p");
+    purpose.className = "caption";
+    purpose.textContent = pool.purpose || "";
+    card.appendChild(purpose);
+
+    const progress = document.createElement("p");
+    progress.className = "tiny-hint";
+    progress.textContent = pool.isDefault
+      ? `Default route. ${pool.reason || ""}`
+      : `${pool.progressLabel}. ${pool.reason || ""}`;
+    card.appendChild(progress);
+
+    if (pool.pool_address) {
+      const meta = document.createElement("span");
+      meta.className = "label";
+      meta.textContent = `Pool ${shortAddress(pool.pool_address)}`;
+      card.appendChild(meta);
+    }
+
+    if (pool.enabled && pool.entry_path) {
+      const link = document.createElement("a");
+      link.className = "button button-secondary tiny-button";
+      link.href = poolEntryHref(pool);
+      link.textContent = pool.entry_label || "Open route";
+      card.appendChild(link);
+    }
+
+    els.poolStructureGrid.appendChild(card);
+  }
 }
 
 function bindStaticConfig() {
@@ -431,6 +497,8 @@ function bindStaticConfig() {
     els.tradeExternalWalletCount.textContent = String(summary.external_wallets ?? 0);
     els.tradeExternalSwapCount.textContent = String(summary.external_swaps ?? 0);
   }
+
+  renderPoolStructure();
 }
 
 async function refreshMarket() {
@@ -442,7 +510,7 @@ async function refreshMarket() {
   els.poolBaseReserve.textContent = formatUnits(baseReserve, state.config.token.decimals, 9);
   els.poolQuoteReserve.textContent = formatUnits(quoteReserve, state.config.quote_token.decimals, 12);
   els.portalState.textContent = "Live";
-  els.portalSubstate.textContent = `Public ${state.config.network.name} pool`;
+  els.portalSubstate.textContent = `Public ${state.config.network.name} canonical pool`;
 }
 
 async function refreshWallet() {
@@ -788,6 +856,9 @@ async function boot() {
     tokenSupply: $("tokenSupply"),
     portalState: $("portalState"),
     portalSubstate: $("portalSubstate"),
+    poolStructureBadge: $("poolStructureBadge"),
+    poolStructureNote: $("poolStructureNote"),
+    poolStructureGrid: $("poolStructureGrid"),
     quotedOutput: $("quotedOutput"),
     minOutput: $("minOutput"),
     walletStatus: $("walletStatus"),
@@ -871,6 +942,7 @@ async function boot() {
     refreshWallet(),
     refreshQuote(),
     refreshFaucet(),
+    loadActivitySummary().then(() => bindStaticConfig()),
   ]).then(() => {
     setMessage("refresh", "Market state refreshed.");
   }).catch((error) => {

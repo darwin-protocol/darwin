@@ -44,7 +44,7 @@ export const metadata = {
   },
 };
 
-const homeScriptVersion = "20260407-home2";
+const homeScriptVersion = "20260407-home3";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -96,7 +96,7 @@ export default function HomePage() {
             <p className="lede">
               DARWIN is live as a public testnet surface: token, faucet, reference pool, wallet
               portal, and deployment artifact. The first outside action should stay small and
-              obvious: claim DRW, then use a tiny swap on the current lane.
+              obvious: claim DRW, then use the canonical tiny swap on the current lane.
             </p>
             <div id="homeLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
@@ -201,6 +201,21 @@ export default function HomePage() {
               <button id="copyActivityHomeButton" className="button button-secondary">
                 Copy activity link
               </button>
+            </div>
+          </article>
+
+          <article className="card home-panel">
+            <div className="section-heading">
+              <h2>Pool structure</h2>
+              <span id="homePoolStrategyBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <p id="homePoolStrategyNote" className="caption">
+              Loading the Darwin market-structure policy for this lane.
+            </p>
+            <div id="homePoolStrategyGrid" className="route-grid">
+              <p className="caption">Loading pool routes.</p>
             </div>
           </article>
 

@@ -9,6 +9,28 @@ The right way to start outside DARWIN activity is simple:
 
 Do not manufacture volume with project bots or self-generated optics. That creates noise, not adoption.
 
+## Pool Strategy
+
+The public site should present three Darwin pool states, but only one of them should be routed by default:
+
+- `Canonical`
+  - live now
+  - one pool per lane
+  - default public route for claims, tiny swaps, and public proof
+- `Experimental`
+  - visible, but locked
+  - reserved for alternate quote assets, descendant Darwin markets, or other opt-in tests
+- `Incentivized`
+  - visible, but locked
+  - reserved for later rewards or liquidity programs once outside demand is real
+
+Current unlock rule for non-canonical routes:
+
+- at least `25` outside wallets
+- at least `40` outside swaps
+
+Until those gates are met, adding duplicate pools is more likely to fragment thin testnet liquidity than to help adoption.
+
 ## Public Surface
 
 - Site: `https://usedarwin.xyz/`
@@ -37,6 +59,7 @@ The public portal now exposes:
 - a shareable epoch landing page
 - a shareable tiny-swap preset
 - live DARWIN contract activity
+- a canonical / experimental / incentivized pool map
 - a public-safe outside-activity counter
 - public contract explorer links for token, pool, faucet, distributor, and timelock
 

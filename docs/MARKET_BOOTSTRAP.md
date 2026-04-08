@@ -7,6 +7,28 @@ This is the honest path for putting `DRW` in front of users without faking marke
 - Do not self-swap for optics.
 - Do not claim price discovery from project-controlled volume.
 - Do not imply that a thin testnet pool is a real market.
+- Do not scatter the same DRW lane across multiple equivalent pools before real traction exists.
+
+## Pool Taxonomy
+
+For each Darwin lane, the right structure is:
+
+- `Canonical`
+  - one live public pool
+  - default route for first claims, tiny swaps, and public proof
+- `Experimental`
+  - reserved for future alternate quote assets or descendant Darwin experiments
+  - not live until the canonical route has traction
+- `Incentivized`
+  - reserved for later rewards once outside demand is real
+  - not live until the canonical route has traction
+
+Current public unlock target for non-canonical routes:
+
+- `25` outside wallets
+- `40` outside swaps
+
+Until that threshold is reached, the site should keep routing everyone to the canonical pool.
 
 ## Current Reality
 
@@ -124,6 +146,7 @@ The portal supports:
 - direct `ETH -> WETH` wrapping for the quote side
 - tiny-swap presets and shareable `?preset=` links for community onboarding
 - public `/activity` view for recent DARWIN onchain events
+- public pool-role cards showing `Canonical`, `Experimental`, and `Incentivized`
 
 ## Tiny Swap Path
 

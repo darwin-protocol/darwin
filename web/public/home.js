@@ -2,6 +2,7 @@ const homeState = {
   laneSelection: null,
   marketConfig: null,
   communityShare: null,
+  marketStructure: null,
 };
 
 const homeEls = {};
@@ -29,6 +30,9 @@ async function loadHomeData() {
   ]);
   homeState.marketConfig = marketConfig;
   homeState.communityShare = communityShare;
+  homeState.marketStructure = window.DarwinLane
+    ? window.DarwinLane.buildMarketStructure(marketConfig, communityShare?.stats || {})
+    : null;
 }
 
 async function copyText(text, status) {
@@ -43,6 +47,7 @@ function bindCommunityPanel() {
   const links = share.links || {};
   const messages = share.messages || {};
   const networkName = homeState.marketConfig?.network?.name || "Darwin lane";
+  const structure = homeState.marketStructure;
 
   if (window.DarwinLane && homeState.laneSelection) {
     window.DarwinLane.renderSwitcher(homeEls.homeLaneSwitcher, homeState.laneSelection);
@@ -91,15 +96,82 @@ function bindCommunityPanel() {
     });
   });
   homeEls.copyTinySwapHomeButton.addEventListener("click", () => {
-    copyText(links.tiny_swap || "/trade/?preset=tiny-sell", "tiny-swap link copied").catch((error) => {
+    copyText(links.tiny_swap || tinySwapHref, "tiny-swap link copied").catch((error) => {
       homeEls.homeCommunityStatus.textContent = error?.message || "copy failed";
     });
   });
   homeEls.copyActivityHomeButton.addEventListener("click", () => {
-    copyText(links.activity || "/activity/", "activity link copied").catch((error) => {
+    copyText(links.activity || activityHref, "activity link copied").catch((error) => {
       homeEls.homeCommunityStatus.textContent = error?.message || "copy failed";
     });
   });
+
+  if (structure && homeEls.homePoolStrategyGrid) {
+    homeEls.homePoolStrategyBadge.textContent = structure.defaultEntry || "canonical";
+    homeEls.homePoolStrategyNote.textContent = structure.summary || "";
+    renderPoolStructure();
+  }
+}
+
+function poolEntryHref(pool) {
+  if (!pool?.entry_path) return "";
+  return window.DarwinLane && homeState.laneSelection
+    ? window.DarwinLane.laneRelativeHref(pool.entry_path, homeState.laneSelection)
+    : pool.entry_path;
+}
+
+function renderPoolStructure() {
+  const structure = homeState.marketStructure;
+  if (!structure || !homeEls.homePoolStrategyGrid) return;
+
+  homeEls.homePoolStrategyGrid.innerHTML = "";
+
+  for (const pool of structure.pools || []) {
+    const card = document.createElement("article");
+    card.className = `route-card route-${pool.derivedStatus || pool.status || "locked"}`;
+
+    const top = document.createElement("div");
+    top.className = "route-top";
+
+    const title = document.createElement("strong");
+    title.textContent = pool.label || pool.id || "Pool";
+    top.appendChild(title);
+
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = pool.derivedStatus || pool.status || "locked";
+    top.appendChild(badge);
+    card.appendChild(top);
+
+    const purpose = document.createElement("p");
+    purpose.className = "caption";
+    purpose.textContent = pool.purpose || "";
+    card.appendChild(purpose);
+
+    const progress = document.createElement("p");
+    progress.className = "tiny-hint";
+    progress.textContent = pool.isDefault
+      ? `Default route. ${pool.reason || ""}`
+      : `${pool.progressLabel}. ${pool.reason || ""}`;
+    card.appendChild(progress);
+
+    if (pool.pool_address) {
+      const meta = document.createElement("span");
+      meta.className = "label";
+      meta.textContent = `Pool ${pool.pool_address.slice(0, 6)}…${pool.pool_address.slice(-4)}`;
+      card.appendChild(meta);
+    }
+
+    if (pool.enabled && pool.entry_path) {
+      const link = document.createElement("a");
+      link.className = "button button-secondary tiny-button";
+      link.href = poolEntryHref(pool);
+      link.textContent = pool.entry_label || "Open route";
+      card.appendChild(link);
+    }
+
+    homeEls.homePoolStrategyGrid.appendChild(card);
+  }
 }
 
 async function bootHome() {
@@ -127,6 +199,9 @@ async function bootHome() {
     copyInviteButton: home$("copyInviteButton"),
     copyTinySwapHomeButton: home$("copyTinySwapHomeButton"),
     copyActivityHomeButton: home$("copyActivityHomeButton"),
+    homePoolStrategyBadge: home$("homePoolStrategyBadge"),
+    homePoolStrategyNote: home$("homePoolStrategyNote"),
+    homePoolStrategyGrid: home$("homePoolStrategyGrid"),
   });
 
   await loadHomeData();

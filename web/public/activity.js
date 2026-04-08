@@ -3,6 +3,7 @@ const activityState = {
   config: null,
   runtimeStatus: null,
   activitySummary: null,
+  marketStructure: null,
   provider: null,
   events: [],
   filter: "all",
@@ -100,6 +101,9 @@ async function loadActivitySummary() {
   } catch {
     activityState.activitySummary = null;
   }
+  activityState.marketStructure = window.DarwinLane
+    ? window.DarwinLane.buildMarketStructure(activityState.config, activityState.activitySummary?.summary || {})
+    : null;
 }
 
 function bindActivityStatics() {
@@ -163,15 +167,76 @@ function renderEpoch() {
   activityEls.epochTitle.textContent = epoch.title || "Darwin epoch";
   activityEls.epochSummary.textContent = epoch.summary || "";
   activityEls.epochFocus.textContent = epoch.focus || "";
-  activityEls.epochCtaLink.href = epoch.cta_path || activityState.config.community?.tiny_swap_path || TINY_SWAP_PATH;
+  const epochCtaPath = epoch.cta_path || activityState.config.community?.tiny_swap_path || TINY_SWAP_PATH;
+  const epochActivityPath = epoch.activity_path || activityState.config.community?.activity_path || "/activity/";
+  activityEls.epochCtaLink.href = window.DarwinLane && activityState.laneSelection
+    ? window.DarwinLane.laneRelativeHref(epochCtaPath, activityState.laneSelection)
+    : epochCtaPath;
   activityEls.epochCtaLink.textContent = epoch.cta_label || "Start epoch";
-  activityEls.epochActivityLink.href = epoch.activity_path || activityState.config.community?.activity_path || "/activity/";
+  activityEls.epochActivityLink.href = window.DarwinLane && activityState.laneSelection
+    ? window.DarwinLane.laneRelativeHref(epochActivityPath, activityState.laneSelection)
+    : epochActivityPath;
 
   activityEls.epochGoals.innerHTML = "";
   for (const goal of epoch.goals || []) {
     const li = document.createElement("li");
     li.textContent = goal;
     activityEls.epochGoals.appendChild(li);
+  }
+}
+
+function poolEntryHref(pool) {
+  if (!pool?.entry_path) return "";
+  return window.DarwinLane && activityState.laneSelection
+    ? window.DarwinLane.laneRelativeHref(pool.entry_path, activityState.laneSelection)
+    : pool.entry_path;
+}
+
+function renderMarketStructure() {
+  if (!activityEls.activityStructureGrid || !activityState.marketStructure) return;
+  const structure = activityState.marketStructure;
+  activityEls.activityStructureGrid.innerHTML = "";
+  activityEls.activityStructureBadge.textContent = structure.defaultEntry || "canonical";
+  activityEls.activityStructureNote.textContent = structure.summary || "";
+
+  for (const pool of structure.pools || []) {
+    const card = document.createElement("article");
+    card.className = `route-card route-${pool.derivedStatus || pool.status || "locked"}`;
+
+    const top = document.createElement("div");
+    top.className = "route-top";
+
+    const title = document.createElement("strong");
+    title.textContent = pool.label || pool.id || "Pool";
+    top.appendChild(title);
+
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = pool.derivedStatus || pool.status || "locked";
+    top.appendChild(badge);
+    card.appendChild(top);
+
+    const purpose = document.createElement("p");
+    purpose.className = "caption";
+    purpose.textContent = pool.purpose || "";
+    card.appendChild(purpose);
+
+    const progress = document.createElement("p");
+    progress.className = "tiny-hint";
+    progress.textContent = pool.isDefault
+      ? `Default route. ${pool.reason || ""}`
+      : `${pool.progressLabel}. ${pool.reason || ""}`;
+    card.appendChild(progress);
+
+    if (pool.enabled && pool.entry_path) {
+      const link = document.createElement("a");
+      link.className = "button button-secondary tiny-button";
+      link.href = poolEntryHref(pool);
+      link.textContent = pool.entry_label || "Open route";
+      card.appendChild(link);
+    }
+
+    activityEls.activityStructureGrid.appendChild(card);
   }
 }
 
@@ -484,6 +549,7 @@ function renderEvents() {
 async function refreshActivity() {
   activityEls.activityFeedStatus.textContent = "loading";
   await loadActivitySummary();
+  renderMarketStructure();
   await fetchEvents();
   renderStats();
   renderCommunitySummary();
@@ -530,6 +596,9 @@ async function bootActivity() {
     epochActivityLink: activity$("epochActivityLink"),
     copyEpochLinkButton: activity$("copyEpochLinkButton"),
     copyEpochShareButton: activity$("copyEpochShareButton"),
+    activityStructureBadge: activity$("activityStructureBadge"),
+    activityStructureNote: activity$("activityStructureNote"),
+    activityStructureGrid: activity$("activityStructureGrid"),
     explorerLookupInput: activity$("explorerLookupInput"),
     openExplorerLookupButton: activity$("openExplorerLookupButton"),
     explorerLookupStatus: activity$("explorerLookupStatus"),
@@ -537,9 +606,11 @@ async function bootActivity() {
 
   await loadActivityConfig();
   await loadRuntimeStatus();
+  await loadActivitySummary();
   bindActivityStatics();
   renderContracts();
   renderEpoch();
+  renderMarketStructure();
   await refreshActivity();
 
   document.querySelectorAll("[data-activity-filter]").forEach((button) => {

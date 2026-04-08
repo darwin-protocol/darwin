@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const activityScriptVersion = "20260407-activity5";
+const activityScriptVersion = "20260407-activity6";
 
 export default function ActivityPage() {
   return (
@@ -209,6 +209,21 @@ export default function ActivityPage() {
               <button id="copyEpochLinkButton" className="button button-secondary tiny-button">
                 Copy epoch link
               </button>
+            </div>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
+              <h2>Market structure</h2>
+              <span id="activityStructureBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <p id="activityStructureNote" className="caption">
+              Loading the Darwin pool structure for this lane.
+            </p>
+            <div id="activityStructureGrid" className="route-grid">
+              <p className="caption">Loading market structure.</p>
             </div>
           </section>
 

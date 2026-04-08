@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260407-portal8";
+const tradeScriptVersion = "20260407-portal9";
 
 export default function TradePage() {
   return (
@@ -76,7 +76,7 @@ export default function TradePage() {
             <p className="lede">
               Claim testnet DRW, acquire quote assets where supported, swap against the live pool,
               or open a direct peer-to-peer transfer request. The easiest public first move is a
-              tiny DRW sell after claiming from the faucet.
+              tiny DRW sell through the canonical pool after claiming from the faucet.
             </p>
             <p className="hero-status-line">
               <span id="runtimeHostStatus">
@@ -170,6 +170,21 @@ export default function TradePage() {
                 <strong id="portalState">Loading</strong>
                 <small id="portalSubstate">Waiting for config</small>
               </article>
+            </div>
+          </section>
+
+          <section className="card panel">
+            <div className="section-heading">
+              <h2>Pool routes</h2>
+              <span id="poolStructureBadge" className="badge">
+                loading
+              </span>
+            </div>
+            <p id="poolStructureNote" className="caption">
+              Loading the Darwin pool routing policy for this lane.
+            </p>
+            <div id="poolStructureGrid" className="route-grid">
+              <p className="caption">Loading pool routes.</p>
             </div>
           </section>
 

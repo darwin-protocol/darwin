@@ -595,6 +595,41 @@ code {
   gap: 0.8rem;
 }
 
+.route-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.route-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(20, 62, 108, 0.08);
+}
+
+.route-card.route-live {
+  background: linear-gradient(145deg, rgba(13, 123, 115, 0.09), rgba(255, 255, 255, 0.7));
+}
+
+.route-card.route-eligible {
+  background: linear-gradient(145deg, rgba(21, 70, 160, 0.08), rgba(255, 255, 255, 0.72));
+}
+
+.route-card.route-locked {
+  opacity: 0.92;
+}
+
+.route-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.55rem;
+  align-items: center;
+}
+
 .contract-card {
   display: grid;
   gap: 0.35rem;
@@ -663,7 +698,8 @@ code {
   .quote-box,
   .inline-fields,
   .qr-layout,
-  .contract-grid {
+  .contract-grid,
+  .route-grid {
     grid-template-columns: 1fr;
   }
 

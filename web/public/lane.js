@@ -99,11 +99,64 @@
     }
   }
 
+  function gateTargets(config, pool) {
+    const defaults = config?.market_structure?.progress_targets || {};
+    const rule = pool?.unlock_rule || {};
+    return {
+      externalWalletsTarget: Number(
+        rule.external_wallets_target ?? defaults.external_wallets_target ?? 25,
+      ),
+      externalSwapsTarget: Number(
+        rule.external_swaps_target ?? defaults.external_swaps_target ?? 40,
+      ),
+    };
+  }
+
+  function buildMarketStructure(config, summary) {
+    const structure = config?.market_structure || {};
+    const pools = Array.isArray(structure.pools) ? structure.pools : [];
+    const externalWallets = Number(summary?.external_wallets || 0);
+    const externalSwaps = Number(summary?.external_swaps || 0);
+    const defaultEntry = structure.default_entry || "canonical";
+
+    const normalizedPools = pools.map((pool) => {
+      const targets = gateTargets(config, pool);
+      const gateMet =
+        externalWallets >= targets.externalWalletsTarget &&
+        externalSwaps >= targets.externalSwapsTarget;
+      const isLive = Boolean(pool.enabled);
+      const derivedStatus = isLive
+        ? (pool.status || "live")
+        : (gateMet ? "eligible" : (pool.status || "locked"));
+      return {
+        ...pool,
+        derivedStatus,
+        gateMet,
+        isDefault: pool.id === defaultEntry,
+        externalWallets,
+        externalSwaps,
+        progressLabel: `${externalWallets}/${targets.externalWalletsTarget} wallets, ${externalSwaps}/${targets.externalSwapsTarget} swaps`,
+      };
+    });
+
+    return {
+      strategy: structure.strategy || "single_canonical_until_traction",
+      summary:
+        structure.summary ||
+        "Keep one canonical pool live until outside usage is real, then unlock the next Darwin routes.",
+      defaultEntry,
+      pools: normalizedPools,
+      externalWallets,
+      externalSwaps,
+    };
+  }
+
   window.DarwinLane = {
     resolveSelection,
     laneRelativeHref,
     laneAbsoluteHref,
     currentLocationHref,
     renderSwitcher,
+    buildMarketStructure,
   };
 })();
