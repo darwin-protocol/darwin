@@ -17,6 +17,7 @@ MARKET_CONFIG_PATH="$REPO_ROOT/web/public/market-config.json"
 ARBITRUM_MARKET_CONFIG_PATH="$REPO_ROOT/web/public/market-config-arbitrum-sepolia.json"
 MARKET_LANES_PATH="$REPO_ROOT/web/public/market-lanes.json"
 RUNTIME_STATUS_PATH="$REPO_ROOT/web/public/runtime-status.json"
+NODE_FLEET_PATH="$REPO_ROOT/web/public/node-fleet.json"
 ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary.json"
 ARBITRUM_ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary-arbitrum-sepolia.json"
 COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share.json"
@@ -76,6 +77,9 @@ restore_files() {
   if [[ -f "$TMP_DIR/runtime-status.json" ]]; then
     cp "$TMP_DIR/runtime-status.json" "$RUNTIME_STATUS_PATH"
   fi
+  if [[ -f "$TMP_DIR/node-fleet.json" ]]; then
+    cp "$TMP_DIR/node-fleet.json" "$NODE_FLEET_PATH"
+  fi
   if [[ -f "$TMP_DIR/market-config-arbitrum-sepolia.json" ]]; then
     cp "$TMP_DIR/market-config-arbitrum-sepolia.json" "$ARBITRUM_MARKET_CONFIG_PATH"
   fi
@@ -115,6 +119,9 @@ fi
 
 cp "$MARKET_CONFIG_PATH" "$TMP_DIR/market-config.json"
 cp "$RUNTIME_STATUS_PATH" "$TMP_DIR/runtime-status.json"
+if [[ -f "$NODE_FLEET_PATH" ]]; then
+  cp "$NODE_FLEET_PATH" "$TMP_DIR/node-fleet.json"
+fi
 if [[ -f "$ARBITRUM_MARKET_CONFIG_PATH" ]]; then
   cp "$ARBITRUM_MARKET_CONFIG_PATH" "$TMP_DIR/market-config-arbitrum-sepolia.json"
 fi
@@ -193,6 +200,12 @@ fi
   --hosting-mode cloudflare-tunnel \
   --site-domain "$SITE_DOMAIN" \
   --out web/public/runtime-status.json
+if "$PYTHON_BIN" ops/export_darwin_fleet_status.py \
+  --out web/public/node-fleet.json >/dev/null; then
+  echo "[darwin-pi] node fleet status exported"
+else
+  echo "[darwin-pi] warning: failed to refresh node fleet status; keeping existing file" >&2
+fi
 if "$PYTHON_BIN" ops/export_community_share_bundle.py \
   --market-config web/public/market-config.json \
   --activity-summary web/public/activity-summary.json \

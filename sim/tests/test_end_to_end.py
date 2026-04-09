@@ -4583,6 +4583,183 @@ exit 1
             self.assertEqual(selected, legacy_manifest)
             print("  Ops: reward-claim selection stays on the live legacy manifest until an epoch distributor exists")
 
+    def test_45d_export_darwin_fleet_status_classifies_live_and_staged_lanes(self):
+        """Ops: fleet export distinguishes a live local lane from a staged lane shadowed by another overlay."""
+
+        def contiguous_port_block(width=7, start=21000, end=28000):
+            for base in range(start, end):
+                sockets = []
+                try:
+                    for offset in range(width):
+                        sock = socket.socket()
+                        sock.bind(("127.0.0.1", base + offset))
+                        sockets.append(sock)
+                    return base
+                except OSError:
+                    for sock in sockets:
+                        sock.close()
+                finally:
+                    for sock in sockets:
+                        sock.close()
+            raise RuntimeError("failed to reserve contiguous ports")
+
+        def make_handler(role, *, ready=True, chain_id=84532, settlement_hub="0x" + "11" * 20):
+            class Handler(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    if self.path == "/healthz":
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"status": "ok", "role": role}).encode())
+                        return
+                    if role == "gateway" and self.path == "/v1/config":
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({
+                            "allowed_chain_id": chain_id,
+                            "allowed_settlement_hub": settlement_hub,
+                        }).encode())
+                        return
+                    if role == "watcher" and self.path == "/readyz":
+                        code = 200 if ready else 503
+                        self.send_response(code)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({
+                            "status": "ok",
+                            "role": role,
+                            "ready": ready,
+                            "detail": "epochs=1 mirrored=seed-1" if ready else "cold",
+                        }).encode())
+                        return
+                    if role == "finalizer" and self.path == "/v1/status":
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({
+                            "registered_epochs": 1,
+                            "finalized_epochs": 1,
+                        }).encode())
+                        return
+                    if role == "sentinel" and self.path == "/v1/status":
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps({
+                            "alerts": [],
+                            "stale": 0,
+                        }).encode())
+                        return
+                    self.send_response(404)
+                    self.end_headers()
+
+                def log_message(self, fmt, *args):
+                    return
+
+            return Handler
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            live_root = tmp / "base-recovery"
+            staged_root = tmp / "arb"
+            live_report_dir = live_root / "reports"
+            staged_report_dir = staged_root / "reports"
+            live_report_dir.mkdir(parents=True)
+            staged_report_dir.mkdir(parents=True)
+            (live_root / "darwin-node.pid").write_text(str(os.getpid()))
+            (staged_root / "darwin-node.pid").write_text("999999")
+
+            live_hub = "0x" + "11" * 20
+            staged_hub = "0x" + "22" * 20
+            report_payload = {
+                "generated_at": "2026-04-09T17:00:00Z",
+                "deployment": {
+                    "network": "base-sepolia-recovery",
+                    "chain_id": 84532,
+                    "settlement_hub": live_hub,
+                },
+                "checks": {
+                    "watcher_ready": {"detail": "epochs=1 mirrored=seed-1"},
+                    "watcher_sync": {"detail": "poll=60s failures=0"},
+                    "finalizer_status": {"detail": "registered=1 finalized=1"},
+                    "router_flow": {"detail": "routed=1 control=1500bps"},
+                    "sentinel_status": {"detail": "alerts=0 stale=0"},
+                },
+            }
+            (live_report_dir / "status-report.json").write_text(json.dumps(report_payload))
+            (staged_report_dir / "status-report.json").write_text(json.dumps({
+                **report_payload,
+                "deployment": {
+                    "network": "arbitrum-sepolia",
+                    "chain_id": 421614,
+                    "settlement_hub": staged_hub,
+                },
+            }))
+            (live_report_dir / "smoke-intent-20260409T130617Z-summary.json").write_text(json.dumps({
+                "generated_at": "2026-04-09T17:03:00Z",
+                "gateway_delta": {"admitted": 1, "rejected": 0, "total": 1},
+                "router_delta": {"total_routed": 1},
+            }))
+
+            base_port = contiguous_port_block()
+            servers = []
+            threads = []
+            roles = ["gateway", "router", "scorer", "watcher", "archive", "finalizer", "sentinel"]
+            try:
+                for offset, role in enumerate(roles):
+                    server = HTTPServer(("127.0.0.1", base_port + offset), make_handler(role, ready=True, chain_id=84532, settlement_hub=live_hub))
+                    thread = Thread(target=server.serve_forever, daemon=True)
+                    thread.start()
+                    servers.append(server)
+                    threads.append(thread)
+
+                out = tmp / "node-fleet.json"
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(ROOT / "ops" / "export_darwin_fleet_status.py"),
+                        "--out",
+                        str(out),
+                        "--lane",
+                        json.dumps({
+                            "slug": "base-sepolia-recovery",
+                            "label": "Base Recovery",
+                            "role": "public",
+                            "state_root": str(live_root),
+                            "market_config_path": "/market-config.json",
+                            "port_base": base_port,
+                        }),
+                        "--lane",
+                        json.dumps({
+                            "slug": "arbitrum-sepolia",
+                            "label": "Arbitrum Sepolia",
+                            "role": "public",
+                            "state_root": str(staged_root),
+                            "market_config_path": "/market-config-arbitrum-sepolia.json",
+                            "port_base": base_port,
+                        }),
+                    ],
+                    cwd=str(ROOT),
+                    capture_output=True,
+                    text=True,
+                )
+            finally:
+                for server in servers:
+                    server.shutdown()
+                    server.server_close()
+                for thread in threads:
+                    thread.join(timeout=2)
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            fleet = json.loads(out.read_text())
+            lanes = {lane["slug"]: lane for lane in fleet["lanes"]}
+            self.assertEqual(lanes["base-sepolia-recovery"]["status"], "live")
+            self.assertEqual(lanes["arbitrum-sepolia"]["status"], "staged")
+            self.assertEqual(fleet["summary"]["public_live"], 1)
+            self.assertEqual(lanes["base-sepolia-recovery"]["latest_intent_smoke"]["router_delta"]["total_routed"], 1)
+            print("  Ops: fleet export distinguishes live local lanes from staged shadowed lanes")
+
     def test_46_fund_drw_faucet_updates_artifact(self):
         """Ops: faucet funding helper updates the deployment artifact after transfer calls."""
         with tempfile.TemporaryDirectory() as tmpdir:

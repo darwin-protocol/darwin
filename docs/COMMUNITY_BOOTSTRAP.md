@@ -51,6 +51,7 @@ Additional lane:
 - Arbitrum search: `https://usedarwin.xyz/search/?lane=arbitrum-sepolia`
 - Arbitrum share bundle: `https://usedarwin.xyz/community-share-arbitrum-sepolia.json`
 - Arbitrum reward claims: `https://usedarwin.xyz/reward-claims-arbitrum-sepolia.json`
+- Node fleet: `https://usedarwin.xyz/node-fleet.json`
 
 ## Best Current Distribution Path
 

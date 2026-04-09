@@ -1,5 +1,7 @@
 import Link from "next/link";
 import Script from "next/script";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import {
   communityStateText,
   communityUpdatedText,
@@ -60,6 +62,60 @@ const structuredData = {
     "Claim DRW, make a tiny testnet trade, and confirm it on the live Darwin activity feed.",
 };
 
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+const DEFAULT_NODE_FLEET = {
+  summary: {
+    public_summary: "node fleet not published yet",
+    operator_summary: "waiting for the first fleet export",
+  },
+  lanes: [],
+};
+
+async function readPublicJson(publicPath, fallback) {
+  try {
+    const filePath = path.join(PUBLIC_DIR, String(publicPath || "").replace(/^\/+/, ""));
+    const raw = await readFile(filePath, "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function renderFleetCard(lane) {
+  const reportLine = lane.report_generated_at
+    ? `Last report ${new Date(lane.report_generated_at).toLocaleString("en-US")}`
+    : "No local report published yet.";
+  const watcherLine = lane.status === "live" || lane.status === "warming"
+    ? (lane.checks?.watcher_ready?.detail || "No watcher detail.")
+    : reportLine;
+  const smoke = lane.latest_intent_smoke?.generated_at
+    ? `Last smoke ${new Date(lane.latest_intent_smoke.generated_at).toLocaleString("en-US")}`
+    : "No intent smoke published yet.";
+  return (
+    <article key={lane.slug || lane.label} className={`route-card route-${lane.status || "staged"}`}>
+      <div className="route-top">
+        <strong>{lane.label || lane.slug || "Lane"}</strong>
+        <span className="badge">{lane.status_label || lane.status || "staged"}</span>
+      </div>
+      <p className="caption">{lane.summary || "Lane status not exported yet."}</p>
+      <p className="tiny-hint">{watcherLine}</p>
+      <p className="tiny-hint">{smoke}</p>
+      <div className="link-row">
+        {lane.links?.epoch_path ? (
+          <a className="button button-secondary tiny-button" href={lane.links.epoch_path}>
+            Epoch
+          </a>
+        ) : null}
+        {lane.links?.activity_path ? (
+          <a className="button button-secondary tiny-button" href={lane.links.activity_path}>
+            Activity
+          </a>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 function renderPoolCard(pool, selection) {
   return (
     <article key={pool.id || pool.label} className={`route-card route-${pool.derivedStatus || pool.status || "locked"}`}>
@@ -87,6 +143,7 @@ function renderPoolCard(pool, selection) {
 
 export default async function HomePage() {
   const selection = await loadPublishedLaneData();
+  const nodeFleet = await readPublicJson("/node-fleet.json", DEFAULT_NODE_FLEET);
   const current = selection.current || {};
   const config = current.config || {};
   const share = current.share || {};
@@ -104,6 +161,7 @@ export default async function HomePage() {
   const joinHref = laneHref(config.community?.starter_cohort_path || "/join/", selection);
   const searchHref = laneHref("/search/", selection);
   const extraLanes = selection.lanes.filter((lane) => lane.slug !== selection.defaultLane.slug);
+  const fleetSummary = nodeFleet.summary || {};
 
   return (
     <div className="background-shell">
@@ -256,6 +314,23 @@ export default async function HomePage() {
             </p>
             <div id="homePoolStrategyGrid" className="route-grid">
               {structure.pools.map((pool) => renderPoolCard(pool, selection))}
+            </div>
+          </article>
+
+          <article className="card home-panel">
+            <div className="section-heading">
+              <h2>Node fleet</h2>
+              <span className="badge">{fleetSummary.public_summary || "fleet snapshot"}</span>
+            </div>
+            <p className="caption">
+              Darwin adoption depends on credible lanes. This panel shows which local overlays are
+              live, warming, or only staged right now.
+            </p>
+            <p className="tiny-hint">
+              {fleetSummary.operator_summary || "Fleet status has not been exported yet."}
+            </p>
+            <div className="route-grid route-grid-tight">
+              {(nodeFleet.lanes || []).map((lane) => renderFleetCard(lane))}
             </div>
           </article>
 

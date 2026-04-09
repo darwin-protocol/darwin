@@ -599,6 +599,10 @@ code {
   gap: 0.85rem;
 }
 
+.route-grid-tight {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .metric,
 .wallet-grid > div,
 .route-card,
@@ -999,6 +1003,19 @@ code {
   opacity: 0.92;
 }
 
+.route-card.route-warming {
+  background: linear-gradient(145deg, rgba(200, 123, 60, 0.12), rgba(255, 255, 255, 0.78));
+}
+
+.route-card.route-staged {
+  background: linear-gradient(145deg, rgba(30, 94, 255, 0.1), rgba(255, 255, 255, 0.78));
+}
+
+.route-card.route-degraded,
+.route-card.route-missing {
+  background: linear-gradient(145deg, rgba(213, 95, 72, 0.12), rgba(255, 255, 255, 0.78));
+}
+
 @keyframes drift {
   0%,
   100% {
@@ -1041,7 +1058,8 @@ code {
   }
 
   .hero-stat-grid,
-  .route-grid {
+  .route-grid,
+  .route-grid-tight {
     grid-template-columns: 1fr;
   }
 

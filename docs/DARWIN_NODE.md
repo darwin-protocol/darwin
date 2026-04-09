@@ -32,6 +32,33 @@ The runner writes:
 - readiness and status reports under `ops/state/<network>-node/reports/`
 - a pid file at `ops/state/<network>-node/darwin-node.pid`
 
+## Fleet View
+
+The next Darwin step is not another one-off lane. It is operating the overlay as
+a small fleet.
+
+Export one multi-lane snapshot for Base recovery, the proving canary, and
+Arbitrum:
+
+```bash
+cd /path/to/darwin
+./ops/check_darwin_fleet.sh
+```
+
+That wrapper writes `ops/state/darwin-fleet-status.json` and prints a concise
+operator summary. The public publish flow also exports a site-safe copy at
+`web/public/node-fleet.json`.
+
+Lane states intentionally distinguish:
+
+- `Live` — services are healthy and watcher readiness is green
+- `Warming` — services are healthy but watcher replay is not ready yet
+- `Staged` — deployment artifacts and reports exist, but the lane is not the live local overlay right now
+- `Degraded` — the lane matched a live local overlay, but one or more services failed health
+
+This keeps the site honest about adoption progress across chains without hiding
+cold or staged lanes.
+
 ## Network Exposure
 
 - The overlay now binds to `127.0.0.1` by default via `DARWIN_BIND_HOST`.
