@@ -12,6 +12,8 @@ broadcast/
 cache/
 *.DS_Store
 lib/
+!web/app/lib/
+!web/app/lib/**
 ops/deployments/*.json
 !ops/deployments/base-sepolia.json
 !ops/deployments/arbitrum-sepolia.json

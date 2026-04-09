@@ -41,7 +41,7 @@ const state = {
   injectedProvider: null,
   signer: null,
   account: "",
-  mode: "buy",
+  mode: "sell",
   tinyPreset: "",
   sharePayload: null,
   token: null,
@@ -546,6 +546,7 @@ function renderPoolStructure() {
 }
 
 function bindStaticConfig() {
+  const faucetEnabled = Boolean(state.config.faucet?.enabled && state.config.faucet.address);
   els.chainBadge.textContent = state.config.network.name;
   els.feeBadge.textContent = `${state.config.pool.fee_bps} bps`;
   if (window.DarwinLane && state.laneSelection) {
@@ -557,14 +558,20 @@ function bindStaticConfig() {
   els.wethAddress.textContent = state.config.quote_token.address;
   els.walletQuoteLabel.textContent = state.config.quote_token.symbol;
   els.quoteAddressLabel.textContent = `${state.config.quote_token.symbol} token`;
-  if (state.config.faucet?.enabled && state.config.faucet.address) {
+  els.faucetPanel.hidden = !faucetEnabled;
+  els.faucetAddressRow.hidden = !faucetEnabled;
+  if (faucetEnabled) {
     els.faucetPanel.hidden = false;
-    els.faucetAddressRow.hidden = false;
+    els.claimButton.disabled = false;
     els.faucetAddress.textContent = state.config.faucet.address;
     els.faucetClaimAmount.textContent = formatUnits(state.config.faucet.claim_amount || 0, state.config.token.decimals, 3);
     els.faucetNativeAmount.textContent = formatUnits(state.config.faucet.native_drip_amount || 0, 18, 6);
     els.faucetCooldown.textContent = formatDuration(state.config.faucet.claim_cooldown || 0);
     els.faucetBadge.textContent = state.config.faucet.funded ? "funded faucet" : "unfunded faucet";
+    els.claimButton.textContent = `Claim ${formatUnits(state.config.faucet.claim_amount || 0, state.config.token.decimals, 3)} ${state.config.token.symbol}`;
+  } else {
+    els.claimButton.disabled = true;
+    els.claimButton.textContent = "Faucet unavailable";
   }
 
   els.poolLink.href = explorerLink(state.config.pool.address);
@@ -759,7 +766,7 @@ async function loadTinyPresetFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const presetName = params.get("preset");
   if (!presetName || !TINY_SWAP_PRESETS[presetName]) {
-    syncTinyPresetButtons();
+    await applyTinyPreset("tiny-sell", { announce: false, persist: false });
     return;
   }
   await applyTinyPreset(presetName, { announce: false, persist: false });
@@ -877,7 +884,7 @@ async function handleClaim() {
     const tx = await sendContractTransaction(state.faucet, "claim", []);
     setMessage("faucet", "Faucet claim submitted.", tx.hash);
     await tx.wait();
-    setMessage("faucet", "Faucet claim confirmed.", tx.hash);
+    setMessage("faucet", "Faucet claim confirmed. Tiny sell is preloaded next.", tx.hash);
     await applyTinyPreset("tiny-sell", { announce: false, persist: true });
     setSharePayload(
       actionSharePayload("faucet", tx.hash),
@@ -1276,7 +1283,7 @@ async function boot() {
   );
   els.qrCaption.textContent =
     `This QR encodes a ${state.config.network.name} DRW transfer request. Scan it from another wallet to open a direct token send.`;
-  setMessage("ready", "Portal ready. Connect a wallet to trade.");
+  setMessage("ready", "Portal ready. Connect a wallet, claim DRW, then use tiny sell.");
 }
 
 boot().catch((error) => {

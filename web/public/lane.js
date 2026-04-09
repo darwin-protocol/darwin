@@ -112,14 +112,31 @@
     };
   }
 
+  function fallbackPool(config, defaultEntry) {
+    const tokenSymbol = config?.token?.symbol || "DRW";
+    const quoteSymbol = config?.quote_token?.symbol || "WETH";
+    return {
+      id: defaultEntry,
+      label: "Canonical pool",
+      enabled: true,
+      status: "live",
+      pool_address: config?.pool?.address || "",
+      purpose: `Start on the live ${tokenSymbol} / ${quoteSymbol} reference pool.`,
+      entry_path: config?.community?.tiny_swap_path || "/trade/?preset=tiny-sell",
+      entry_label: "Open tiny sell",
+      reason: "This is the current public route for a first Darwin trade.",
+    };
+  }
+
   function buildMarketStructure(config, summary) {
     const structure = config?.market_structure || {};
-    const pools = Array.isArray(structure.pools) ? structure.pools : [];
+    const defaultEntry = structure.default_entry || "canonical";
+    const definedPools = Array.isArray(structure.pools) ? structure.pools : [];
+    const pools = definedPools.length ? definedPools : [fallbackPool(config, defaultEntry)];
     const rawExternalWallets = Number(summary?.external_wallets || 0);
     const rawExternalSwaps = Number(summary?.external_swaps || 0);
     const eligibleWallets = Number(summary?.eligible_wallets ?? rawExternalWallets);
     const eligibleSwaps = Number(summary?.eligible_swaps ?? rawExternalSwaps);
-    const defaultEntry = structure.default_entry || "canonical";
 
     const normalizedPools = pools.map((pool) => {
       const targets = gateTargets(config, pool);

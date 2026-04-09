@@ -1,5 +1,12 @@
 import Link from "next/link";
 import Script from "next/script";
+import {
+  communityStateText,
+  communityUpdatedText,
+  laneHref,
+  loadPublishedLaneData,
+  shortAddress,
+} from "./lib/publishedLaneData";
 
 const siteUrl = "https://usedarwin.xyz";
 const miniAppEmbed = JSON.stringify({
@@ -53,11 +60,55 @@ const structuredData = {
     "Claim DRW, make a tiny testnet trade, and confirm it on the live Darwin activity feed.",
 };
 
-export default function HomePage() {
+function renderPoolCard(pool, selection) {
+  return (
+    <article key={pool.id || pool.label} className={`route-card route-${pool.derivedStatus || pool.status || "locked"}`}>
+      <div className="route-top">
+        <strong>{pool.label || pool.id || "Pool"}</strong>
+        <span className="badge">{pool.derivedStatus || pool.status || "locked"}</span>
+      </div>
+      <p className="caption">{pool.purpose || ""}</p>
+      <p className="tiny-hint">
+        {pool.isDefault
+          ? `Default route. ${pool.reason || ""}`.trim()
+          : `${pool.progressLabel}. ${pool.reason || ""}`.trim()}
+      </p>
+      {pool.pool_address ? (
+        <span className="label">Pool {shortAddress(pool.pool_address)}</span>
+      ) : null}
+      {pool.enabled && pool.entry_path ? (
+        <a className="button button-secondary tiny-button" href={laneHref(pool.entry_path, selection)}>
+          {pool.entry_label || "Open route"}
+        </a>
+      ) : null}
+    </article>
+  );
+}
+
+export default async function HomePage() {
+  const selection = await loadPublishedLaneData();
+  const current = selection.current || {};
+  const config = current.config || {};
+  const share = current.share || {};
+  const stats = current.stats || {};
+  const structure = current.structure || { defaultEntry: "canonical", summary: "", pools: [] };
+  const currentNetworkName = config.network?.name || current.lane?.name || "Base Sepolia";
+  const epoch = share.epoch || config.community?.epoch || {};
+  const eligibleWallets = Number(stats.eligible_wallets ?? stats.external_wallets ?? 0);
+  const eligibleSwaps = Number(stats.eligible_swaps ?? stats.external_swaps ?? 0);
+  const totalEvents = Number(stats.total_events ?? 0);
+  const marketHref = laneHref("/trade/", selection);
+  const tinySwapHref = laneHref(config.community?.tiny_swap_path || "/trade/?preset=tiny-sell", selection);
+  const activityHref = laneHref(config.community?.activity_path || "/activity/", selection);
+  const epochHref = laneHref(config.community?.epoch_path || "/epoch/", selection);
+  const joinHref = laneHref(config.community?.starter_cohort_path || "/join/", selection);
+  const searchHref = laneHref("/search/", selection);
+  const extraLanes = selection.lanes.filter((lane) => lane.slug !== selection.defaultLane.slug);
+
   return (
     <div className="background-shell">
-      <Script src="./lane.js?v=20260409-home8" strategy="afterInteractive" />
-      <Script src="./home.js?v=20260409-home8" strategy="afterInteractive" />
+      <Script src="./lane.js?v=20260409-home9" strategy="afterInteractive" />
+      <Script src="./home.js?v=20260409-home9" strategy="afterInteractive" />
 
       <div className="background">
         <div className="orb orb-a"></div>
@@ -75,8 +126,10 @@ export default function HomePage() {
           <div className="home-hero-copy">
             <p className="eyebrow">USE DARWIN</p>
             <div className="status-banner-meta">
-              <span id="homePrimaryLaneBadge" className="badge">Base Sepolia</span>
-              <span className="badge">Arbitrum Sepolia</span>
+              <span id="homePrimaryLaneBadge" className="badge">{currentNetworkName}</span>
+              {extraLanes.map((lane) => (
+                <span key={lane.slug} className="badge">{lane.name || lane.network?.name || lane.slug}</span>
+              ))}
               <span className="badge">DRW testnet</span>
             </div>
             <h1 className="plain-title">Claim DRW. Start with one tiny trade.</h1>
@@ -85,29 +138,38 @@ export default function HomePage() {
               through the reference pool, then confirm the result on the activity page.
             </p>
             <p id="homeHeroStatusLine" className="plain-note">
-              Public host: <code>usedarwin.xyz</code>. Base and Arbitrum Sepolia are both available
-              from the same portal.
+              Public host: <code>usedarwin.xyz</code>. Current lane: <code>{currentNetworkName}</code>.
             </p>
-            <div id="homeLaneSwitcher" className="lane-switcher"></div>
+            <div id="homeLaneSwitcher" className="lane-switcher">
+              {selection.lanes.map((lane) => (
+                <a
+                  key={lane.slug}
+                  className={`button button-secondary tiny-button${lane.slug === selection.defaultLane.slug ? " is-active" : ""}`}
+                  href={laneHref("/", selection, lane)}
+                >
+                  {lane.name || lane.network?.name || lane.slug}
+                </a>
+              ))}
+            </div>
             <div className="hero-actions">
-              <Link id="homeOpenMarketLink" className="button button-primary" href="/trade/">
+              <Link id="homeOpenMarketLink" className="button button-primary" href={marketHref}>
                 Open market
               </Link>
-              <Link id="homeHeroTinySwapLink" className="button button-secondary" href="/trade/?preset=tiny-sell">
+              <Link id="homeHeroTinySwapLink" className="button button-secondary" href={tinySwapHref}>
                 Tiny sell preset
               </Link>
-              <Link id="homeHeroActivityLink" className="button button-secondary" href="/activity/">
+              <Link id="homeHeroActivityLink" className="button button-secondary" href={activityHref}>
                 Live activity
               </Link>
             </div>
             <div className="link-row">
-              <a id="homeEpochLink" className="button button-secondary" href="/epoch/">
+              <a id="homeEpochLink" className="button button-secondary" href={epochHref}>
                 Current epoch
               </a>
-              <a id="homeJoinLink" className="button button-secondary" href="/join/">
+              <a id="homeJoinLink" className="button button-secondary" href={joinHref}>
                 Join cohort
               </a>
-              <Link id="homeHeroSearchLink" className="button button-secondary" href="/search/">
+              <Link id="homeHeroSearchLink" className="button button-secondary" href={searchHref}>
                 Search Darwin
               </Link>
             </div>
@@ -117,7 +179,7 @@ export default function HomePage() {
             <div className="section-heading">
               <h2>Start here</h2>
               <span id="homeEpochBadge" className="badge">
-                loading
+                {epoch.status || "live"}
               </span>
             </div>
             <div className="status-ladder">
@@ -146,37 +208,37 @@ export default function HomePage() {
               <h2>Current lane</h2>
               <span className="badge">live data</span>
             </div>
-            <strong id="homeEpochTitle">Loading epoch.</strong>
+            <strong id="homeEpochTitle">{epoch.title || "Epoch Alpha"}</strong>
             <p id="homeEpochSummary" className="caption">
-              Waiting for the live Darwin community loop.
+              {epoch.summary || "Claim DRW, make one tiny swap, and share the public proof surface."}
             </p>
             <div className="stat-grid">
               <div className="metric">
                 <span className="label">Eligible wallets</span>
-                <strong id="homeExternalWallets">-</strong>
+                <strong id="homeExternalWallets">{eligibleWallets}</strong>
                 <small>swap-active outside participants</small>
               </div>
               <div className="metric">
                 <span className="label">Outside swaps</span>
-                <strong id="homeExternalSwaps">-</strong>
+                <strong id="homeExternalSwaps">{eligibleSwaps}</strong>
                 <small>recent non-project swaps</small>
               </div>
               <div className="metric">
                 <span className="label">Total events</span>
-                <strong id="homeTotalEvents">-</strong>
+                <strong id="homeTotalEvents">{totalEvents}</strong>
                 <small>recent Darwin contract events</small>
               </div>
               <div className="metric">
                 <span className="label">Community state</span>
-                <strong id="homeCommunityStatus">loading</strong>
-                <small id="homeCommunityUpdatedAt">Waiting for a live community snapshot.</small>
+                <strong id="homeCommunityStatus">{communityStateText(stats)}</strong>
+                <small id="homeCommunityUpdatedAt">{communityUpdatedText(share)}</small>
               </div>
             </div>
             <div className="link-row">
               <button id="copyInviteButton" className="button button-secondary">
                 Copy invite text
               </button>
-              <Link id="homeActivityPageLink" className="button button-secondary" href="/activity/">
+              <Link id="homeActivityPageLink" className="button button-secondary" href={activityHref}>
                 Activity page
               </Link>
             </div>
@@ -186,14 +248,14 @@ export default function HomePage() {
             <div className="section-heading">
               <h2>Pool structure</h2>
               <span id="homePoolStrategyBadge" className="badge">
-                loading
+                {structure.defaultEntry || "canonical"}
               </span>
             </div>
             <p id="homePoolStrategyNote" className="caption">
-              Loading the Darwin market-structure policy for this lane.
+              {structure.summary || "Keep one canonical pool live until outside usage is real, then unlock the next Darwin routes."}
             </p>
             <div id="homePoolStrategyGrid" className="route-grid">
-              <p className="caption">Loading pool routes.</p>
+              {structure.pools.map((pool) => renderPoolCard(pool, selection))}
             </div>
           </article>
 

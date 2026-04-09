@@ -813,6 +813,102 @@ code {
   grid-column: span 2;
 }
 
+.trade-primary-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.trade-workbench,
+.trade-advanced-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, 0.9fr) minmax(0, 1.1fr);
+  gap: 1rem;
+}
+
+.trade-column {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.trade-column-wide {
+  min-width: 0;
+}
+
+.trade-step {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.1rem;
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(17, 27, 45, 0.08);
+  box-shadow: 0 10px 24px rgba(17, 27, 45, 0.04);
+}
+
+.trade-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.trade-step-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.trade-step-copy,
+.trade-inline-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.trade-inline-note {
+  font-family: var(--mono);
+  font-size: 0.79rem;
+}
+
+.trade-step .field {
+  margin-bottom: 0;
+}
+
+.compact-stat-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trade-more {
+  border-radius: 1.45rem;
+}
+
+.trade-more summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.3rem;
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+
+.trade-more summary::-webkit-details-marker {
+  display: none;
+}
+
+.trade-more summary span:last-child {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trade-more-body {
+  padding: 0 1.3rem 1.3rem;
+}
+
 .qr-layout {
   grid-template-columns: 16rem minmax(0, 1fr);
   align-items: start;
@@ -938,7 +1034,9 @@ code {
   .hero,
   .home-hero,
   .layout,
-  .home-grid {
+  .home-grid,
+  .trade-workbench,
+  .trade-advanced-grid {
     grid-template-columns: 1fr;
   }
 
@@ -953,6 +1051,11 @@ code {
   .activity-panel {
     grid-row: auto;
     grid-column: span 1;
+  }
+
+  .trade-more summary {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
