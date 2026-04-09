@@ -40,6 +40,7 @@ Until those gates are met, adding duplicate pools is more likely to fragment thi
 - Activity portal: `https://usedarwin.xyz/activity/`
 - Darwin search: `https://usedarwin.xyz/search/`
 - Share bundle: `https://usedarwin.xyz/community-share.json`
+- Reward claims: `https://usedarwin.xyz/reward-claims.json`
 
 Additional lane:
 
@@ -49,6 +50,7 @@ Additional lane:
 - Arbitrum activity: `https://usedarwin.xyz/activity/?lane=arbitrum-sepolia`
 - Arbitrum search: `https://usedarwin.xyz/search/?lane=arbitrum-sepolia`
 - Arbitrum share bundle: `https://usedarwin.xyz/community-share-arbitrum-sepolia.json`
+- Arbitrum reward claims: `https://usedarwin.xyz/reward-claims-arbitrum-sepolia.json`
 
 ## Best Current Distribution Path
 
@@ -136,6 +138,14 @@ It also exports public-safe outreach bundles:
 - `web/public/community-share-arbitrum-sepolia.json`
 
 Those bundles include the current epoch, public links, reward-pilot copy, and honest invite text derived from the live outside-activity snapshot. They are safe for operators or external agents to consume because they contain only public campaign data and public URLs.
+
+The reward path can also publish per-wallet proof manifests:
+
+- `web/public/reward-claims.json`
+- `web/public/reward-claims-arbitrum-sepolia.json`
+
+Those are public by design. They are the wallet-to-proof map for claimable
+epoch bonuses, not a private operator file.
 
 ## Farcaster and Base App
 

@@ -22,6 +22,12 @@ ARBITRUM_ACTIVITY_SUMMARY_PATH="$REPO_ROOT/web/public/activity-summary-arbitrum-
 COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share.json"
 ARBITRUM_COMMUNITY_SHARE_PATH="$REPO_ROOT/web/public/community-share-arbitrum-sepolia.json"
 BASE_APP_READINESS_PATH="$REPO_ROOT/web/public/base-app-readiness.json"
+REWARD_CLAIMS_PATH="$REPO_ROOT/web/public/reward-claims.json"
+ARBITRUM_REWARD_CLAIMS_PATH="$REPO_ROOT/web/public/reward-claims-arbitrum-sepolia.json"
+BASE_REWARD_CLAIMS_SOURCE="${DARWIN_BASE_REWARD_CLAIMS_SOURCE:-$REPO_ROOT/ops/state/base-sepolia-recovery-epoch-rewards.json}"
+BASE_REWARD_CLAIMS_FALLBACK="${DARWIN_BASE_REWARD_CLAIMS_FALLBACK:-$REPO_ROOT/ops/state/base-sepolia-recovery-drw-merkle.json}"
+ARBITRUM_REWARD_CLAIMS_SOURCE="${DARWIN_ARBITRUM_REWARD_CLAIMS_SOURCE:-$REPO_ROOT/ops/state/arbitrum-sepolia-epoch-rewards.json}"
+ARBITRUM_REWARD_CLAIMS_FALLBACK="${DARWIN_ARBITRUM_REWARD_CLAIMS_FALLBACK:-$REPO_ROOT/ops/state/arbitrum-sepolia-drw-merkle.json}"
 TMP_DIR="$(mktemp -d)"
 ARBITRUM_DEPLOYMENT_FILE="$REPO_ROOT/ops/deployments/arbitrum-sepolia.json"
 ACTIVITY_LOOKBACK_BLOCKS="${DARWIN_ACTIVITY_LOOKBACK_BLOCKS:-50000}"
@@ -33,6 +39,35 @@ load_site_publish_env "$REPO_ROOT"
 if [[ ! -x "$PYTHON_BIN" ]]; then
   PYTHON_BIN="$(command -v python3)"
 fi
+
+select_reward_claims_source() {
+  local network_slug="$1"
+  local epoch_source="$2"
+  local legacy_source="$3"
+  local epoch_sidecar="$4"
+
+  "$PYTHON_BIN" - "$REPO_ROOT" "$network_slug" "$epoch_source" "$legacy_source" "$epoch_sidecar" <<'PY'
+import sys
+from pathlib import Path
+
+repo_root = Path(sys.argv[1])
+sys.path.insert(0, str(repo_root / "ops"))
+from reward_claims_manifest import select_reward_claims_manifest
+
+network_slug = sys.argv[2]
+epoch_source = Path(sys.argv[3])
+legacy_source = Path(sys.argv[4])
+epoch_sidecar = Path(sys.argv[5])
+selected = select_reward_claims_manifest(
+    network_slug,
+    epoch_reward_manifest_path=epoch_source,
+    legacy_reward_manifest_path=legacy_source,
+    epoch_rewards_sidecar_path=epoch_sidecar,
+)
+if selected is not None:
+    print(selected)
+PY
+}
 
 restore_files() {
   if [[ -f "$TMP_DIR/market-config.json" ]]; then
@@ -61,6 +96,12 @@ restore_files() {
   fi
   if [[ -f "$TMP_DIR/base-app-readiness.json" ]]; then
     cp "$TMP_DIR/base-app-readiness.json" "$BASE_APP_READINESS_PATH"
+  fi
+  if [[ -f "$TMP_DIR/reward-claims.json" ]]; then
+    cp "$TMP_DIR/reward-claims.json" "$REWARD_CLAIMS_PATH"
+  fi
+  if [[ -f "$TMP_DIR/reward-claims-arbitrum-sepolia.json" ]]; then
+    cp "$TMP_DIR/reward-claims-arbitrum-sepolia.json" "$ARBITRUM_REWARD_CLAIMS_PATH"
   fi
   rm -rf "$TMP_DIR"
 }
@@ -91,8 +132,22 @@ fi
 if [[ -f "$BASE_APP_READINESS_PATH" ]]; then
   cp "$BASE_APP_READINESS_PATH" "$TMP_DIR/base-app-readiness.json"
 fi
+if [[ -f "$REWARD_CLAIMS_PATH" ]]; then
+  cp "$REWARD_CLAIMS_PATH" "$TMP_DIR/reward-claims.json"
+fi
+if [[ -f "$ARBITRUM_REWARD_CLAIMS_PATH" ]]; then
+  cp "$ARBITRUM_REWARD_CLAIMS_PATH" "$TMP_DIR/reward-claims-arbitrum-sepolia.json"
+fi
 
 pushd "$REPO_ROOT" >/dev/null
+BASE_SELECTED_REWARD_CLAIMS="$(select_reward_claims_source "base-sepolia-recovery" "$BASE_REWARD_CLAIMS_SOURCE" "$BASE_REWARD_CLAIMS_FALLBACK" "$REPO_ROOT/ops/deployments/base-sepolia-recovery.epoch-rewards.json")"
+if [[ -n "$BASE_SELECTED_REWARD_CLAIMS" && -f "$BASE_SELECTED_REWARD_CLAIMS" ]]; then
+  cp "$BASE_SELECTED_REWARD_CLAIMS" "$REWARD_CLAIMS_PATH"
+fi
+ARBITRUM_SELECTED_REWARD_CLAIMS="$(select_reward_claims_source "arbitrum-sepolia" "$ARBITRUM_REWARD_CLAIMS_SOURCE" "$ARBITRUM_REWARD_CLAIMS_FALLBACK" "$REPO_ROOT/ops/deployments/arbitrum-sepolia.epoch-rewards.json")"
+if [[ -n "$ARBITRUM_SELECTED_REWARD_CLAIMS" && -f "$ARBITRUM_SELECTED_REWARD_CLAIMS" ]]; then
+  cp "$ARBITRUM_SELECTED_REWARD_CLAIMS" "$ARBITRUM_REWARD_CLAIMS_PATH"
+fi
 if "$PYTHON_BIN" ops/build_project_wallet_allowlist.py >/dev/null && \
   "$PYTHON_BIN" ops/report_external_activity.py \
     --deployment-file "$PORTAL_DEPLOYMENT_FILE" \

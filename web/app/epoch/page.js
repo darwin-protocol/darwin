@@ -56,8 +56,12 @@ export const metadata = {
 export default function EpochPage() {
   return (
     <div className="background-shell">
-      <Script src="../lane.js?v=20260409-epoch3" strategy="afterInteractive" />
-      <Script src="../epoch.js?v=20260409-epoch3" strategy="afterInteractive" />
+      <Script src="../lane.js?v=20260409-epoch4" strategy="afterInteractive" />
+      <Script
+        src="https://cdn.jsdelivr.net/npm/ethers@6.14.3/dist/ethers.umd.min.js"
+        strategy="afterInteractive"
+      />
+      <Script src="../epoch.js?v=20260409-epoch4" strategy="afterInteractive" />
       <div className="background">
         <div className="orb orb-a"></div>
         <div className="orb orb-b"></div>
@@ -153,6 +157,47 @@ export default function EpochPage() {
               <li>Loading reward rules.</li>
             </ul>
           </article>
+        </section>
+
+        <section className="card home-panel activity-panel">
+          <div className="section-heading">
+            <h2>Claim rewards</h2>
+            <span id="epochClaimBadge" className="badge">
+              loading
+            </span>
+          </div>
+          <p id="epochClaimSummary" className="caption">
+            Loading the proof-based reward surface for this lane.
+          </p>
+          <div className="stat-grid">
+            <article className="metric">
+              <span className="label">Wallet claim</span>
+              <strong id="epochClaimAmount">-</strong>
+              <small id="epochClaimAmountDetail">Connect a wallet to resolve this lane&apos;s published claim snapshot.</small>
+            </article>
+            <article className="metric">
+              <span className="label">Claim window</span>
+              <strong id="epochClaimDeadline">-</strong>
+              <small id="epochClaimDeadlineDetail">Claim deadline not loaded yet.</small>
+            </article>
+          </div>
+          <div className="link-row">
+            <button id="epochConnectWalletButton" className="button button-secondary">
+              Connect wallet
+            </button>
+            <button id="epochClaimButton" className="button button-primary" disabled>
+              Claim rewards
+            </button>
+            <a id="epochClaimTxLink" className="button button-secondary" href="#" target="_blank" rel="noreferrer" hidden>
+              View transaction
+            </a>
+          </div>
+          <p id="epochClaimStatus" className="tiny-hint">
+            Only swap-active wallets from the published epoch snapshot receive proof-based bonus claims.
+          </p>
+          <ul id="epochClaimBreakdown" className="truth-list">
+            <li>Published proof data has not been loaded yet.</li>
+          </ul>
         </section>
 
         <section className="card home-panel activity-panel">

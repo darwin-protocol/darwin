@@ -134,5 +134,37 @@ deployment artifact that includes `epoch_manager`, the finalizer can submit
 `finalizeEpoch(uint64)` on-chain instead of only recording local finalization
 state.
 
+If `DARWIN_EPOCH_OPERATOR_PRIVATE_KEY` is also set, the same finalizer can:
+
+- close a registered on-chain epoch when `manifest_root` is provided
+- post `score_root`, `weight_root`, and `rebalance_root` before finalization
+- fail closed on on-chain root mismatches instead of silently finalizing local-only state
+
+That makes the node capable of driving the close -> post roots -> finalize loop
+for epochs that are already opened on-chain.
+
+## Reward Manifests
+
+The proof-based reward path now has two layers:
+
+- a published reward manifest in `ops/state/<network>-epoch-rewards.json`
+- an optional live site copy at `web/public/reward-claims*.json`
+
+Build a fresh epoch reward manifest from the outside-activity snapshot:
+
+```bash
+cd /path/to/darwin
+./ops/build_epoch_reward_distribution.sh
+```
+
+If an epoch distributor is live, configure it on-chain:
+
+```bash
+cd /path/to/darwin
+export DARWIN_EPOCH_REWARD_DISTRIBUTOR=0x...
+export DARWIN_EPOCH_REWARD_GOVERNANCE_PRIVATE_KEY=0x...
+./ops/configure_drw_epoch_distribution.sh
+```
+
 For an Arbitrum Sepolia-specific deploy and node wrapper, see
 [ARBITRUM_SEPOLIA.md](ARBITRUM_SEPOLIA.md).

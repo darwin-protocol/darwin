@@ -1,5 +1,6 @@
 {
   "id": "epoch-alpha",
+  "onchain_epoch_id": 1,
   "status": "live",
   "title": "Epoch Alpha",
   "summary": "Claim DRW, use the canonical tiny-swap path, and share the public proof surface.",
@@ -16,6 +17,7 @@
   ],
   "reward_policy": {
     "window_label": "7-day pilot",
+    "claim_window_days": 7,
     "currency_symbol": "DRW",
     "scoring_label": "Outside activity score",
     "rules": [

@@ -17,6 +17,7 @@ import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Event, Lock, Thread
+from urllib.request import Request, urlopen
 
 from overlay.http_utils import (
     enforce_secure_bind,
@@ -34,6 +35,59 @@ def _load_epoch_manager_address(deployment_file: str) -> str:
     except (OSError, json.JSONDecodeError):
         return ""
     return str((data.get("contracts") or {}).get("epoch_manager", ""))
+
+
+ZERO_ROOT = "0x" + ("00" * 32)
+GET_EPOCH_SELECTOR = bytes.fromhex("12a02c82")
+
+
+def _uint256_word(value: int) -> bytes:
+    return int(value).to_bytes(32, "big")
+
+
+def _rpc_json(url: str, method: str, params: list) -> dict:
+    request = Request(
+        url,
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json", "User-Agent": "darwin-finalizer/1"},
+        data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode(),
+    )
+    return json.loads(urlopen(request, timeout=20).read().decode())
+
+
+def _eth_call(url: str, to: str, data: str) -> str:
+    payload = _rpc_json(url, "eth_call", [{"to": to, "data": data}, "latest"])
+    if payload.get("error"):
+        raise RuntimeError(str(payload["error"]))
+    return str(payload.get("result") or "0x")
+
+
+def _decode_epoch(result_hex: str) -> dict:
+    payload = bytes.fromhex(str(result_hex or "0x").removeprefix("0x"))
+    if not payload:
+        return {
+            "config_epoch_id": 0,
+            "state": 0,
+            "manifest_root": ZERO_ROOT,
+            "score_root": ZERO_ROOT,
+            "weight_root": ZERO_ROOT,
+            "rebalance_root": ZERO_ROOT,
+            "closed_at": 0,
+            "finalized_at": 0,
+        }
+    words = [payload[idx : idx + 32] for idx in range(0, len(payload), 32)]
+    if len(words) < 13:
+        raise RuntimeError(f"unexpected getEpoch response length: {len(words)}")
+    return {
+        "config_epoch_id": int.from_bytes(words[0], "big"),
+        "state": int.from_bytes(words[6], "big"),
+        "manifest_root": "0x" + words[7].hex(),
+        "score_root": "0x" + words[8].hex(),
+        "weight_root": "0x" + words[9].hex(),
+        "rebalance_root": "0x" + words[10].hex(),
+        "closed_at": int.from_bytes(words[11], "big"),
+        "finalized_at": int.from_bytes(words[12], "big"),
+    }
 
 
 class FinalizerState:
@@ -64,7 +118,9 @@ class FinalizerState:
         self.deployment_file = os.environ.get("DARWIN_DEPLOYMENT_FILE", "")
         self.epoch_manager_address = _load_epoch_manager_address(self.deployment_file)
         self.finalizer_private_key = os.environ.get("DARWIN_FINALIZER_PRIVATE_KEY", "")
+        self.epoch_operator_private_key = os.environ.get("DARWIN_EPOCH_OPERATOR_PRIVATE_KEY", "")
         self.onchain_enabled = bool(self.rpc_url and self.epoch_manager_address and self.finalizer_private_key)
+        self.root_posting_enabled = bool(self.rpc_url and self.epoch_manager_address and self.epoch_operator_private_key)
         self._load_state()
 
     def _snapshot_unlocked(self) -> dict:
@@ -127,15 +183,25 @@ class FinalizerState:
                 "mode": "onchain" if self.onchain_enabled else "local",
                 "rpc_url": self.rpc_url,
                 "epoch_manager": self.epoch_manager_address,
+                "root_posting_enabled": self.root_posting_enabled,
+                "epoch_operator_present": bool(self.epoch_operator_private_key),
             }
 
-    def register_epoch(self, epoch_id: int, closed_at: float, score_root: str,
-                       weight_root: str, rebalance_root: str) -> dict:
+    def register_epoch(
+        self,
+        epoch_id: int,
+        closed_at: float,
+        score_root: str,
+        weight_root: str,
+        rebalance_root: str,
+        manifest_root: str = "",
+    ) -> dict:
         """Register a closed epoch for finalization tracking."""
         with self.lock:
             self.epochs[epoch_id] = {
                 "epoch_id": epoch_id,
                 "closed_at": closed_at,
+                "manifest_root": manifest_root,
                 "score_root": score_root,
                 "weight_root": weight_root,
                 "rebalance_root": rebalance_root,
@@ -200,6 +266,10 @@ class FinalizerState:
         return {"epoch_id": epoch_id, "status": "finalized", "finalized_at": self.finalized[epoch_id]["finalized_at"]}
 
     def _finalize_onchain(self, epoch_id: int) -> tuple[str, str]:
+        self._prepare_onchain_epoch(epoch_id)
+        onchain = self._get_onchain_epoch(epoch_id)
+        if int(onchain.get("state", 0)) == 2:
+            return ("", "already_finalized")
         cmd = [
             "cast",
             "send",
@@ -217,6 +287,74 @@ class FinalizerState:
         output = proc.stdout.strip()
         match = re.search(r"0x[a-fA-F0-9]{64}", output)
         return (match.group(0) if match else "", output)
+
+    def _cast_send(self, function_sig: str, args: list[str], private_key: str) -> tuple[str, str]:
+        cmd = [
+            "cast",
+            "send",
+            self.epoch_manager_address,
+            function_sig,
+            *args,
+            "--rpc-url",
+            self.rpc_url,
+            "--private-key",
+            private_key,
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"{function_sig} failed")
+        output = proc.stdout.strip()
+        match = re.search(r"0x[a-fA-F0-9]{64}", output)
+        return (match.group(0) if match else "", output)
+
+    def _get_onchain_epoch(self, epoch_id: int) -> dict:
+        data = "0x" + (GET_EPOCH_SELECTOR + _uint256_word(epoch_id)).hex()
+        return _decode_epoch(_eth_call(self.rpc_url, self.epoch_manager_address, data))
+
+    def _prepare_onchain_epoch(self, epoch_id: int) -> None:
+        if not self.root_posting_enabled:
+            return
+
+        epoch = self.epochs.get(epoch_id) or {}
+        onchain = self._get_onchain_epoch(epoch_id)
+        if int(onchain.get("config_epoch_id", 0)) == 0:
+            raise RuntimeError("onchain_epoch_missing")
+        if int(onchain.get("state", 0)) == 2:
+            return
+
+        manifest_root = str(epoch.get("manifest_root", "") or "")
+        if int(onchain.get("state", 0)) == 0:
+            if not manifest_root:
+                raise RuntimeError("onchain_epoch_open_missing_manifest_root")
+            if onchain.get("manifest_root", ZERO_ROOT) not in {ZERO_ROOT, manifest_root.lower(), manifest_root}:
+                raise RuntimeError("onchain_manifest_root_mismatch")
+            self._cast_send(
+                "closeEpoch(uint64,bytes32)",
+                [str(epoch_id), manifest_root],
+                self.epoch_operator_private_key,
+            )
+            onchain["state"] = 1
+            onchain["manifest_root"] = manifest_root
+
+        root_specs = [
+            ("score_root", "postScoreRoot(uint64,bytes32)"),
+            ("weight_root", "postWeightRoot(uint64,bytes32)"),
+            ("rebalance_root", "postRebalanceRoot(uint64,bytes32)"),
+        ]
+        for local_key, function_sig in root_specs:
+            expected = str(epoch.get(local_key, "") or "")
+            if not expected:
+                continue
+            current = str(onchain.get(local_key, ZERO_ROOT) or ZERO_ROOT)
+            if current not in {ZERO_ROOT, expected.lower(), expected} and current.lower() != expected.lower():
+                raise RuntimeError(f"onchain_{local_key}_mismatch")
+            if current == ZERO_ROOT:
+                self._cast_send(
+                    function_sig,
+                    [str(epoch_id), expected],
+                    self.epoch_operator_private_key,
+                )
+                onchain[local_key] = expected
 
     def poll_once(self) -> dict:
         self.last_poll_attempt_ts = time.time()
@@ -314,6 +452,7 @@ class FinalizerHandler(BaseHTTPRequestHandler):
             result = STATE.register_epoch(
                 epoch_id=epoch_id,
                 closed_at=body.get("closed_at", time.time()),
+                manifest_root=body.get("manifest_root", ""),
                 score_root=body.get("score_root", ""),
                 weight_root=body.get("weight_root", ""),
                 rebalance_root=body.get("rebalance_root", ""),

@@ -12,6 +12,7 @@ import socket
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from threading import Thread
@@ -1550,6 +1551,68 @@ class TestEndToEnd(unittest.TestCase):
 
             self.assertIn(88, finalizer.finalized)
             print("  Finalizer: auto-poll finalizes ready epochs")
+
+    def test_15b_finalizer_posts_roots_before_onchain_finalize(self):
+        """Finalizer onchain mode can close an epoch, post roots, and then finalize it."""
+        encoded_epoch = "0x" + (
+            hex(3)[2:].rjust(64, "0")
+            + ("0" * 64) * 5
+            + hex(0)[2:].rjust(64, "0")
+            + ("0" * 64) * 5
+            + hex(0)[2:].rjust(64, "0")
+            + hex(0)[2:].rjust(64, "0")
+        )
+
+        def fake_run(cmd, capture_output, text):
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout="transactionHash 0x" + ("12" * 32),
+                stderr="",
+            )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            deployment = Path(tmpdir) / "deployment.json"
+            deployment.write_text(json.dumps({
+                "contracts": {
+                    "epoch_manager": "0x00000000000000000000000000000000000000e1",
+                },
+            }))
+
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "DARWIN_RPC_URL": "http://127.0.0.1:8545",
+                    "DARWIN_DEPLOYMENT_FILE": str(deployment),
+                    "DARWIN_FINALIZER_PRIVATE_KEY": "0xfinalizer",
+                    "DARWIN_EPOCH_OPERATOR_PRIVATE_KEY": "0xoperator",
+                },
+                clear=False,
+            ):
+                finalizer = finalizer_service.FinalizerState(challenge_window_sec=0)
+                finalizer.register_epoch(
+                    epoch_id=3,
+                    closed_at=time.time() - 10,
+                    manifest_root="0x" + ("ab" * 32),
+                    score_root="0x" + ("11" * 32),
+                    weight_root="0x" + ("22" * 32),
+                    rebalance_root="0x" + ("33" * 32),
+                )
+
+                with (
+                    mock.patch.object(finalizer_service, "_eth_call", return_value=encoded_epoch),
+                    mock.patch.object(finalizer_service.subprocess, "run", side_effect=fake_run) as run_mock,
+                ):
+                    result = finalizer.finalize_epoch(3)
+
+            self.assertEqual(result["status"], "finalized")
+            commands = [" ".join(call.args[0]) for call in run_mock.call_args_list]
+            self.assertTrue(any("closeEpoch(uint64,bytes32)" in cmd for cmd in commands))
+            self.assertTrue(any("postScoreRoot(uint64,bytes32)" in cmd for cmd in commands))
+            self.assertTrue(any("postWeightRoot(uint64,bytes32)" in cmd for cmd in commands))
+            self.assertTrue(any("postRebalanceRoot(uint64,bytes32)" in cmd for cmd in commands))
+            self.assertTrue(any("finalizeEpoch(uint64)" in cmd for cmd in commands))
+            print("  Finalizer: onchain mode closes epochs, posts roots, and finalizes")
 
     def test_16_cli_wallet_check(self):
         """CLI: wallet-check reports testnet balances and expected-address match."""
@@ -4403,6 +4466,123 @@ exit 1
             self.assertNotIn("operator_quickstart", config["links"])
             print("  Ops: market portal config exports faucet metadata without private operator links")
 
+    def test_45b_market_portal_config_export_includes_reward_claim_surface(self):
+        """Ops: market portal config exports reward-claim metadata when a manifest is published."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            deployment = tmp / "base-sepolia.json"
+            reward_claims = tmp / "reward-claims.json"
+            out = tmp / "market-config.json"
+
+            deployment.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "contracts": {
+                    "bond_asset": "0x4200000000000000000000000000000000000006",
+                    "drw_token": "0x0000000000000000000000000000000000000011",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                },
+                "market": {
+                    "enabled": True,
+                    "seeded": True,
+                    "base_token": "0x0000000000000000000000000000000000000011",
+                    "quote_token": "0x4200000000000000000000000000000000000006",
+                    "fee_bps": 30,
+                    "venue_id": "darwin_reference_pool",
+                    "venue_type": "constant_product_bootstrap",
+                    "initial_base_amount": "1000000000000000000000",
+                    "initial_quote_amount": "500000000000000",
+                    "market_operator": "0x0000000000000000000000000000000000000008",
+                    "contracts": {
+                        "reference_pool": "0x0000000000000000000000000000000000000042",
+                    },
+                },
+                "drw": {
+                    "total_supply": "1000000000000000000000000000",
+                },
+            }))
+            reward_claims.write_text(json.dumps({
+                "mode": "epoch_distributor",
+                "epoch_id": 7,
+                "epoch_key": "epoch-alpha",
+                "distributor": "0x00000000000000000000000000000000000000aa",
+                "token": "0x0000000000000000000000000000000000000011",
+                "merkle_root": "0x" + ("11" * 32),
+                "claims_count": 2,
+                "total_amount": "75000000000000000000",
+                "claim_deadline": 1777777777,
+                "eligibility_note": "Only swap-active wallets can claim this bonus set.",
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_market_portal_config.py"),
+                    "--deployment-file",
+                    str(deployment),
+                    "--out",
+                    str(out),
+                    "--reward-claims-file",
+                    str(reward_claims),
+                    "--reward-claims-public-path",
+                    "/reward-claims.json",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            config = json.loads(out.read_text())
+            self.assertTrue(config["reward_claims"]["enabled"])
+            self.assertEqual(config["reward_claims"]["mode"], "epoch_distributor")
+            self.assertEqual(config["reward_claims"]["distributor"], "0x00000000000000000000000000000000000000aa")
+            self.assertEqual(config["reward_claims"]["claims_path"], "/reward-claims.json")
+            self.assertEqual(config["reward_claims"]["epoch_id"], 7)
+            self.assertEqual(config["reward_claims"]["total_amount"], "75000000000000000000")
+            print("  Ops: market portal config exports the published reward-claim surface")
+
+    def test_45c_reward_claim_manifest_selection_prefers_live_legacy_claims_over_unconfigured_epoch_manifest(self):
+        """Ops: reward-claim selection keeps the live legacy manifest until an epoch distributor is actually configured."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            epoch_rewards = tmp / "base-sepolia-recovery.epoch-rewards.json"
+            epoch_manifest = tmp / "base-sepolia-recovery-epoch-rewards.json"
+            legacy_manifest = tmp / "base-sepolia-recovery-drw-merkle.json"
+            epoch_rewards.write_text(json.dumps({
+                "epoch_rewards": {
+                    "contracts": {},
+                },
+            }))
+            epoch_manifest.write_text(json.dumps({
+                "mode": "epoch_distributor",
+                "epoch_id": 1,
+                "claims_count": 0,
+                "total_amount": "0",
+            }))
+            legacy_manifest.write_text(json.dumps({
+                "claims_count": 4,
+                "total_amount": "30000000000000000000000",
+            }))
+            sys.path.insert(0, str(ROOT / "ops"))
+            try:
+                from reward_claims_manifest import select_reward_claims_manifest
+            finally:
+                sys.path.pop(0)
+
+            selected = select_reward_claims_manifest(
+                "base-sepolia-recovery",
+                epoch_reward_manifest_path=epoch_manifest,
+                legacy_reward_manifest_path=legacy_manifest,
+                epoch_rewards_sidecar_path=epoch_rewards,
+            )
+
+            self.assertEqual(selected, legacy_manifest)
+            print("  Ops: reward-claim selection stays on the live legacy manifest until an epoch distributor exists")
+
     def test_46_fund_drw_faucet_updates_artifact(self):
         """Ops: faucet funding helper updates the deployment artifact after transfer calls."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -4638,6 +4818,119 @@ exit 0
             self.assertEqual(manifest["total_amount"], "300000000000000000000")
             self.assertIn("format:      csv", result.stdout)
             print("  Ops: vNext Merkle builder accepts CSV claim exports")
+
+    def test_49b_build_drw_epoch_distribution_outputs_bonus_only_epoch_manifest(self):
+        """Ops: epoch reward builder emits an epoch-aware Merkle manifest for swap-active wallets."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            activity_report = tmp / "external-activity.json"
+            epoch = tmp / "epoch.json"
+            out = tmp / "epoch-rewards.json"
+
+            activity_report.write_text(json.dumps({
+                "network": "base-sepolia",
+                "leaderboard": {
+                    "all_entries": [
+                        {
+                            "actor": "0x00000000000000000000000000000000000000a1",
+                            "eligible_for_leaderboard": True,
+                            "events": 3,
+                            "swaps": 2,
+                            "claims": 1,
+                            "points": 9,
+                            "return_swap_qualified": True,
+                            "reward_eligibility": {
+                                "starter_claim": True,
+                                "first_swap": True,
+                                "return_swap": True,
+                            },
+                        },
+                        {
+                            "actor": "0x00000000000000000000000000000000000000b2",
+                            "eligible_for_leaderboard": False,
+                            "events": 1,
+                            "swaps": 0,
+                            "claims": 1,
+                            "points": 1,
+                            "return_swap_qualified": False,
+                            "reward_eligibility": {
+                                "starter_claim": True,
+                                "first_swap": False,
+                                "return_swap": False,
+                            },
+                        },
+                    ],
+                },
+            }))
+            epoch.write_text(json.dumps({
+                "id": "epoch-alpha",
+                "title": "Epoch Alpha",
+                "onchain_epoch_id": 7,
+                "reward_policy": {
+                    "currency_symbol": "DRW",
+                    "claim_window_days": 5,
+                    "rules": [
+                        {
+                            "id": "starter_claim",
+                            "label": "Starter claim",
+                            "eligibility": "claim",
+                            "amount": 100,
+                            "detail": "Faucet path",
+                        },
+                        {
+                            "id": "first_swap_bonus",
+                            "label": "First swap bonus",
+                            "eligibility": "first_swap",
+                            "amount": 25,
+                            "detail": "First swap",
+                        },
+                        {
+                            "id": "return_swap_bonus",
+                            "label": "Return swap bonus",
+                            "eligibility": "return_swap",
+                            "amount": 50,
+                            "detail": "Return swap",
+                        },
+                    ],
+                },
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "build_drw_epoch_distribution.py"),
+                    "--activity-report",
+                    str(activity_report),
+                    "--epoch-file",
+                    str(epoch),
+                    "--out",
+                    str(out),
+                    "--token",
+                    "0x0000000000000000000000000000000000000011",
+                    "--network",
+                    "base-sepolia",
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            manifest = json.loads(out.read_text())
+            self.assertEqual(manifest["mode"], "epoch_distributor")
+            self.assertEqual(manifest["epoch_id"], 7)
+            self.assertEqual(manifest["claims_count"], 1)
+            self.assertEqual(manifest["eligible_wallets"], 1)
+            self.assertEqual(manifest["skipped_wallets"], 1)
+            self.assertEqual(manifest["total_amount"], str(75 * 10**18))
+            self.assertEqual(manifest["claims"][0]["account"], "0x00000000000000000000000000000000000000a1")
+            self.assertEqual(len(manifest["claims"][0]["breakdown"]), 2)
+            self.assertEqual(manifest["claims"][0]["breakdown"][0]["rule_id"], "first_swap_bonus")
+            self.assertEqual(manifest["claims"][0]["breakdown"][1]["rule_id"], "return_swap_bonus")
+            self.assertEqual(manifest["claims_by_account"]["0x00000000000000000000000000000000000000a1"]["index"], 0)
+            self.assertTrue(manifest["merkle_root"].startswith("0x"))
+            self.assertEqual(len(manifest["merkle_root"]), 66)
+            print("  Ops: epoch reward builder emits a bonus-only Merkle manifest for swap-active wallets")
 
     def test_50_build_vnext_safe_batch_outputs_safe_transaction_builder_json(self):
         """Ops: vNext promotion batch exports Safe Transaction Builder JSON for mutable DRW handoff."""

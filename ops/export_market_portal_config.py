@@ -10,6 +10,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from reward_claims_manifest import default_reward_claims_paths, select_reward_claims_manifest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_COMMUNITY_EPOCH_FILE = REPO_ROOT / "ops" / "community_epoch.json"
@@ -81,6 +82,21 @@ def parse_args() -> argparse.Namespace:
         default=str(DEFAULT_COMMUNITY_EPOCH_FILE),
         help="Public community epoch config",
     )
+    parser.add_argument(
+        "--reward-claims-file",
+        default="",
+        help="Optional local reward-claims manifest (epoch distributor preferred, legacy Merkle fallback)",
+    )
+    parser.add_argument(
+        "--reward-claims-public-path",
+        default="",
+        help="Optional public path for the reward-claims manifest",
+    )
+    parser.add_argument(
+        "--epoch-rewards-file",
+        default="",
+        help="Optional epoch reward deployment sidecar with distributor address metadata",
+    )
     return parser.parse_args()
 
 
@@ -125,6 +141,10 @@ def repo_relative_or_absolute(path: Path) -> str:
         return str(path)
 
 
+def default_reward_claims_public_path(network_slug: str) -> str:
+    return "/reward-claims.json" if network_slug == "base-sepolia-recovery" else f"/reward-claims-{network_slug}.json"
+
+
 def main() -> int:
     args = parse_args()
     deployment_path = Path(args.deployment_file).expanduser().resolve()
@@ -152,6 +172,22 @@ def main() -> int:
     if network_defaults is None:
         raise SystemExit(f"unsupported chain id for portal export: {chain_id}")
     network_slug = str(deployment["network"])
+    epoch_rewards_path = (
+        Path(args.epoch_rewards_file).expanduser().resolve()
+        if args.epoch_rewards_file
+        else deployment_path.with_suffix(".epoch-rewards.json")
+    )
+    epoch_rewards = load_json(epoch_rewards_path) if epoch_rewards_path.exists() else {}
+    epoch_reward_manifest_path, legacy_reward_manifest_path = default_reward_claims_paths(network_slug)
+    reward_claims_path = select_reward_claims_manifest(
+        network_slug,
+        reward_claims_path=(Path(args.reward_claims_file).expanduser().resolve() if args.reward_claims_file else None),
+        epoch_reward_manifest_path=epoch_reward_manifest_path,
+        legacy_reward_manifest_path=legacy_reward_manifest_path,
+        epoch_rewards_sidecar_path=epoch_rewards_path,
+    )
+    reward_claims = load_json(reward_claims_path) if reward_claims_path and reward_claims_path.exists() else {}
+    reward_claims_public_path = args.reward_claims_public_path or default_reward_claims_public_path(network_slug)
     is_default_lane = network_slug == "base-sepolia-recovery"
     activity_summary_path = (
         "/activity-summary.json"
@@ -342,6 +378,37 @@ def main() -> int:
             "enabled": bool((vnext.get("vnext") or {}).get("enabled", False)),
             "distributor": vnext_contracts["drw_merkle_distributor"],
             "timelock": vnext_contracts.get("darwin_timelock", ""),
+        }
+
+    epoch_reward_contracts = ((epoch_rewards.get("epoch_rewards") or {}).get("contracts") or {})
+    epoch_reward_distributor = (
+        str(reward_claims.get("distributor", "") or "")
+        or str(epoch_reward_contracts.get("drw_epoch_distributor", "") or "")
+    )
+    legacy_reward_distributor = str(vnext_contracts.get("drw_merkle_distributor", "") or "")
+    reward_claims_mode = str(reward_claims.get("mode", "") or "").strip()
+    reward_claims_distributor = epoch_reward_distributor or legacy_reward_distributor
+    if reward_claims_mode or reward_claims_distributor or reward_claims_path:
+        reward_claims_enabled = bool(reward_claims_distributor and int(reward_claims.get("claims_count", 0) or 0) > 0)
+        reward_claims_status = "live" if reward_claims_enabled else "pending"
+        config["reward_claims"] = {
+            "enabled": reward_claims_enabled,
+            "status": reward_claims_status,
+            "mode": reward_claims_mode if epoch_reward_distributor else ("legacy_merkle" if legacy_reward_distributor else reward_claims_mode),
+            "distributor": reward_claims_distributor,
+            "claims_path": reward_claims_public_path,
+            "claims_count": int(reward_claims.get("claims_count", 0) or 0),
+            "total_amount": str(reward_claims.get("total_amount", "")),
+            "claim_deadline": int(reward_claims.get("claim_deadline", 0) or 0),
+            "merkle_root": str(reward_claims.get("merkle_root", "")),
+            "token": str(reward_claims.get("token", "") or contracts["drw_token"]),
+            "epoch_id": int(reward_claims.get("epoch_id", 0) or 0),
+            "epoch_key": str(reward_claims.get("epoch_key", "") or (community_epoch.get("id") if community_epoch else "")),
+            "currency_symbol": str(reward_claims.get("currency_symbol", "DRW")),
+            "eligibility_note": str(
+                reward_claims.get("eligibility_note")
+                or "Only swap-active wallets from the published epoch snapshot receive proof-based bonus claims."
+            ),
         }
 
     if community_epoch:

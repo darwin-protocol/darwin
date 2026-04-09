@@ -535,6 +535,7 @@ def build_leaderboard(events: list[dict], epoch: dict) -> dict:
         "return_after_hours": scoring["return_after_hours"],
         "eligibility_note": "Claim-only wallets stay visible in the raw outside-activity summary but do not unlock progress or leaderboard rewards until they swap.",
         "entries": eligible_rows[:10],
+        "all_entries": eligible_rows,
         "excluded": {
             "claim_only_wallets": sum(1 for row in leaderboard_rows if row["claim_only"]),
             "raw_wallets_seen": len(leaderboard_rows),

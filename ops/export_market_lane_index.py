@@ -56,6 +56,7 @@ def main() -> int:
                 "community_share_path": config.get("community", {}).get("share_bundle_path", "/community-share.json"),
                 "starter_cohort_path": config.get("community", {}).get("starter_cohort_path", "/join/"),
                 "vnext": config.get("vnext", {"enabled": False}),
+                "reward_claims": config.get("reward_claims", {"enabled": False}),
                 "notes": config.get("notes", {}),
             }
         )
