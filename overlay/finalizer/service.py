@@ -18,7 +18,12 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Event, Lock, Thread
 
-from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+from overlay.http_utils import (
+    enforce_secure_bind,
+    load_json_body,
+    require_admin_token,
+    resolve_bind_host,
+)
 
 
 def _load_epoch_manager_address(deployment_file: str) -> str:
@@ -345,6 +350,8 @@ def main():
     challenge_window = int(sys.argv[2]) if len(sys.argv) > 2 else 1800
     state_file = sys.argv[3] if len(sys.argv) > 3 else os.environ.get("DARWIN_FINALIZER_STATE_FILE", "")
     poll_interval_sec = int(sys.argv[4]) if len(sys.argv) > 4 else int(os.environ.get("DARWIN_FINALIZER_POLL_SEC", "0"))
+    bind_host = resolve_bind_host()
+    enforce_secure_bind("darwin-finalizerd", bind_host)
 
     global STATE
     STATE = FinalizerState(
@@ -368,10 +375,8 @@ def main():
     print(f"  POST /v1/register          — register a closed epoch")
     print(f"  POST /v1/finalize/:id      — finalize an epoch")
     print(f"  POST /v1/poll-once         — finalize all ready epochs once")
-    STATE.start_background_polling()
-
     try:
-        bind_host = resolve_bind_host()
+        STATE.start_background_polling()
         print(f"[darwin-finalizerd] Bind host: {bind_host}")
         HTTPServer((bind_host, port), FinalizerHandler).serve_forever()
     except KeyboardInterrupt:

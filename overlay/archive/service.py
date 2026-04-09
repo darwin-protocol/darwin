@@ -16,7 +16,12 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Lock
 
-from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+from overlay.http_utils import (
+    enforce_secure_bind,
+    load_json_body,
+    require_admin_token,
+    resolve_bind_host,
+)
 
 
 class ArchiveState:
@@ -154,6 +159,8 @@ def main():
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9447
     storage = sys.argv[2] if len(sys.argv) > 2 else "archive_storage"
+    bind_host = resolve_bind_host()
+    enforce_secure_bind("darwin-archived", bind_host)
 
     global STATE
     STATE = ArchiveState(storage_dir=storage)
@@ -168,7 +175,6 @@ def main():
     print(f"  POST /v1/ingest                   — ingest epoch artifacts")
 
     try:
-        bind_host = resolve_bind_host()
         print(f"[darwin-archived] Bind host: {bind_host}")
         HTTPServer((bind_host, port), ArchiveHandler).serve_forever()
     except KeyboardInterrupt:

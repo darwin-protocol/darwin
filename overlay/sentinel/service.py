@@ -14,7 +14,12 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Lock
 
-from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+from overlay.http_utils import (
+    enforce_secure_bind,
+    load_json_body,
+    require_admin_token,
+    resolve_bind_host,
+)
 
 
 class SentinelState:
@@ -218,6 +223,8 @@ def main():
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9449
     state_file = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("DARWIN_SENTINEL_STATE_FILE", "")
+    bind_host = resolve_bind_host()
+    enforce_secure_bind("darwin-sentineld", bind_host)
 
     global STATE
     STATE = SentinelState(state_file=state_file)
@@ -235,7 +242,6 @@ def main():
     print(f"  POST /v1/clear-safe-mode     — clear safe mode (governance)")
 
     try:
-        bind_host = resolve_bind_host()
         print(f"[darwin-sentineld] Bind host: {bind_host}")
         HTTPServer((bind_host, port), SentinelHandler).serve_forever()
     except KeyboardInterrupt:

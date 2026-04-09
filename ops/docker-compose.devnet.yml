@@ -1,7 +1,7 @@
-version: "3.9"
-
 # DARWIN v1 overlay devnet — all 7 services
 # Usage: docker compose -f ops/docker-compose.devnet.yml up
+# Export DARWIN_ADMIN_TOKEN=darwin-devnet-admin-token in any host shell that
+# needs to call the admin POST endpoints from outside the containers.
 
 services:
   gateway:
@@ -9,8 +9,11 @@ services:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/gateway/server.py", "9443", "/data/gateway"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9443:9443"
+      - "127.0.0.1:9443:9443"
     volumes:
       - gateway_data:/data/gateway
 
@@ -19,24 +22,33 @@ services:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/router/service.py", "9444"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9444:9444"
+      - "127.0.0.1:9444:9444"
 
   scorer:
     build:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/scorer/service.py", "9445"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9445:9445"
+      - "127.0.0.1:9445:9445"
 
   watcher:
     build:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/watcher/service.py", "9446", "/data/watcher", "http://archive:9447"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9446:9446"
+      - "127.0.0.1:9446:9446"
     volumes:
       - watcher_data:/data/watcher
     depends_on:
@@ -47,8 +59,11 @@ services:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/archive/service.py", "9447", "/data/archive"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9447:9447"
+      - "127.0.0.1:9447:9447"
     volumes:
       - archive_data:/data/archive
 
@@ -57,16 +72,22 @@ services:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/finalizer/service.py", "9448", "1800"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9448:9448"
+      - "127.0.0.1:9448:9448"
 
   sentinel:
     build:
       context: ..
       dockerfile: ops/Dockerfile.overlay
     command: ["python", "overlay/sentinel/service.py", "9449"]
+    environment:
+      DARWIN_BIND_HOST: 0.0.0.0
+      DARWIN_ADMIN_TOKEN: darwin-devnet-admin-token
     ports:
-      - "9449:9449"
+      - "127.0.0.1:9449:9449"
 
 volumes:
   gateway_data:

@@ -27,7 +27,12 @@ from darwin_sim.watcher.archive import (
     resolve_archive_epoch_id,
 )
 from darwin_sim.watcher.replay import artifact_hashes, replay_and_verify
-from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+from overlay.http_utils import (
+    enforce_secure_bind,
+    load_json_body,
+    require_admin_token,
+    resolve_bind_host,
+)
 
 
 @dataclass
@@ -345,6 +350,8 @@ def main():
     artifact_dir = sys.argv[2] if len(sys.argv) > 2 else "watcher_artifacts"
     archive_url = sys.argv[3] if len(sys.argv) > 3 else "http://localhost:9447"
     poll_interval_sec = int(sys.argv[4]) if len(sys.argv) > 4 else int(os.environ.get("DARWIN_WATCHER_POLL_SEC", "0"))
+    bind_host = resolve_bind_host()
+    enforce_secure_bind("darwin-watcherd", bind_host)
 
     global STATE
     STATE = WatcherState(
@@ -352,8 +359,6 @@ def main():
         artifact_dir=artifact_dir,
         poll_interval_sec=poll_interval_sec,
     )
-
-    bind_host = resolve_bind_host()
     server = HTTPServer((bind_host, port), WatcherHandler)
     print(f"[darwin-watcherd] Listening on :{port}")
     print(f"[darwin-watcherd] Bind host: {bind_host}")

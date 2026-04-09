@@ -27,6 +27,7 @@ import overlay.gateway.server as gateway_service
 import overlay.router.service as router_service
 import overlay.scorer.service as scorer_service
 import overlay.sentinel.service as sentinel_service
+from overlay.http_utils import bind_host_requires_admin_token, is_loopback_host
 from overlay.gateway.server import GatewayState
 from overlay.watcher.service import WatcherState
 from darwin_sim.sdk.accounts import create_account
@@ -5916,6 +5917,75 @@ exit 0
             self.assertIn("Top outside wallet this window", payload["messages"]["invite_long"])
             self.assertEqual(payload["leaderboard"]["entries"][0]["points"], 9)
             print("  Ops: community share bundle carries reward copy and top-leader context")
+
+    def test_66_secure_bind_detects_off_host_exposure(self):
+        """Overlay helpers classify loopback binds as local and wildcard/private binds as token-gated."""
+        self.assertTrue(is_loopback_host("127.0.0.1"))
+        self.assertTrue(is_loopback_host("::1"))
+        self.assertTrue(is_loopback_host("localhost"))
+        self.assertFalse(bind_host_requires_admin_token("127.0.0.1"))
+        self.assertTrue(bind_host_requires_admin_token("0.0.0.0"))
+        self.assertTrue(bind_host_requires_admin_token("192.168.86.214"))
+        print("  Overlay: secure bind helper blocks off-host bind targets without a token")
+
+    def test_67_admin_services_refuse_public_bind_without_admin_token(self):
+        """Admin-surface services fail closed if started off-host without DARWIN_ADMIN_TOKEN."""
+        base_env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM), "DARWIN_BIND_HOST": "0.0.0.0"}
+        base_env.pop("DARWIN_ADMIN_TOKEN", None)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            cases = [
+                ("router", [str(ROOT / "overlay" / "router" / "service.py"), "0"]),
+                ("archive", [str(ROOT / "overlay" / "archive" / "service.py"), "0", str(tmp / "archive")]),
+                ("scorer", [str(ROOT / "overlay" / "scorer" / "service.py"), "0", "http://127.0.0.1:9"]),
+                ("watcher", [str(ROOT / "overlay" / "watcher" / "service.py"), "0", str(tmp / "watcher"), "http://127.0.0.1:9"]),
+                ("finalizer", [str(ROOT / "overlay" / "finalizer" / "service.py"), "0", "1800"]),
+                ("sentinel", [str(ROOT / "overlay" / "sentinel" / "service.py"), "0"]),
+            ]
+
+            for name, args in cases:
+                result = subprocess.run(
+                    [sys.executable, *args],
+                    cwd=str(ROOT),
+                    env=base_env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                combined = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, msg=f"{name} unexpectedly started:\n{combined}")
+                self.assertIn("DARWIN_ADMIN_TOKEN", combined, msg=f"{name} did not explain the refusal:\n{combined}")
+
+        print("  Overlay: admin services fail closed on off-host startup without DARWIN_ADMIN_TOKEN")
+
+    def test_68_admin_service_still_starts_on_loopback_without_admin_token(self):
+        """Loopback startup remains valid for local-only operator workflows."""
+        env = {**os.environ, "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM), "DARWIN_BIND_HOST": "127.0.0.1"}
+        env.pop("DARWIN_ADMIN_TOKEN", None)
+
+        proc = subprocess.Popen(
+            [sys.executable, str(ROOT / "overlay" / "router" / "service.py"), "0"],
+            cwd=str(ROOT),
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            time.sleep(0.5)
+            if proc.poll() is not None:
+                stdout, stderr = proc.communicate(timeout=5)
+                self.fail(f"router exited early on loopback startup:\n{stdout}{stderr}")
+        finally:
+            proc.terminate()
+            try:
+                proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.communicate(timeout=5)
+
+        print("  Overlay: loopback-only startup still works without an admin token")
 
 
 if __name__ == "__main__":

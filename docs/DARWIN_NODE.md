@@ -39,7 +39,16 @@ The runner writes:
   - `DARWIN_BIND_HOST=<public-or-lan-ip>`
   - `DARWIN_ADMIN_TOKEN=<long-random-secret>`
 - Mutating overlay endpoints use that admin token via `Authorization: Bearer ...` or `X-Darwin-Token`.
-- Leaving the node off-host without a token is blocked by `run_darwin_node.sh`.
+- The admin-surface services (`router`, `scorer`, `watcher`, `archive`, `finalizer`, `sentinel`) now refuse non-loopback startup unless `DARWIN_ADMIN_TOKEN` is set.
+- `run_darwin_node.sh` also blocks whole-node off-host startup without that token.
+- Operator scripts such as `ops/publish_canary_epoch.sh` forward the token automatically when `DARWIN_ADMIN_TOKEN` is exported.
+
+For containerized local devnet runs, `ops/docker-compose.devnet.yml` binds published ports to host loopback and uses a fixed local token:
+
+```bash
+export DARWIN_ADMIN_TOKEN=darwin-devnet-admin-token
+docker compose -f ops/docker-compose.devnet.yml up
+```
 
 ## Preflight Only
 

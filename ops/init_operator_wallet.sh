@@ -70,7 +70,10 @@ fi
   "$WALLET_FILE" \
   --out "$PUBLIC_FILE" >/dev/null
 
-readarray -t WALLET_LINES < <("$PYTHON_BIN" - <<'PY' "$PUBLIC_FILE"
+WALLET_LINES=()
+while IFS= read -r line; do
+  WALLET_LINES+=("$line")
+done < <("$PYTHON_BIN" - <<'PY' "$PUBLIC_FILE"
 import json, sys
 from pathlib import Path
 data = json.loads(Path(sys.argv[1]).read_text())

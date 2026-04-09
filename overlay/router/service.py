@@ -22,7 +22,12 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "sim"))
 
 from darwin_sim.core.types import Side, to_x18, from_x18, BPS
-from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+from overlay.http_utils import (
+    enforce_secure_bind,
+    load_json_body,
+    require_admin_token,
+    resolve_bind_host,
+)
 
 
 class RouterState:
@@ -247,6 +252,8 @@ def main():
     port = int(_sys.argv[1]) if len(_sys.argv) > 1 else 9444
     control = int(_sys.argv[2]) if len(_sys.argv) > 2 else 1500
     state_file = _sys.argv[3] if len(_sys.argv) > 3 else os.environ.get("DARWIN_ROUTER_STATE_FILE", "")
+    bind_host = resolve_bind_host()
+    enforce_secure_bind("darwin-routerd", bind_host)
 
     global STATE
     STATE = RouterState(control_share_bps=control, state_file=state_file)
@@ -264,7 +271,6 @@ def main():
     print(f"  POST /v1/fitness    — update fitness scores")
 
     try:
-        bind_host = resolve_bind_host()
         print(f"[darwin-routerd] Bind host: {bind_host}")
         HTTPServer((bind_host, port), RouterHandler).serve_forever()
     except KeyboardInterrupt:

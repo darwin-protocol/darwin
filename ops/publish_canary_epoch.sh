@@ -57,6 +57,10 @@ RUN_STATUS_CHECK="${DARWIN_CANARY_RUN_STATUS_CHECK:-1}"
 
 mkdir -p "$REPORT_DIR"
 export PYTHONPATH="$ROOT:$ROOT/sim${PYTHONPATH:+:$PYTHONPATH}"
+AUTH_ARGS=()
+if [[ -n "${DARWIN_ADMIN_TOKEN:-}" ]]; then
+  AUTH_ARGS=(-H "Authorization: Bearer ${DARWIN_ADMIN_TOKEN}")
+fi
 
 ingest_json="$REPORT_DIR/publish-${EPOCH_ID}-ingest.json"
 replay_json="$REPORT_DIR/publish-${EPOCH_ID}-replay.json"
@@ -67,6 +71,7 @@ ingest_payload=$(printf '{"epoch_id":"%s","source_dir":"%s"}' "$EPOCH_ID" "$(cd 
 curl -fsS \
   -X POST \
   -H "Content-Type: application/json" \
+  ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} \
   -d "$ingest_payload" \
   "${ARCHIVE_URL%/}/v1/ingest" >"$ingest_json"
 
@@ -74,6 +79,7 @@ replay_payload=$(printf '{"epoch_id":"%s"}' "$EPOCH_ID")
 curl -fsS \
   -X POST \
   -H "Content-Type: application/json" \
+  ${AUTH_ARGS[@]+"${AUTH_ARGS[@]}"} \
   -d "$replay_payload" \
   "${WATCHER_URL%/}/v1/replay/archive" >"$replay_json"
 

@@ -21,7 +21,13 @@ from darwin_sim.core.types import FillResult, Side, from_x18, to_x18, BPS
 from darwin_sim.scoring.fitness import (
     cohort_metrics, compute_fitness, update_weights,
 )
-from overlay.http_utils import http_get_bytes, load_json_body, require_admin_token, resolve_bind_host
+from overlay.http_utils import (
+    enforce_secure_bind,
+    http_get_bytes,
+    load_json_body,
+    require_admin_token,
+    resolve_bind_host,
+)
 
 
 class ScorerState:
@@ -195,6 +201,8 @@ def main():
     import sys as _sys
     port = int(_sys.argv[1]) if len(_sys.argv) > 1 else 9445
     archive_url = _sys.argv[2] if len(_sys.argv) > 2 else "http://localhost:9447"
+    bind_host = resolve_bind_host()
+    enforce_secure_bind("darwin-scorerd", bind_host)
 
     global STATE
     STATE = ScorerState(archive_url=archive_url)
@@ -207,7 +215,6 @@ def main():
     print(f"  POST /v1/score          — score an epoch")
 
     try:
-        bind_host = resolve_bind_host()
         print(f"[darwin-scorerd] Bind host: {bind_host}")
         HTTPServer((bind_host, port), ScorerHandler).serve_forever()
     except KeyboardInterrupt:

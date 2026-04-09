@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 from http.server import BaseHTTPRequestHandler
@@ -13,8 +14,32 @@ def resolve_bind_host(default: str = "127.0.0.1") -> str:
     return os.environ.get("DARWIN_BIND_HOST", default)
 
 
+def is_loopback_host(host: str) -> bool:
+    normalized = host.strip().strip("[]").lower()
+    if normalized in {"localhost", "ip6-localhost"}:
+        return True
+    try:
+        return ipaddress.ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
+def bind_host_requires_admin_token(host: str) -> bool:
+    return not is_loopback_host(host)
+
+
 def admin_token() -> str:
     return os.environ.get("DARWIN_ADMIN_TOKEN", "").strip()
+
+
+def enforce_secure_bind(service_name: str, bind_host: str) -> None:
+    if not bind_host_requires_admin_token(bind_host):
+        return
+    if admin_token():
+        return
+    raise SystemExit(
+        f"{service_name} refuses non-loopback bind host {bind_host!r} without DARWIN_ADMIN_TOKEN"
+    )
 
 
 def request_headers(extra: dict[str, str] | None = None) -> dict[str, str]:
@@ -67,4 +92,3 @@ def http_get_bytes(url: str, timeout: float = 10.0) -> bytes:
     req = Request(url, headers=request_headers())
     with urlopen(req, timeout=timeout) as resp:
         return resp.read()
-
