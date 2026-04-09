@@ -21,7 +21,7 @@ const mono = IBM_Plex_Mono({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://usedarwin.xyz";
 const siteDescription =
-  "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.";
+  "Claim DRW, make a tiny testnet trade, and confirm it on the live Darwin activity feed.";
 const socialImage = "/og-card.png";
 const baseAppId = process.env.DARWIN_BASE_APP_ID || "";
 
@@ -75,28 +75,22 @@ export default function RootLayout({ children }) {
                 <img className="site-brand-mark" src="/drw-logo.svg" alt="Darwin logo" width="44" height="44" />
                 <span className="site-brand-copy">
                   <strong>Use Darwin</strong>
-                  <span>Public DRW market lanes</span>
+                  <span>DRW testnet market</span>
                 </span>
               </Link>
 
               <nav className="site-nav" aria-label="Primary">
                 <Link href="/trade/">Market</Link>
                 <Link href="/activity/">Activity</Link>
-                <Link href="/epoch/">Epoch</Link>
-                <Link href="/join/">Join</Link>
                 <Link href="/search/">Search</Link>
+                <Link href="/epoch/">Epoch</Link>
               </nav>
 
               <div className="site-meta">
                 <span className="site-pill">Base + Arbitrum testnet</span>
-                <a
-                  className="site-header-cta"
-                  href="https://github.com/darwin-protocol/darwin"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GitHub
-                </a>
+                <Link className="button button-primary" href="/trade/">
+                  Open market
+                </Link>
               </div>
             </div>
           </header>
@@ -107,36 +101,35 @@ export default function RootLayout({ children }) {
             <div className="site-footer-inner">
               <div className="site-footer-intro">
                 <p className="eyebrow">DARWIN SURFACE</p>
-                <h2>Make the first action obvious.</h2>
+                <h2>One clear loop.</h2>
                 <p>
-                  Claim DRW, use a tiny preset, and verify the result on a public lane. Darwin is
-                  still testnet alpha, but the surface is now shaped like a product instead of a raw
-                  dashboard.
+                  Claim the faucet, sell 10 DRW, and check activity. If that feels clear, the
+                  market surface is doing its job.
                 </p>
               </div>
 
               <div className="site-footer-links">
-                <span className="label">Surface</span>
+                <span className="label">Start</span>
                 <Link href="/trade/">Trade DRW</Link>
                 <Link href="/activity/">Live activity</Link>
-                <Link href="/epoch/">Current epoch</Link>
+                <Link href="/search/">Search Darwin</Link>
               </div>
 
               <div className="site-footer-links">
-                <span className="label">Docs</span>
+                <span className="label">Build</span>
+                <a
+                  href="https://github.com/darwin-protocol/darwin"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GitHub
+                </a>
                 <a
                   href="https://github.com/darwin-protocol/darwin/blob/main/docs/DARWIN_NODE.md"
                   target="_blank"
                   rel="noreferrer"
                 >
                   Darwin node
-                </a>
-                <a
-                  href="https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Market bootstrap
                 </a>
                 <a
                   href="https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md"

@@ -93,7 +93,7 @@ export default function JoinPage() {
               </label>
               <label className="field">
                 <span>Source</span>
-                <input id="joinWalletSource" type="text" value="starter-cohort" />
+                <input id="joinWalletSource" type="text" defaultValue="starter-cohort" />
               </label>
             </div>
             <label className="field">

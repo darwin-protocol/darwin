@@ -40,6 +40,10 @@ async function copyText(text, status) {
   homeEls.homeCommunityStatus.textContent = status;
 }
 
+function setHref(el, href) {
+  if (el) el.href = href;
+}
+
 function bindCommunityPanel() {
   const share = homeState.communityShare;
   const epoch = share.epoch || {};
@@ -97,35 +101,21 @@ function bindCommunityPanel() {
     ? window.DarwinLane.laneRelativeHref("/search/", homeState.laneSelection)
     : "/search/";
 
-  homeEls.homeOpenMarketLink.href = marketHref;
-  homeEls.homeHeroTinySwapLink.href = tinySwapHref;
-  homeEls.homeHeroEpochLink.href = epochHref;
-  homeEls.homeHeroJoinLink.href = joinHref;
-  homeEls.homeHeroActivityLink.href = activityHref;
-  homeEls.homeHeroSearchLink.href = searchHref;
-  homeEls.homeEpochLink.href = epochHref;
-  homeEls.homeActivityLink.href = activityHref;
-  homeEls.homeTinySwapLink.href = tinySwapHref;
-  homeEls.homeJoinLink.href = joinHref;
-  homeEls.homeSearchLink.href = searchHref;
-  homeEls.homeMarketPageLink.href = marketHref;
-  homeEls.homeActivityPageLink.href = activityHref;
+  setHref(homeEls.homeOpenMarketLink, marketHref);
+  setHref(homeEls.homeHeroTinySwapLink, tinySwapHref);
+  setHref(homeEls.homeHeroActivityLink, activityHref);
+  setHref(homeEls.homeHeroSearchLink, searchHref);
+  setHref(homeEls.homeEpochLink, epochHref);
+  setHref(homeEls.homeJoinLink, joinHref);
+  setHref(homeEls.homeActivityPageLink, activityHref);
 
-  homeEls.copyInviteButton.addEventListener("click", () => {
-    copyText(messages.invite_long || links.epoch || "", "invite copied").catch((error) => {
-      homeEls.homeCommunityStatus.textContent = error?.message || "copy failed";
+  if (homeEls.copyInviteButton) {
+    homeEls.copyInviteButton.addEventListener("click", () => {
+      copyText(messages.invite_long || links.epoch || "", "invite copied").catch((error) => {
+        homeEls.homeCommunityStatus.textContent = error?.message || "copy failed";
+      });
     });
-  });
-  homeEls.copyTinySwapHomeButton.addEventListener("click", () => {
-    copyText(links.tiny_swap || tinySwapHref, "tiny-swap link copied").catch((error) => {
-      homeEls.homeCommunityStatus.textContent = error?.message || "copy failed";
-    });
-  });
-  homeEls.copyActivityHomeButton.addEventListener("click", () => {
-    copyText(links.activity || activityHref, "activity link copied").catch((error) => {
-      homeEls.homeCommunityStatus.textContent = error?.message || "copy failed";
-    });
-  });
+  }
 
   if (structure && homeEls.homePoolStrategyGrid) {
     homeEls.homePoolStrategyBadge.textContent = structure.defaultEntry || "canonical";
@@ -208,22 +198,14 @@ async function bootHome() {
     homeCommunityStatus: home$("homeCommunityStatus"),
     homeCommunityUpdatedAt: home$("homeCommunityUpdatedAt"),
     homeEpochLink: home$("homeEpochLink"),
-    homeActivityLink: home$("homeActivityLink"),
-    homeTinySwapLink: home$("homeTinySwapLink"),
     homeOpenMarketLink: home$("homeOpenMarketLink"),
     homeHeroTinySwapLink: home$("homeHeroTinySwapLink"),
-    homeHeroEpochLink: home$("homeHeroEpochLink"),
-    homeHeroJoinLink: home$("homeHeroJoinLink"),
     homeHeroActivityLink: home$("homeHeroActivityLink"),
     homeHeroSearchLink: home$("homeHeroSearchLink"),
-    homeMarketPageLink: home$("homeMarketPageLink"),
     homeActivityPageLink: home$("homeActivityPageLink"),
     homeJoinLink: home$("homeJoinLink"),
-    homeSearchLink: home$("homeSearchLink"),
     homeLaneSwitcher: home$("homeLaneSwitcher"),
     copyInviteButton: home$("copyInviteButton"),
-    copyTinySwapHomeButton: home$("copyTinySwapHomeButton"),
-    copyActivityHomeButton: home$("copyActivityHomeButton"),
     homePoolStrategyBadge: home$("homePoolStrategyBadge"),
     homePoolStrategyNote: home$("homePoolStrategyNote"),
     homePoolStrategyGrid: home$("homePoolStrategyGrid"),

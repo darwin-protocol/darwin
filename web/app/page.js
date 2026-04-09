@@ -34,7 +34,7 @@ const frameEmbed = JSON.stringify({
 export const metadata = {
   title: "Use Darwin",
   description:
-    "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.",
+    "Claim DRW, make a tiny testnet trade, and confirm it on the live Darwin activity feed.",
   alternates: {
     canonical: "/",
   },
@@ -44,22 +44,20 @@ export const metadata = {
   },
 };
 
-const homeScriptVersion = "20260409-home6";
-
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "Use Darwin",
   url: "https://usedarwin.xyz",
   description:
-    "Claim DRW, make a tiny first swap, and track live Darwin market activity across the public Base and Arbitrum testnet lanes.",
+    "Claim DRW, make a tiny testnet trade, and confirm it on the live Darwin activity feed.",
 };
 
 export default function HomePage() {
   return (
     <div className="background-shell">
-      <Script src={`./lane.js?v=${homeScriptVersion}`} strategy="afterInteractive" />
-      <Script src={`./home.js?v=${homeScriptVersion}`} strategy="afterInteractive" />
+      <Script src="./lane.js?v=20260409-home8" strategy="afterInteractive" />
+      <Script src="./home.js?v=20260409-home8" strategy="afterInteractive" />
 
       <div className="background">
         <div className="orb orb-a"></div>
@@ -73,114 +71,80 @@ export default function HomePage() {
       />
 
       <main className="home-shell">
-        <section className="card status-banner">
-          <div className="brand-row">
-            <img className="brand-mark" src="/drw-logo.svg" alt="DRW coin logo" width="72" height="72" />
-            <div>
-              <p className="eyebrow">USE DARWIN</p>
-              <h1 className="plain-title">Live DRW market lanes.</h1>
-              <p id="homeHeroStatusLine" className="plain-note">
-                Public host: <code>usedarwin.xyz</code>. Base recovery is live now, and the Arbitrum
-                Sepolia lane is ready in the same portal.
-              </p>
-            </div>
-          </div>
-          <div className="status-banner-meta">
-            <span id="homePrimaryLaneBadge" className="badge">Base Sepolia</span>
-            <span className="badge">Arbitrum Sepolia</span>
-            <span className="badge">DRW live</span>
-            <span className="badge">Testnet alpha</span>
-          </div>
-        </section>
-
         <section className="card home-hero simple-hero">
           <div className="home-hero-copy">
-            <h2 className="section-title">Claim, wrap, and trade.</h2>
-            <p className="lede">
-              DARWIN is live as a public testnet surface: token, faucet, reference pool, wallet
-              portal, and deployment artifact. The first outside action should stay small and
-              obvious: claim DRW, then use the canonical tiny swap on the current lane.
-            </p>
-            <div className="hero-stat-grid">
-              <div className="hero-stat">
-                <span className="label">Surface</span>
-                <strong>Public market portal</strong>
-                <small>Token, faucet, pool, activity, and search in one shell.</small>
-              </div>
-              <div className="hero-stat">
-                <span className="label">First move</span>
-                <strong>Tiny sell 10 DRW</strong>
-                <small>Use a legible action before asking for conviction or size.</small>
-              </div>
-              <div className="hero-stat">
-                <span className="label">Proof</span>
-                <strong>Live activity feed</strong>
-                <small>Claims and swaps show up on the Darwin-native public trail.</small>
-              </div>
+            <p className="eyebrow">USE DARWIN</p>
+            <div className="status-banner-meta">
+              <span id="homePrimaryLaneBadge" className="badge">Base Sepolia</span>
+              <span className="badge">Arbitrum Sepolia</span>
+              <span className="badge">DRW testnet</span>
             </div>
+            <h1 className="plain-title">Claim DRW. Start with one tiny trade.</h1>
+            <p className="lede">
+              Darwin is a live testnet market surface. Claim from the faucet, run the tiny sell
+              through the reference pool, then confirm the result on the activity page.
+            </p>
+            <p id="homeHeroStatusLine" className="plain-note">
+              Public host: <code>usedarwin.xyz</code>. Base and Arbitrum Sepolia are both available
+              from the same portal.
+            </p>
             <div id="homeLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
               <Link id="homeOpenMarketLink" className="button button-primary" href="/trade/">
                 Open market
               </Link>
               <Link id="homeHeroTinySwapLink" className="button button-secondary" href="/trade/?preset=tiny-sell">
-                Try tiny swap
-              </Link>
-              <Link id="homeHeroEpochLink" className="button button-secondary" href="/epoch/">
-                Current epoch
-              </Link>
-              <Link id="homeHeroJoinLink" className="button button-secondary" href="/join/">
-                Join cohort
+                Tiny sell preset
               </Link>
               <Link id="homeHeroActivityLink" className="button button-secondary" href="/activity/">
                 Live activity
               </Link>
+            </div>
+            <div className="link-row">
+              <a id="homeEpochLink" className="button button-secondary" href="/epoch/">
+                Current epoch
+              </a>
+              <a id="homeJoinLink" className="button button-secondary" href="/join/">
+                Join cohort
+              </a>
               <Link id="homeHeroSearchLink" className="button button-secondary" href="/search/">
                 Search Darwin
               </Link>
-              <a
-                className="button button-secondary"
-                href="https://github.com/darwin-protocol/darwin/blob/main/LIVE_STATUS.md"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Live status
-              </a>
-              <a
-                className="button button-secondary"
-                href="https://github.com/darwin-protocol/darwin"
-                target="_blank"
-                rel="noreferrer"
-              >
-                GitHub
-              </a>
             </div>
           </div>
 
           <aside className="home-hero-panel simple-panel">
-            <div className="rail-card">
-              <span className="label">Token</span>
-              <strong>DRW</strong>
-              <small>public testnet market lanes</small>
+            <div className="section-heading">
+              <h2>Start here</h2>
+              <span id="homeEpochBadge" className="badge">
+                loading
+              </span>
             </div>
-            <div className="rail-card">
-              <span className="label">Faucet</span>
-              <small>Public claim path in the market portal</small>
+            <div className="status-ladder">
+              <div className="ladder-step">
+                <strong>1. Claim</strong>
+                <span>Pull DRW from the faucet on the selected lane.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>2. Sell 10 DRW</strong>
+                <span>Use the tiny sell preset through the canonical pool.</span>
+              </div>
+              <div className="ladder-step">
+                <strong>3. Check the feed</strong>
+                <span>Open activity and confirm the trade landed where you expect.</span>
+              </div>
             </div>
-            <div className="rail-card">
-              <span className="label">Reference pool</span>
-              <small>Live DRW / WETH pair in the market portal</small>
-            </div>
+            <p className="tiny-hint">
+              This is the shortest honest Darwin loop. Nothing here requires mainnet funds.
+            </p>
           </aside>
         </section>
 
         <section className="home-grid">
           <article className="card home-panel">
             <div className="section-heading">
-              <h2>Current epoch</h2>
-              <span id="homeEpochBadge" className="badge">
-                loading
-              </span>
+              <h2>Current lane</h2>
+              <span className="badge">live data</span>
             </div>
             <strong id="homeEpochTitle">Loading epoch.</strong>
             <p id="homeEpochSummary" className="caption">
@@ -208,31 +172,13 @@ export default function HomePage() {
                 <small id="homeCommunityUpdatedAt">Waiting for a live community snapshot.</small>
               </div>
             </div>
-            <div className="hero-actions">
-              <a id="homeEpochLink" className="button button-secondary" href="/epoch/">
-                Epoch page
-              </a>
-              <a id="homeTinySwapLink" className="button button-secondary" href="/trade/?preset=tiny-sell">
-                Tiny swap
-              </a>
-              <a id="homeActivityLink" className="button button-secondary" href="/activity/">
-                Public proof
-              </a>
-              <a id="homeJoinLink" className="button button-secondary" href="/join/">
-                Join cohort
-              </a>
-              <a id="homeSearchLink" className="button button-secondary" href="/search/">
-                Search Darwin
-              </a>
+            <div className="link-row">
               <button id="copyInviteButton" className="button button-secondary">
                 Copy invite text
               </button>
-              <button id="copyTinySwapHomeButton" className="button button-secondary">
-                Copy tiny-swap link
-              </button>
-              <button id="copyActivityHomeButton" className="button button-secondary">
-                Copy activity link
-              </button>
+              <Link id="homeActivityPageLink" className="button button-secondary" href="/activity/">
+                Activity page
+              </Link>
             </div>
           </article>
 
@@ -251,83 +197,26 @@ export default function HomePage() {
             </div>
           </article>
 
-          <article className="card home-panel">
+          <article className="card home-panel activity-panel">
             <div className="section-heading">
-              <h2>What is live</h2>
-              <span className="badge">real surface</span>
-            </div>
-            <div className="stat-grid">
-              <div className="metric">
-                <span className="label">Token</span>
-                <strong>1B DRW</strong>
-                <small>live on Darwin testnet lanes</small>
-              </div>
-              <div className="metric">
-                <span className="label">Faucet claim</span>
-                <strong>100 DRW</strong>
-                <small>plus native ETH drip</small>
-              </div>
-              <div className="metric">
-                <span className="label">Pool</span>
-                <strong>DRW / WETH</strong>
-                <small>reference liquidity</small>
-              </div>
-              <div className="metric">
-                <span className="label">First action</span>
-                <strong>Tiny swap</strong>
-                <small>claim then sell 10 DRW</small>
-              </div>
-            </div>
-          </article>
-
-          <article className="card home-panel">
-            <div className="section-heading">
-              <h2>What to do</h2>
-              <span className="badge">simple path</span>
-            </div>
-            <ol className="step-list">
-              <li>Open the market page.</li>
-              <li>Connect a wallet on the selected Darwin lane.</li>
-              <li>Claim DRW from the faucet.</li>
-              <li>Use the `tiny sell` preset for a first public swap.</li>
-              <li>Share the epoch or activity link so the next wallet can follow.</li>
-              <li>Acquire quote assets later if the lane supports buying from the pool.</li>
-            </ol>
-          </article>
-
-          <article className="card home-panel">
-            <div className="section-heading">
-              <h2>What is still missing</h2>
-              <span className="badge">real blockers</span>
+              <h2>Ground rules</h2>
+              <span className="badge">read once</span>
             </div>
             <div className="status-ladder">
               <div className="ladder-step">
                 <strong>Testnet only</strong>
-                <span>Everything here still runs on public testnets, not mainnet.</span>
+                <span>Base Sepolia and Arbitrum Sepolia are live here. Nothing on this surface is mainnet.</span>
               </div>
               <div className="ladder-step">
-                <strong>Reference liquidity</strong>
-                <span>The pool is live, but liquidity is still thin and experimental.</span>
+                <strong>Start tiny</strong>
+                <span>Liquidity is still thin. The right first trade is small enough to inspect, not to optimize.</span>
               </div>
               <div className="ladder-step">
-                <strong>Small amounts</strong>
-                <span>Use the faucet and trade conservatively.</span>
+                <strong>Only swaps count</strong>
+                <span>Unlocks and leaderboard progress count swap-active wallets, not claim-only wallets.</span>
               </div>
-            </div>
-          </article>
-
-          <article className="card home-panel">
-            <div className="section-heading">
-              <h2>Public surfaces</h2>
-              <span className="badge">repo-backed</span>
             </div>
             <div className="link-row">
-              <Link id="homeMarketPageLink" className="button button-secondary" href="/trade/">
-                Market page
-              </Link>
-              <Link id="homeActivityPageLink" className="button button-secondary" href="/activity/">
-                Activity page
-              </Link>
               <a
                 className="button button-secondary"
                 href="https://github.com/darwin-protocol/darwin/blob/main/docs/MARKET_BOOTSTRAP.md"
@@ -335,6 +224,14 @@ export default function HomePage() {
                 rel="noreferrer"
               >
                 Market runbook
+              </a>
+              <a
+                className="button button-secondary"
+                href="https://github.com/darwin-protocol/darwin/blob/main/docs/COMMUNITY_BOOTSTRAP.md"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Community bootstrap
               </a>
             </div>
           </article>
