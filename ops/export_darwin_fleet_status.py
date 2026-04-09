@@ -13,7 +13,9 @@ from urllib.request import Request, urlopen
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUT = REPO_ROOT / "web" / "public" / "node-fleet.json"
+DEFAULT_OUT = REPO_ROOT / "ops" / "state" / "darwin-fleet-status.json"
+DEFAULT_PUBLIC_OUT = REPO_ROOT / "web" / "public" / "node-fleet.json"
+DEFAULT_CONFIG_FILE = REPO_ROOT / "ops" / "darwin_fleet.json"
 DEFAULT_LANES = [
     {
         "slug": "base-sepolia-recovery",
@@ -22,6 +24,8 @@ DEFAULT_LANES = [
         "market_config_path": "/market-config.json",
         "state_root": str(REPO_ROOT / "ops" / "state" / "base-sepolia-recovery-node"),
         "port_base": int(os.environ.get("DARWIN_BASE_RECOVERY_GATEWAY_PORT", "9443")),
+        "desired_state": "parked",
+        "reason": "Parked while local hardware and storage are constrained.",
     },
     {
         "slug": "base-sepolia",
@@ -30,6 +34,7 @@ DEFAULT_LANES = [
         "market_config_path": "",
         "state_root": str(REPO_ROOT / "ops" / "state" / "base-sepolia-canary"),
         "port_base": int(os.environ.get("DARWIN_CANARY_GATEWAY_PORT", "9443")),
+        "desired_state": "live",
     },
     {
         "slug": "arbitrum-sepolia",
@@ -38,6 +43,7 @@ DEFAULT_LANES = [
         "market_config_path": "/market-config-arbitrum-sepolia.json",
         "state_root": str(REPO_ROOT / "ops" / "state" / "arbitrum-sepolia-node"),
         "port_base": int(os.environ.get("DARWIN_ARBITRUM_GATEWAY_PORT", "9543")),
+        "desired_state": "staged",
     },
 ]
 SERVICE_PORTS = {
@@ -61,7 +67,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--out",
         default=str(DEFAULT_OUT),
-        help="Output path for the fleet status JSON",
+        help="Output path for the internal fleet status JSON",
+    )
+    parser.add_argument(
+        "--public-out",
+        default="",
+        help="Optional public-safe aggregate availability JSON output path",
+    )
+    parser.add_argument(
+        "--config-file",
+        default=str(DEFAULT_CONFIG_FILE),
+        help="Fleet policy/config JSON file",
     )
     parser.add_argument(
         "--lane",
@@ -92,6 +108,16 @@ def load_optional_json(path: Path) -> dict:
     if not path.exists():
         return {}
     return load_json(path)
+
+
+def load_lane_config(config_file: Path) -> list[dict]:
+    if not config_file.exists():
+        return []
+    payload = load_json(config_file)
+    lanes = payload.get("lanes")
+    if not isinstance(lanes, list):
+        raise SystemExit("fleet config file must contain a lanes array")
+    return [dict(item) for item in lanes]
 
 
 def parse_time(value: str) -> datetime | None:
@@ -290,9 +316,10 @@ def probe_lane(lane: dict, expected_chain_id: int | None, expected_hub: str, tim
     }
 
 
-def parse_lane_specs(values: list[str]) -> list[dict]:
+def parse_lane_specs(values: list[str], config_file: Path) -> list[dict]:
     if not values:
-        return [dict(spec) for spec in DEFAULT_LANES]
+        configured = load_lane_config(config_file)
+        return configured or [dict(spec) for spec in DEFAULT_LANES]
     lanes = []
     for raw in values:
         try:
@@ -322,9 +349,14 @@ def build_lane_status(lane: dict, stale_after_sec: int, timeout_sec: float) -> d
     probe = probe_lane(lane, expected_chain_id, expected_hub, timeout_sec)
     smoke = latest_smoke_summary(report_dir)
     smoke_age = age_seconds(str(smoke.get("generated_at", "") or ""))
+    desired_state = str(lane.get("desired_state") or "").strip().lower()
 
-    if probe["matched"]:
+    if desired_state == "parked":
+        status = "parked"
+    elif probe["matched"]:
         status = probe["state"]
+    elif desired_state == "staged":
+        status = "staged"
     elif report_path.exists() or pid_path.exists():
         status = "staged"
     else:
@@ -333,6 +365,7 @@ def build_lane_status(lane: dict, stale_after_sec: int, timeout_sec: float) -> d
     status_copy = {
         "live": "Live",
         "warming": "Warming",
+        "parked": "Parked",
         "staged": "Staged",
         "degraded": "Degraded",
         "missing": "Missing",
@@ -345,7 +378,9 @@ def build_lane_status(lane: dict, stale_after_sec: int, timeout_sec: float) -> d
             "epoch_path": default_lane_route(str(lane["slug"]), "/epoch/"),
         }
 
-    if not probe["matched"] and probe.get("state") == "down" and report_path.exists():
+    if status == "parked":
+        summary = str(lane.get("reason") or "parked by fleet policy")
+    elif not probe["matched"] and probe.get("state") == "down" and report_path.exists():
         summary = "no live local overlay responding on the expected ports"
     else:
         summary = probe.get("summary") or checks.get("watcher_ready", {}).get("detail") or (
@@ -358,6 +393,7 @@ def build_lane_status(lane: dict, stale_after_sec: int, timeout_sec: float) -> d
         "slug": str(lane["slug"]),
         "label": str(lane.get("label") or lane["slug"]),
         "role": str(lane.get("role") or "public"),
+        "desired_state": desired_state or "auto",
         "market_config_path": str(lane.get("market_config_path") or ""),
         "status": status,
         "status_label": status_copy.get(status, status.title()),
@@ -400,20 +436,58 @@ def summarize(lanes: list[dict]) -> dict:
         "public_lanes": len(public_lanes),
         "live": counts.get("live", 0),
         "warming": counts.get("warming", 0),
+        "parked": counts.get("parked", 0),
         "staged": counts.get("staged", 0),
         "degraded": counts.get("degraded", 0),
         "missing": counts.get("missing", 0),
         "public_live": public_live,
         "public_summary": f"{public_live}/{len(public_lanes)} public lanes live" if public_lanes else "no public lanes configured",
         "operator_summary": ", ".join(
-            f"{counts[key]} {key}" for key in ("live", "warming", "staged", "degraded", "missing") if counts.get(key, 0)
+            f"{counts[key]} {key}" for key in ("live", "warming", "parked", "staged", "degraded", "missing") if counts.get(key, 0)
         ),
+    }
+
+
+def build_public_payload(payload: dict) -> dict:
+    public_lanes = [lane for lane in payload.get("lanes", []) if lane.get("role") == "public"]
+    counts = {}
+    for lane in public_lanes:
+        counts[lane["status"]] = counts.get(lane["status"], 0) + 1
+
+    public_total = len(public_lanes)
+    public_live = counts.get("live", 0)
+    public_warming = counts.get("warming", 0)
+    public_parked = counts.get("parked", 0)
+    public_staged = counts.get("staged", 0)
+    public_degraded = counts.get("degraded", 0)
+    public_missing = counts.get("missing", 0)
+
+    summary_parts = [f"{public_live}/{public_total} public lanes live" if public_total else "no public lanes configured"]
+    if public_parked:
+        summary_parts.append(f"{public_parked} parked for capacity")
+    elif public_staged:
+        summary_parts.append(f"{public_staged} staged")
+
+    return {
+        "generated_at": payload.get("generated_at", utc_now()),
+        "availability": {
+            "public_total": public_total,
+            "public_live": public_live,
+            "public_warming": public_warming,
+            "public_parked": public_parked,
+            "public_staged": public_staged,
+            "public_degraded": public_degraded,
+            "public_missing": public_missing,
+            "public_summary": ", ".join(summary_parts),
+            "note": "Aggregate availability only. Per-node operator state stays private.",
+        },
     }
 
 
 def main() -> int:
     args = parse_args()
-    lanes = [build_lane_status(lane, args.stale_after_sec, args.timeout_sec) for lane in parse_lane_specs(args.lane)]
+    config_file = Path(args.config_file).expanduser().resolve()
+    lanes = [build_lane_status(lane, args.stale_after_sec, args.timeout_sec) for lane in parse_lane_specs(args.lane, config_file)]
     payload = {
         "generated_at": utc_now(),
         "summary": summarize(lanes),
@@ -426,6 +500,11 @@ def main() -> int:
     print(f"  out:       {out_path}")
     print(f"  summary:   {payload['summary']['operator_summary']}")
     print(f"  public:    {payload['summary']['public_summary']}")
+    if args.public_out:
+        public_out = Path(args.public_out).expanduser().resolve()
+        public_out.parent.mkdir(parents=True, exist_ok=True)
+        public_out.write_text(json.dumps(build_public_payload(payload), indent=2, sort_keys=True) + "\n")
+        print(f"  public_out:{public_out}")
     return 0
 
 

@@ -4760,6 +4760,68 @@ exit 1
             self.assertEqual(lanes["base-sepolia-recovery"]["latest_intent_smoke"]["router_delta"]["total_routed"], 1)
             print("  Ops: fleet export distinguishes live local lanes from staged shadowed lanes")
 
+    def test_45e_export_darwin_fleet_public_payload_redacts_lane_details(self):
+        """Ops: public fleet export publishes aggregate availability only and supports parked lanes."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            config = tmp / "darwin_fleet.json"
+            internal_out = tmp / "fleet-internal.json"
+            public_out = tmp / "fleet-public.json"
+            parked_root = tmp / "base-recovery"
+            staged_root = tmp / "arb"
+            parked_root.mkdir()
+            staged_root.mkdir()
+
+            config.write_text(json.dumps({
+                "lanes": [
+                    {
+                        "slug": "base-sepolia-recovery",
+                        "label": "Base Recovery",
+                        "role": "public",
+                        "state_root": str(parked_root),
+                        "market_config_path": "/market-config.json",
+                        "desired_state": "parked",
+                        "reason": "Parked while local hardware and storage are constrained.",
+                    },
+                    {
+                        "slug": "arbitrum-sepolia",
+                        "label": "Arbitrum Sepolia",
+                        "role": "public",
+                        "state_root": str(staged_root),
+                        "market_config_path": "/market-config-arbitrum-sepolia.json",
+                        "desired_state": "staged",
+                    },
+                ],
+            }))
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "ops" / "export_darwin_fleet_status.py"),
+                    "--config-file",
+                    str(config),
+                    "--out",
+                    str(internal_out),
+                    "--public-out",
+                    str(public_out),
+                ],
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+            internal_payload = json.loads(internal_out.read_text())
+            public_payload = json.loads(public_out.read_text())
+            internal_lanes = {lane["slug"]: lane for lane in internal_payload["lanes"]}
+            self.assertEqual(internal_lanes["base-sepolia-recovery"]["status"], "parked")
+            self.assertEqual(public_payload["availability"]["public_parked"], 1)
+            self.assertEqual(public_payload["availability"]["public_live"], 0)
+            self.assertEqual(public_payload["availability"]["public_staged"], 1)
+            self.assertNotIn("lanes", public_payload)
+            self.assertIn("Aggregate availability only", public_payload["availability"]["note"])
+            print("  Ops: public fleet export redacts lane details and only publishes aggregate availability")
+
     def test_46_fund_drw_faucet_updates_artifact(self):
         """Ops: faucet funding helper updates the deployment artifact after transfer calls."""
         with tempfile.TemporaryDirectory() as tmpdir:

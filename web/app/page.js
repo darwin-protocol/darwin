@@ -64,11 +64,14 @@ const structuredData = {
 
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 const DEFAULT_NODE_FLEET = {
-  summary: {
-    public_summary: "node fleet not published yet",
-    operator_summary: "waiting for the first fleet export",
+  availability: {
+    public_total: 0,
+    public_live: 0,
+    public_parked: 0,
+    public_staged: 0,
+    public_summary: "node availability not published yet",
+    note: "Aggregate availability only. Per-node operator state stays private.",
   },
-  lanes: [],
 };
 
 async function readPublicJson(publicPath, fallback) {
@@ -79,41 +82,6 @@ async function readPublicJson(publicPath, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function renderFleetCard(lane) {
-  const reportLine = lane.report_generated_at
-    ? `Last report ${new Date(lane.report_generated_at).toLocaleString("en-US")}`
-    : "No local report published yet.";
-  const watcherLine = lane.status === "live" || lane.status === "warming"
-    ? (lane.checks?.watcher_ready?.detail || "No watcher detail.")
-    : reportLine;
-  const smoke = lane.latest_intent_smoke?.generated_at
-    ? `Last smoke ${new Date(lane.latest_intent_smoke.generated_at).toLocaleString("en-US")}`
-    : "No intent smoke published yet.";
-  return (
-    <article key={lane.slug || lane.label} className={`route-card route-${lane.status || "staged"}`}>
-      <div className="route-top">
-        <strong>{lane.label || lane.slug || "Lane"}</strong>
-        <span className="badge">{lane.status_label || lane.status || "staged"}</span>
-      </div>
-      <p className="caption">{lane.summary || "Lane status not exported yet."}</p>
-      <p className="tiny-hint">{watcherLine}</p>
-      <p className="tiny-hint">{smoke}</p>
-      <div className="link-row">
-        {lane.links?.epoch_path ? (
-          <a className="button button-secondary tiny-button" href={lane.links.epoch_path}>
-            Epoch
-          </a>
-        ) : null}
-        {lane.links?.activity_path ? (
-          <a className="button button-secondary tiny-button" href={lane.links.activity_path}>
-            Activity
-          </a>
-        ) : null}
-      </div>
-    </article>
-  );
 }
 
 function renderPoolCard(pool, selection) {
@@ -161,7 +129,7 @@ export default async function HomePage() {
   const joinHref = laneHref(config.community?.starter_cohort_path || "/join/", selection);
   const searchHref = laneHref("/search/", selection);
   const extraLanes = selection.lanes.filter((lane) => lane.slug !== selection.defaultLane.slug);
-  const fleetSummary = nodeFleet.summary || {};
+  const fleetAvailability = nodeFleet.availability || DEFAULT_NODE_FLEET.availability;
 
   return (
     <div className="background-shell">
@@ -319,18 +287,34 @@ export default async function HomePage() {
 
           <article className="card home-panel">
             <div className="section-heading">
-              <h2>Node fleet</h2>
-              <span className="badge">{fleetSummary.public_summary || "fleet snapshot"}</span>
+              <h2>Node availability</h2>
+              <span className="badge">{fleetAvailability.public_summary || "aggregate only"}</span>
             </div>
             <p className="caption">
-              Darwin adoption depends on credible lanes. This panel shows which local overlays are
-              live, warming, or only staged right now.
+              This site only publishes aggregate Darwin availability. Per-node operator state stays
+              private.
             </p>
-            <p className="tiny-hint">
-              {fleetSummary.operator_summary || "Fleet status has not been exported yet."}
-            </p>
-            <div className="route-grid route-grid-tight">
-              {(nodeFleet.lanes || []).map((lane) => renderFleetCard(lane))}
+            <div className="stat-grid">
+              <div className="metric">
+                <span className="label">Public lanes online</span>
+                <strong>{Number(fleetAvailability.public_live ?? 0)}</strong>
+                <small>aggregate only</small>
+              </div>
+              <div className="metric">
+                <span className="label">Parked for capacity</span>
+                <strong>{Number(fleetAvailability.public_parked ?? 0)}</strong>
+                <small>hardware or storage constrained</small>
+              </div>
+              <div className="metric">
+                <span className="label">Provisioned lanes</span>
+                <strong>{Number(fleetAvailability.public_staged ?? 0)}</strong>
+                <small>not currently online</small>
+              </div>
+              <div className="metric">
+                <span className="label">Disclosure</span>
+                <strong>Aggregate only</strong>
+                <small>{fleetAvailability.note || "Per-node operator state stays private."}</small>
+              </div>
             </div>
           </article>
 

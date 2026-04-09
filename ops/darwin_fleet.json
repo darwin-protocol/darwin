@@ -1,0 +1,33 @@
+{
+  "lanes": [
+    {
+      "slug": "base-sepolia-recovery",
+      "label": "Base Recovery",
+      "role": "public",
+      "market_config_path": "/market-config.json",
+      "state_root": "/Users/simchagrieve/workspace/darwin/ops/state/base-sepolia-recovery-node",
+      "port_base": 9443,
+      "desired_state": "parked",
+      "reason": "Parked while local hardware and storage are constrained."
+    },
+    {
+      "slug": "base-sepolia",
+      "label": "Base Canary",
+      "role": "operator",
+      "market_config_path": "",
+      "state_root": "/Users/simchagrieve/workspace/darwin/ops/state/base-sepolia-canary",
+      "port_base": 9443,
+      "desired_state": "live"
+    },
+    {
+      "slug": "arbitrum-sepolia",
+      "label": "Arbitrum Sepolia",
+      "role": "public",
+      "market_config_path": "/market-config-arbitrum-sepolia.json",
+      "state_root": "/Users/simchagrieve/workspace/darwin/ops/state/arbitrum-sepolia-node",
+      "port_base": 9543,
+      "desired_state": "staged",
+      "reason": "Provisioned but not currently running on this machine."
+    }
+  ]
+}

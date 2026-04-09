@@ -201,7 +201,8 @@ fi
   --site-domain "$SITE_DOMAIN" \
   --out web/public/runtime-status.json
 if "$PYTHON_BIN" ops/export_darwin_fleet_status.py \
-  --out web/public/node-fleet.json >/dev/null; then
+  --out ops/state/darwin-fleet-status.json \
+  --public-out web/public/node-fleet.json >/dev/null; then
   echo "[darwin-pi] node fleet status exported"
 else
   echo "[darwin-pi] warning: failed to refresh node fleet status; keeping existing file" >&2

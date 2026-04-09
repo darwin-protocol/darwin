@@ -46,7 +46,7 @@ cd /path/to/darwin
 ```
 
 That wrapper writes `ops/state/darwin-fleet-status.json` and prints a concise
-operator summary. The public publish flow also exports a site-safe copy at
+operator summary. The public publish flow also exports an aggregate-only copy at
 `web/public/node-fleet.json`.
 
 Lane states intentionally distinguish:
@@ -56,8 +56,8 @@ Lane states intentionally distinguish:
 - `Staged` — deployment artifacts and reports exist, but the lane is not the live local overlay right now
 - `Degraded` — the lane matched a live local overlay, but one or more services failed health
 
-This keeps the site honest about adoption progress across chains without hiding
-cold or staged lanes.
+The public website only receives aggregate availability counts. Detailed lane
+state stays in local operator artifacts under `ops/state/`.
 
 ## Network Exposure
 
