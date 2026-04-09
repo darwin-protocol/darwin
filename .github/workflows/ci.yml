@@ -27,6 +27,13 @@ jobs:
         with:
           version: stable
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
       - name: Bootstrap
         shell: bash
         run: ./ops/bootstrap_dev.sh
@@ -54,3 +61,9 @@ jobs:
       - name: Local deployment smoke
         shell: bash
         run: ./ops/smoke_deploy_local.sh
+
+      - name: Web build
+        shell: bash
+        run: |
+          npm --prefix web ci
+          npm --prefix web run build

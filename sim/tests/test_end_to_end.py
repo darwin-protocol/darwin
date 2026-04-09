@@ -1474,6 +1474,59 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn(77, finalizer_recovered.finalized)
             print("  Overlay: router/sentinel/finalizer recover persisted state")
 
+    def test_14a_gateway_recovers_archived_nonces_on_restart(self):
+        """Gateway reloads archived admissions so nonce replay stays blocked after restart."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gateway_dir = Path(tmpdir) / "gateway"
+            gateway = GatewayState(str(gateway_dir))
+            acct = create_account()
+            intent = create_intent(
+                acct,
+                "ETH_USDC",
+                "BUY",
+                1.0,
+                3500.0,
+                50,
+                "BALANCED",
+                int(time.time()) + 300,
+                42,
+            )
+            result = gateway.admit_intent(intent.to_dict())
+            self.assertEqual(result["status"], "ADMITTED")
+
+            recovered = GatewayState(str(gateway_dir))
+            replay = recovered.admit_intent(intent.to_dict())
+            self.assertEqual(replay["status"], "REJECTED")
+            self.assertEqual(replay["reason"], "nonce_replay")
+            self.assertEqual(recovered.stats["recovered"], 1)
+            print("  Gateway: archived admissions restore nonce replay protection")
+
+    def test_14b_scorer_can_fetch_epoch_artifacts_from_archive(self):
+        """Scorer supports archive-backed scoring without a local artifact directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive = archive_service.ArchiveState(storage_dir=tmpdir)
+            ingest = archive.ingest_epoch("11", "outputs/test_e2")
+            self.assertEqual(ingest["status"], "ingested")
+
+            prev_archive_state = archive_service.STATE
+            archive_service.STATE = archive
+            server = HTTPServer(("127.0.0.1", 0), archive_service.ArchiveHandler)
+            thread = Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                scorer = scorer_service.ScorerState(archive_url=f"http://127.0.0.1:{server.server_port}")
+                result = scorer.score_epoch("11")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=5)
+                archive_service.STATE = prev_archive_state
+
+            self.assertIn("score_root", result)
+            self.assertIn("weight_root", result)
+            self.assertNotIn("error", result)
+            print("  Scorer: archive-backed scoring works without local artifacts")
+
     def test_15_finalizer_auto_poll(self):
         """Finalizer auto-poll finalizes ready epochs without manual finalize calls."""
         with tempfile.TemporaryDirectory() as tmpdir:

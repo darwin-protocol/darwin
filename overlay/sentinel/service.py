@@ -14,6 +14,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Lock
 
+from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+
 
 class SentinelState:
     def __init__(
@@ -176,8 +178,13 @@ class SentinelHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
 
     def do_POST(self):
-        content_len = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(content_len)) if content_len > 0 else {}
+        if not require_admin_token(self):
+            return
+        try:
+            body = load_json_body(self)
+        except ValueError:
+            self._json(400, {"error": "invalid_json"})
+            return
 
         if self.path == "/v1/heartbeat":
             service = body.get("service", "")
@@ -228,7 +235,9 @@ def main():
     print(f"  POST /v1/clear-safe-mode     — clear safe mode (governance)")
 
     try:
-        HTTPServer(("0.0.0.0", port), SentinelHandler).serve_forever()
+        bind_host = resolve_bind_host()
+        print(f"[darwin-sentineld] Bind host: {bind_host}")
+        HTTPServer((bind_host, port), SentinelHandler).serve_forever()
     except KeyboardInterrupt:
         print("\n[darwin-sentineld] Shutting down")
 

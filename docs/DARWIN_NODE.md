@@ -32,6 +32,15 @@ The runner writes:
 - readiness and status reports under `ops/state/<network>-node/reports/`
 - a pid file at `ops/state/<network>-node/darwin-node.pid`
 
+## Network Exposure
+
+- The overlay now binds to `127.0.0.1` by default via `DARWIN_BIND_HOST`.
+- If you intentionally expose it off-host, set both:
+  - `DARWIN_BIND_HOST=<public-or-lan-ip>`
+  - `DARWIN_ADMIN_TOKEN=<long-random-secret>`
+- Mutating overlay endpoints use that admin token via `Authorization: Bearer ...` or `X-Darwin-Token`.
+- Leaving the node off-host without a token is blocked by `run_darwin_node.sh`.
+
 ## Preflight Only
 
 ```bash
@@ -89,6 +98,11 @@ DARWIN_RPC_URL=http://127.0.0.1:8547 \
 
 The runner pins the gateway to the deployment artifact's `chain_id` and
 `settlement_hub`, so the RPC transport and the DARWIN artifact must match.
+
+If `DARWIN_FINALIZER_PRIVATE_KEY` is set together with `DARWIN_RPC_URL` and a
+deployment artifact that includes `epoch_manager`, the finalizer can submit
+`finalizeEpoch(uint64)` on-chain instead of only recording local finalization
+state.
 
 For an Arbitrum Sepolia-specific deploy and node wrapper, see
 [ARBITRUM_SEPOLIA.md](ARBITRUM_SEPOLIA.md).

@@ -43,10 +43,11 @@ from darwin_sim.scoring.fitness import (
     compute_fitness, update_weights, cohort_metrics,
 )
 from darwin_sim.market.rebalance import compute_rebalance_leaves
+from overlay.http_utils import request_headers
 
 
 def _post(url: str, data: dict) -> dict:
-    req = Request(url, data=json.dumps(data).encode(), headers={"Content-Type": "application/json"})
+    req = Request(url, data=json.dumps(data).encode(), headers=request_headers({"Content-Type": "application/json"}))
     try:
         return json.loads(urlopen(req, timeout=5).read())
     except (URLError, OSError) as e:
@@ -55,7 +56,8 @@ def _post(url: str, data: dict) -> dict:
 
 def _get(url: str) -> dict:
     try:
-        return json.loads(urlopen(url, timeout=5).read())
+        req = Request(url, headers=request_headers())
+        return json.loads(urlopen(req, timeout=5).read())
     except (URLError, OSError) as e:
         return {"error": str(e)}
 
@@ -176,6 +178,9 @@ def run_epoch_loop(
             return d
 
         write_ndjson(epoch_dir / "fills_control_s0.ndjson", [fill_dict(f) for f in ctrl_fills])
+        write_ndjson(epoch_dir / "fills_treatment_s1.ndjson", [fill_dict(f) for f in treat_fills])
+        # Keep the legacy filename around for older local tooling while the
+        # canonical overlay pipeline converges on fills_treatment_s1.ndjson.
         write_ndjson(epoch_dir / "fills_treatment.ndjson", [fill_dict(f) for f in treat_fills])
 
         report = {

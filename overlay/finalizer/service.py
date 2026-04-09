@@ -11,10 +11,24 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import subprocess
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Event, Lock, Thread
+
+from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
+
+
+def _load_epoch_manager_address(deployment_file: str) -> str:
+    if not deployment_file:
+        return ""
+    try:
+        data = json.loads(Path(deployment_file).read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
+    return str((data.get("contracts") or {}).get("epoch_manager", ""))
 
 
 class FinalizerState:
@@ -41,6 +55,11 @@ class FinalizerState:
         self.recovered_from_disk = False
         self._stop_event = Event()
         self._poll_thread: Thread | None = None
+        self.rpc_url = os.environ.get("DARWIN_RPC_URL", "")
+        self.deployment_file = os.environ.get("DARWIN_DEPLOYMENT_FILE", "")
+        self.epoch_manager_address = _load_epoch_manager_address(self.deployment_file)
+        self.finalizer_private_key = os.environ.get("DARWIN_FINALIZER_PRIVATE_KEY", "")
+        self.onchain_enabled = bool(self.rpc_url and self.epoch_manager_address and self.finalizer_private_key)
         self._load_state()
 
     def _snapshot_unlocked(self) -> dict:
@@ -100,6 +119,9 @@ class FinalizerState:
                 "consecutive_failures": self.consecutive_failures,
                 "state_file": str(self.state_file) if self.state_file else "",
                 "recovered_from_disk": self.recovered_from_disk,
+                "mode": "onchain" if self.onchain_enabled else "local",
+                "rpc_url": self.rpc_url,
+                "epoch_manager": self.epoch_manager_address,
             }
 
     def register_epoch(self, epoch_id: int, closed_at: float, score_root: str,
@@ -140,10 +162,18 @@ class FinalizerState:
             return {"finalizable": True, "epoch_id": epoch_id}
 
     def finalize_epoch(self, epoch_id: int) -> dict:
-        """Mark an epoch as finalized (in production, this calls the contract)."""
+        """Mark an epoch as finalized, optionally submitting finalizeEpoch on-chain."""
         check = self.check_finalizable(epoch_id)
         if not check["finalizable"]:
             return {"error": check["reason"]}
+
+        tx_hash = ""
+        tx_output = ""
+        if self.onchain_enabled:
+            try:
+                tx_hash, tx_output = self._finalize_onchain(epoch_id)
+            except RuntimeError as exc:
+                return {"error": str(exc)}
 
         with self.lock:
             epoch = self.epochs[epoch_id]
@@ -154,12 +184,34 @@ class FinalizerState:
                 "weight_root": epoch["weight_root"],
                 "rebalance_root": epoch.get("rebalance_root", ""),
                 "finalized_by": "darwin-finalizerd",
+                "mode": "onchain" if self.onchain_enabled else "local",
+                "tx_hash": tx_hash,
+                "tx_output": tx_output,
             }
             self.last_success_ts = self.finalized[epoch_id]["finalized_at"]
             self.consecutive_failures = 0
             snapshot = self._snapshot_unlocked()
         self._persist_snapshot(snapshot)
         return {"epoch_id": epoch_id, "status": "finalized", "finalized_at": self.finalized[epoch_id]["finalized_at"]}
+
+    def _finalize_onchain(self, epoch_id: int) -> tuple[str, str]:
+        cmd = [
+            "cast",
+            "send",
+            self.epoch_manager_address,
+            "finalizeEpoch(uint64)",
+            str(epoch_id),
+            "--rpc-url",
+            self.rpc_url,
+            "--private-key",
+            self.finalizer_private_key,
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise RuntimeError(f"onchain_finalize_failed: {proc.stderr.strip() or proc.stdout.strip()}")
+        output = proc.stdout.strip()
+        match = re.search(r"0x[a-fA-F0-9]{64}", output)
+        return (match.group(0) if match else "", output)
 
     def poll_once(self) -> dict:
         self.last_poll_attempt_ts = time.time()
@@ -244,8 +296,13 @@ class FinalizerHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
 
     def do_POST(self):
-        content_len = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(content_len)) if content_len > 0 else {}
+        if not require_admin_token(self):
+            return
+        try:
+            body = load_json_body(self)
+        except ValueError:
+            self._json(400, {"error": "invalid_json"})
+            return
 
         if self.path == "/v1/register":
             epoch_id = body.get("epoch_id", 0)
@@ -300,6 +357,9 @@ def main():
     if state_file:
         print(f"[darwin-finalizerd] State file: {state_file}")
     print(f"[darwin-finalizerd] Auto finalize: {'on' if poll_interval_sec > 0 else 'off'}")
+    print(f"[darwin-finalizerd] Mode: {'onchain' if STATE.onchain_enabled else 'local'}")
+    if STATE.epoch_manager_address:
+        print(f"[darwin-finalizerd] Epoch manager: {STATE.epoch_manager_address}")
     print(f"[darwin-finalizerd] Endpoints:")
     print(f"  GET  /healthz              — health")
     print(f"  GET  /v1/status            — finalizer status")
@@ -311,7 +371,9 @@ def main():
     STATE.start_background_polling()
 
     try:
-        HTTPServer(("0.0.0.0", port), FinalizerHandler).serve_forever()
+        bind_host = resolve_bind_host()
+        print(f"[darwin-finalizerd] Bind host: {bind_host}")
+        HTTPServer((bind_host, port), FinalizerHandler).serve_forever()
     except KeyboardInterrupt:
         print("\n[darwin-finalizerd] Shutting down")
     finally:

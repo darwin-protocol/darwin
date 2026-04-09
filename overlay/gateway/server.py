@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "sim"))
 from darwin_sim.sdk.accounts import ZERO_EVM_ADDRESS, normalize_evm_address
 from darwin_sim.sdk.deployments import load_deployment
 from darwin_sim.sdk.intents import verify_intent_payload
+from overlay.http_utils import load_json_body, resolve_bind_host
 
 
 class GatewayState:
@@ -41,7 +42,7 @@ class GatewayState:
         self.nonces: set[str] = set()
         self.rate_limits: dict[str, list[float]] = defaultdict(list)
         self.lock = Lock()
-        self.stats = {"admitted": 0, "rejected": 0, "total": 0}
+        self.stats = {"admitted": 0, "rejected": 0, "total": 0, "recovered": 0}
 
         deployment = None
         deployment_file = deployment_file or os.environ.get("DARWIN_DEPLOYMENT_FILE")
@@ -63,6 +64,32 @@ class GatewayState:
         )
         if self.allowed_settlement_hub is None and os.environ.get("DARWIN_ALLOWED_SETTLEMENT_HUB"):
             self.allowed_settlement_hub = normalize_evm_address(os.environ["DARWIN_ALLOWED_SETTLEMENT_HUB"])
+
+        self._load_archive()
+
+    def _load_archive(self) -> None:
+        recovered = 0
+        for archive_path in sorted(self.archive_dir.glob("*.json")):
+            try:
+                record = json.loads(archive_path.read_text())
+            except (OSError, json.JSONDecodeError):
+                continue
+
+            admission = record.get("admission", {})
+            intent_data = record.get("intent_data", {})
+            intent = intent_data.get("intent", {})
+            pq_leg = intent_data.get("pq_leg", {})
+            intent_id = admission.get("intent_id", "")
+            acct_id = pq_leg.get("acct_id", admission.get("acct_id", ""))
+            nonce = intent.get("nonce")
+            if not intent_id or not acct_id or nonce in {None, ""}:
+                continue
+
+            self.intents[intent_id] = record
+            self.nonces.add(f"{acct_id}:{nonce}")
+            recovered += 1
+
+        self.stats["recovered"] = recovered
 
     def admit_intent(self, intent_data: dict) -> dict:
         """Validate and admit a dual-envelope intent."""
@@ -173,8 +200,10 @@ class GatewayState:
 
             # Write to archive
             archive_path = self.archive_dir / f"{intent_id}.json"
-            with archive_path.open("w") as f:
+            tmp_path = archive_path.with_name(archive_path.name + ".tmp")
+            with tmp_path.open("w") as f:
                 json.dump(self.intents[intent_id], f, indent=2)
+            tmp_path.replace(archive_path)
 
             self.stats["admitted"] += 1
             return admission
@@ -193,12 +222,9 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.path == "/v1/intents":
-            content_len = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_len)
-
             try:
-                intent_data = json.loads(body)
-            except json.JSONDecodeError:
+                intent_data = load_json_body(self)
+            except ValueError:
                 self._respond(400, {"error": "invalid_json"})
                 return
 
@@ -272,8 +298,10 @@ def main():
     global STATE
     STATE = GatewayState(archive_dir=archive)
 
-    server = HTTPServer(("0.0.0.0", port), GatewayHandler)
+    bind_host = resolve_bind_host()
+    server = HTTPServer((bind_host, port), GatewayHandler)
     print(f"[darwin-gatewayd] Listening on :{port}")
+    print(f"[darwin-gatewayd] Bind host: {bind_host}")
     print(f"[darwin-gatewayd] Archive: {archive}")
     print(f"[darwin-gatewayd] Endpoints:")
     print(f"  POST /v1/intents     — submit dual-envelope intent")

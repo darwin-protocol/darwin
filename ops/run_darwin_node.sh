@@ -71,6 +71,14 @@ export DARWIN_DEPLOYMENT_FILE="$DEPLOYMENT_FILE"
 export DARWIN_NETWORK="${DARWIN_NETWORK:-$RESOLVED_NETWORK}"
 export DARWIN_EXPECT_CHAIN_ID="${DARWIN_EXPECT_CHAIN_ID:-$RESOLVED_CHAIN_ID}"
 export DARWIN_RPC_URL="${DARWIN_RPC_URL:-$(default_rpc_url "$RESOLVED_CHAIN_ID")}"
+export DARWIN_BIND_HOST="${DARWIN_BIND_HOST:-127.0.0.1}"
+
+if [[ "$DARWIN_BIND_HOST" != "127.0.0.1" && "$DARWIN_BIND_HOST" != "::1" && "$DARWIN_BIND_HOST" != "localhost" ]]; then
+  if [[ -z "${DARWIN_ADMIN_TOKEN:-}" ]]; then
+    echo "DARWIN_ADMIN_TOKEN is required when DARWIN_BIND_HOST exposes the overlay off-host" >&2
+    exit 1
+  fi
+fi
 
 STATE_ROOT="${DARWIN_STATE_ROOT:-$ROOT/ops/state/${DARWIN_NETWORK}-node}"
 LOG_DIR="$STATE_ROOT/logs"
@@ -132,6 +140,10 @@ export PYTHONPATH="$ROOT:$ROOT/sim${PYTHONPATH:+:$PYTHONPATH}"
 pids=()
 services=()
 heartbeat_pid=""
+AUTH_ARGS=()
+if [[ -n "${DARWIN_ADMIN_TOKEN:-}" ]]; then
+  AUTH_ARGS=(-H "Authorization: Bearer ${DARWIN_ADMIN_TOKEN}")
+fi
 
 cleanup() {
   set +e
@@ -189,6 +201,7 @@ heartbeat_loop() {
       curl -fsS \
         -X POST \
         -H "Content-Type: application/json" \
+        "${AUTH_ARGS[@]}" \
         -d "{\"service\":\"$service\"}" \
         "http://127.0.0.1:${SENTINEL_PORT}/v1/heartbeat" >/dev/null 2>&1 || true
     done
@@ -270,12 +283,14 @@ if [[ -n "$SEED_DIR" ]]; then
   curl -fsS \
     -X POST \
     -H "Content-Type: application/json" \
+    "${AUTH_ARGS[@]}" \
     -d "$ingest_payload" \
     "http://127.0.0.1:${ARCHIVE_PORT}/v1/ingest" >/dev/null
 
   curl -fsS \
     -X POST \
     -H "Content-Type: application/json" \
+    "${AUTH_ARGS[@]}" \
     -d '{}' \
     "http://127.0.0.1:${WATCHER_PORT}/v1/replay/latest" >/dev/null
 
@@ -288,8 +303,10 @@ echo "  deployment:   $DEPLOYMENT_FILE"
 echo "  network:      $DARWIN_NETWORK"
 echo "  chain_id:     $DARWIN_EXPECT_CHAIN_ID"
 echo "  rpc_url:      $DARWIN_RPC_URL"
+echo "  bind_host:    $DARWIN_BIND_HOST"
 echo "  state_root:   $STATE_ROOT"
 echo "  archive_url:  $WATCHER_ARCHIVE_URL"
+echo "  admin_token:  $([[ -n "${DARWIN_ADMIN_TOKEN:-}" ]] && echo enabled || echo disabled)"
 echo "  logs:         $LOG_DIR"
 echo "  reports:      $REPORT_DIR"
 echo "  pid_file:     $PID_FILE"

@@ -14,9 +14,6 @@ import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Lock
-from urllib.request import urlopen, Request
-from urllib.error import URLError
-
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "sim"))
 
@@ -24,6 +21,7 @@ from darwin_sim.core.types import FillResult, Side, from_x18, to_x18, BPS
 from darwin_sim.scoring.fitness import (
     cohort_metrics, compute_fitness, update_weights,
 )
+from overlay.http_utils import http_get_bytes, load_json_body, require_admin_token, resolve_bind_host
 
 
 class ScorerState:
@@ -38,14 +36,18 @@ class ScorerState:
         if artifact_dir:
             ctrl_path = Path(artifact_dir) / "fills_control_s0.ndjson"
             treat_path = Path(artifact_dir) / "fills_treatment_s1.ndjson"
+            if not ctrl_path.exists() or not treat_path.exists():
+                return {"error": "fill artifacts not found"}
+            control_fills = _load_fills_typed(ctrl_path)
+            treatment_fills = _load_fills_typed(treat_path)
         else:
-            return {"error": "remote archive fetch not yet implemented"}
-
-        if not ctrl_path.exists() or not treat_path.exists():
-            return {"error": "fill artifacts not found"}
-
-        control_fills = _load_fills_typed(ctrl_path)
-        treatment_fills = _load_fills_typed(treat_path)
+            try:
+                control_raw = http_get_bytes(f"{self.archive_url}/v1/epochs/{epoch_id}/fills_control_s0.ndjson")
+                treatment_raw = http_get_bytes(f"{self.archive_url}/v1/epochs/{epoch_id}/fills_treatment_s1.ndjson")
+            except Exception as exc:  # noqa: BLE001
+                return {"error": f"archive_fetch_failed: {exc}"}
+            control_fills = _load_fills_typed_lines(control_raw.decode().splitlines())
+            treatment_fills = _load_fills_typed_lines(treatment_raw.decode().splitlines())
 
         ctrl_m = cohort_metrics(control_fills)
         treat_m = cohort_metrics(treatment_fills)
@@ -101,30 +103,36 @@ class ScorerState:
 
 
 def _load_fills_typed(path: Path) -> list[FillResult]:
-    fills = []
     with path.open() as f:
-        for line in f:
-            d = json.loads(line.strip())
-            fills.append(FillResult(
-                fill_id=d.get("fill_id", ""),
-                species_id=d.get("species_id", ""),
-                intent_id=d.get("intent_id", ""),
-                acct_id=d.get("acct_id", ""),
-                pair_id=d.get("pair_id", ""),
-                ts=d.get("ts", 0),
-                side=Side.BUY if d.get("side") == "BUY" else Side.SELL,
-                qty_filled_x18=d.get("qty_filled_x18", 0),
-                exec_price_x18=d.get("exec_price_x18", 0),
-                source_price_x18=d.get("source_price_x18", 0),
-                notional_x18=d.get("notional_x18", 0),
-                fee_paid_x18=d.get("fee_paid_x18", 0),
-                profile=d.get("profile", ""),
-                is_control=d.get("is_control", False),
-                success=d.get("success", True),
-                trader_surplus_x18=d.get("trader_surplus_x18", 0),
-                adverse_markout_x18=d.get("adverse_markout_x18", 0),
-                revenue_x18=d.get("revenue_x18", 0),
-            ))
+        return _load_fills_typed_lines(f)
+
+
+def _load_fills_typed_lines(lines) -> list[FillResult]:
+    fills = []
+    for line in lines:
+        if not str(line).strip():
+            continue
+        d = json.loads(str(line).strip())
+        fills.append(FillResult(
+            fill_id=d.get("fill_id", ""),
+            species_id=d.get("species_id", ""),
+            intent_id=d.get("intent_id", ""),
+            acct_id=d.get("acct_id", ""),
+            pair_id=d.get("pair_id", ""),
+            ts=d.get("ts", 0),
+            side=Side.BUY if d.get("side") == "BUY" else Side.SELL,
+            qty_filled_x18=d.get("qty_filled_x18", 0),
+            exec_price_x18=d.get("exec_price_x18", 0),
+            source_price_x18=d.get("source_price_x18", 0),
+            notional_x18=d.get("notional_x18", 0),
+            fee_paid_x18=d.get("fee_paid_x18", 0),
+            profile=d.get("profile", ""),
+            is_control=d.get("is_control", False),
+            success=d.get("success", True),
+            trader_surplus_x18=d.get("trader_surplus_x18", 0),
+            adverse_markout_x18=d.get("adverse_markout_x18", 0),
+            revenue_x18=d.get("revenue_x18", 0),
+        ))
     return fills
 
 
@@ -154,9 +162,14 @@ class ScorerHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
 
     def do_POST(self):
+        if not require_admin_token(self):
+            return
         if self.path == "/v1/score":
-            content_len = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(content_len)) if content_len > 0 else {}
+            try:
+                body = load_json_body(self)
+            except ValueError:
+                self._json(400, {"error": "invalid_json"})
+                return
             epoch_id = body.get("epoch_id", "")
             artifact_dir = body.get("artifact_dir", "")
             if not epoch_id:
@@ -194,7 +207,9 @@ def main():
     print(f"  POST /v1/score          — score an epoch")
 
     try:
-        HTTPServer(("0.0.0.0", port), ScorerHandler).serve_forever()
+        bind_host = resolve_bind_host()
+        print(f"[darwin-scorerd] Bind host: {bind_host}")
+        HTTPServer((bind_host, port), ScorerHandler).serve_forever()
     except KeyboardInterrupt:
         print("\n[darwin-scorerd] Shutting down")
 

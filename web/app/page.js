@@ -101,6 +101,23 @@ export default function HomePage() {
               portal, and deployment artifact. The first outside action should stay small and
               obvious: claim DRW, then use the canonical tiny swap on the current lane.
             </p>
+            <div className="hero-stat-grid">
+              <div className="hero-stat">
+                <span className="label">Surface</span>
+                <strong>Public market portal</strong>
+                <small>Token, faucet, pool, activity, and search in one shell.</small>
+              </div>
+              <div className="hero-stat">
+                <span className="label">First move</span>
+                <strong>Tiny sell 10 DRW</strong>
+                <small>Use a legible action before asking for conviction or size.</small>
+              </div>
+              <div className="hero-stat">
+                <span className="label">Proof</span>
+                <strong>Live activity feed</strong>
+                <small>Claims and swaps show up on the Darwin-native public trail.</small>
+              </div>
+            </div>
             <div id="homeLaneSwitcher" className="lane-switcher"></div>
             <div className="hero-actions">
               <Link id="homeOpenMarketLink" className="button button-primary" href="/trade/">

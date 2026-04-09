@@ -22,6 +22,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "sim"))
 
 from darwin_sim.core.types import Side, to_x18, from_x18, BPS
+from overlay.http_utils import load_json_body, require_admin_token, resolve_bind_host
 
 
 class RouterState:
@@ -211,8 +212,13 @@ class RouterHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
 
     def do_POST(self):
-        content_len = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(content_len)) if content_len > 0 else {}
+        if not require_admin_token(self):
+            return
+        try:
+            body = load_json_body(self)
+        except ValueError:
+            self._json(400, {"error": "invalid_json"})
+            return
 
         if self.path == "/v1/route":
             result = STATE.route_intent(body)
@@ -258,7 +264,9 @@ def main():
     print(f"  POST /v1/fitness    — update fitness scores")
 
     try:
-        HTTPServer(("0.0.0.0", port), RouterHandler).serve_forever()
+        bind_host = resolve_bind_host()
+        print(f"[darwin-routerd] Bind host: {bind_host}")
+        HTTPServer((bind_host, port), RouterHandler).serve_forever()
     except KeyboardInterrupt:
         print("\n[darwin-routerd] Shutting down")
 
