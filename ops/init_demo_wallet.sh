@@ -39,6 +39,7 @@ QTY="${DARWIN_INTENT_QTY:-1.0}"
 PRICE="${DARWIN_INTENT_PRICE:-3500.0}"
 SLIPPAGE="${DARWIN_INTENT_SLIPPAGE:-50}"
 PROFILE="${DARWIN_INTENT_PROFILE:-BALANCED}"
+INTENT_NONCE="${DARWIN_INTENT_NONCE:-}"
 FORCE="${DARWIN_WALLET_FORCE:-0}"
 
 mkdir -p "$WALLET_DIR"
@@ -61,6 +62,11 @@ fi
 export DARWIN_WALLET_PASSPHRASE="$PASS_VALUE"
 export PYTHONPATH="$ROOT:$ROOT/sim${PYTHONPATH:+:$PYTHONPATH}"
 
+nonce_args=()
+if [[ -n "$INTENT_NONCE" ]]; then
+  nonce_args=(--nonce "$INTENT_NONCE")
+fi
+
 if [[ "$FORCE" == "1" || ! -f "$WALLET_FILE" ]]; then
   "$PYTHON_BIN" -m darwin_sim.cli.darwinctl wallet-init \
     --deployment-file "$DEPLOYMENT_FILE" \
@@ -81,6 +87,7 @@ fi
   --price "$PRICE" \
   --slippage "$SLIPPAGE" \
   --profile "$PROFILE" \
+  "${nonce_args[@]}" \
   --out "$INTENT_FILE" >/dev/null
 
 "$PYTHON_BIN" -m darwin_sim.cli.darwinctl intent-verify \

@@ -138,6 +138,8 @@ function bindJoinPanel() {
   const links = share.links || {};
   const stats = share.stats || {};
   const networkName = joinState.config.network?.name || "Darwin lane";
+  const eligibleWallets = Number(stats.eligible_wallets ?? stats.external_wallets ?? 0);
+  const eligibleSwaps = Number(stats.eligible_swaps ?? stats.external_swaps ?? 0);
 
   if (window.DarwinLane && joinState.laneSelection) {
     window.DarwinLane.renderSwitcher(joinEls.joinLaneSwitcher, joinState.laneSelection);
@@ -145,8 +147,8 @@ function bindJoinPanel() {
 
   joinEls.joinLaneBadge.textContent = networkName;
   joinEls.joinStarterAmount.textContent = `${formatUnits(joinState.config.community?.starter_cohort_amount || 0, 18, 3)} DRW`;
-  joinEls.joinExternalWallets.textContent = String(stats.external_wallets ?? 0);
-  joinEls.joinExternalSwaps.textContent = String(stats.external_swaps ?? 0);
+  joinEls.joinExternalWallets.textContent = String(eligibleWallets);
+  joinEls.joinExternalSwaps.textContent = String(eligibleSwaps);
 
   const tradeHref = window.DarwinLane && joinState.laneSelection
     ? window.DarwinLane.laneRelativeHref("/trade/?preset=tiny-sell", joinState.laneSelection)

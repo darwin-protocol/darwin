@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const activityScriptVersion = "20260408-activity8";
+const activityScriptVersion = "20260409-activity9";
 
 export default function ActivityPage() {
   return (

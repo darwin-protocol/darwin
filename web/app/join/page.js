@@ -12,7 +12,7 @@ export const metadata = {
   },
 };
 
-const joinScriptVersion = "20260407-join1";
+const joinScriptVersion = "20260409-join2";
 
 export default function JoinPage() {
   return (
@@ -66,7 +66,7 @@ export default function JoinPage() {
               <strong id="joinStarterAmount">-</strong>
             </div>
             <div className="hero-stat">
-              <span className="label">Outside wallets</span>
+              <span className="label">Eligible wallets</span>
               <strong id="joinExternalWallets">-</strong>
             </div>
             <div className="hero-stat">

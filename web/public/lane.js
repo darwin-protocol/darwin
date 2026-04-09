@@ -115,15 +115,17 @@
   function buildMarketStructure(config, summary) {
     const structure = config?.market_structure || {};
     const pools = Array.isArray(structure.pools) ? structure.pools : [];
-    const externalWallets = Number(summary?.external_wallets || 0);
-    const externalSwaps = Number(summary?.external_swaps || 0);
+    const rawExternalWallets = Number(summary?.external_wallets || 0);
+    const rawExternalSwaps = Number(summary?.external_swaps || 0);
+    const eligibleWallets = Number(summary?.eligible_wallets ?? rawExternalWallets);
+    const eligibleSwaps = Number(summary?.eligible_swaps ?? rawExternalSwaps);
     const defaultEntry = structure.default_entry || "canonical";
 
     const normalizedPools = pools.map((pool) => {
       const targets = gateTargets(config, pool);
       const gateMet =
-        externalWallets >= targets.externalWalletsTarget &&
-        externalSwaps >= targets.externalSwapsTarget;
+        eligibleWallets >= targets.externalWalletsTarget &&
+        eligibleSwaps >= targets.externalSwapsTarget;
       const isLive = Boolean(pool.enabled);
       const derivedStatus = isLive
         ? (pool.status || "live")
@@ -133,9 +135,11 @@
         derivedStatus,
         gateMet,
         isDefault: pool.id === defaultEntry,
-        externalWallets,
-        externalSwaps,
-        progressLabel: `${externalWallets}/${targets.externalWalletsTarget} wallets, ${externalSwaps}/${targets.externalSwapsTarget} swaps`,
+        externalWallets: eligibleWallets,
+        externalSwaps: eligibleSwaps,
+        rawExternalWallets,
+        rawExternalSwaps,
+        progressLabel: `${eligibleWallets}/${targets.externalWalletsTarget} swap-active wallets, ${eligibleSwaps}/${targets.externalSwapsTarget} swaps`,
       };
     });
 
@@ -146,8 +150,10 @@
         "Keep one canonical pool live until outside usage is real, then unlock the next Darwin routes.",
       defaultEntry,
       pools: normalizedPools,
-      externalWallets,
-      externalSwaps,
+      externalWallets: eligibleWallets,
+      externalSwaps: eligibleSwaps,
+      rawExternalWallets,
+      rawExternalSwaps,
     };
   }
 

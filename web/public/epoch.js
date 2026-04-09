@@ -78,6 +78,7 @@ function renderRewards() {
 
 function renderProgress() {
   const progress = epochState.activitySummary?.progress;
+  const antiAbuseNote = epochState.activitySummary?.anti_abuse?.note || "";
   const badge = epoch$("epochProgressBadge");
   const walletProgress = epoch$("epochWalletProgress");
   const walletDetail = epoch$("epochWalletProgressDetail");
@@ -102,23 +103,35 @@ function renderProgress() {
   swapProgress.textContent = progressLine(progress.swaps || {});
   swapDetail.textContent = progressDetail(progress.swaps || {}, "outside swap");
   note.textContent = progress.traction_ready
-    ? "Canonical traction is real on this lane. Experimental and incentivized routes can open without fragmenting thin liquidity."
-    : "Keep routing everyone through the canonical pool until both wallet and swap goals are real.";
+    ? `Canonical traction is real on this lane. Experimental and incentivized routes can open without fragmenting thin liquidity.${antiAbuseNote ? ` ${antiAbuseNote}` : ""}`
+    : `Keep routing everyone through the canonical pool until both wallet and swap goals are real.${antiAbuseNote ? ` ${antiAbuseNote}` : ""}`;
 }
 
 function renderLeaderboard() {
   const board = epochState.activitySummary?.leaderboard;
+  const eligibilityNote = board?.eligibility_note || epochState.activitySummary?.anti_abuse?.note || "";
+  const claimOnlyWallets = Number(board?.excluded?.claim_only_wallets ?? epochState.activitySummary?.summary?.claim_only_wallets ?? 0);
   const badge = epoch$("epochLeaderboardBadge");
   const list = epoch$("epochLeaderboardList");
   if (!badge || !list) return;
   list.innerHTML = "";
   if (!board || !(board.entries || []).length) {
     badge.textContent = "waiting";
-    list.innerHTML = "<p class=\"caption\">No outside wallets are on the leaderboard yet.</p>";
+    if (claimOnlyWallets > 0) {
+      list.innerHTML = `<p class="caption">${claimOnlyWallets} claim-only wallets are visible, but the leaderboard opens after the first swap.</p>`;
+    } else {
+      list.innerHTML = "<p class=\"caption\">No outside wallets are on the leaderboard yet.</p>";
+    }
     return;
   }
 
   badge.textContent = board.scoring_label || "live";
+  if (eligibilityNote) {
+    const note = document.createElement("p");
+    note.className = "caption";
+    note.textContent = eligibilityNote;
+    list.appendChild(note);
+  }
   for (const entry of board.entries || []) {
     const row = document.createElement("article");
     row.className = "leaderboard-row";

@@ -56,8 +56,8 @@ export const metadata = {
 export default function EpochPage() {
   return (
     <div className="background-shell">
-      <Script src="../lane.js?v=20260408-epoch2" strategy="afterInteractive" />
-      <Script src="../epoch.js?v=20260408-epoch2" strategy="afterInteractive" />
+      <Script src="../lane.js?v=20260409-epoch3" strategy="afterInteractive" />
+      <Script src="../epoch.js?v=20260409-epoch3" strategy="afterInteractive" />
       <div className="background">
         <div className="orb orb-a"></div>
         <div className="orb orb-b"></div>

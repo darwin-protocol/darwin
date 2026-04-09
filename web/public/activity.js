@@ -142,23 +142,29 @@ function bindActivityStatics() {
 
 function renderCommunitySummary() {
   const summary = activityState.activitySummary?.summary;
+  const antiAbuse = activityState.activitySummary?.anti_abuse || {};
   if (!summary) {
     activityEls.communityStatusBadge.textContent = "unavailable";
     activityEls.communityUpdatedAt.textContent = "Local outside-activity summary is not available yet.";
     return;
   }
 
+  const eligibleWallets = Number(summary.eligible_wallets ?? summary.external_wallets ?? 0);
   activityEls.externalEventCount.textContent = String(summary.external_events ?? 0);
   activityEls.externalWalletCount.textContent = String(summary.external_wallets ?? 0);
   activityEls.externalSwapCount.textContent = String(summary.external_swaps ?? 0);
   activityEls.externalClaimCount.textContent = String(summary.external_claims ?? 0);
   activityEls.communityStatusBadge.textContent =
-    Number(summary.external_events || 0) > 0 ? "outside wallets seen" : "waiting for first outside loop";
+    eligibleWallets > 0
+      ? "swap-active wallets seen"
+      : Number(summary.external_events || 0) > 0
+        ? "claims seen, waiting for first swap"
+        : "waiting for first outside loop";
   const generatedAt = activityState.activitySummary?.generated_at
     ? new Date(activityState.activitySummary.generated_at).toLocaleString()
     : "unknown";
   activityEls.communityUpdatedAt.textContent =
-    `Updated ${generatedAt}. This snapshot is derived from the local project-wallet allowlist, not guessed in the browser.`;
+    `Updated ${generatedAt}. This snapshot is derived from the local project-wallet allowlist, not guessed in the browser.${antiAbuse.note ? ` ${antiAbuse.note}` : ""}`;
 }
 
 function formatProgressLine(progress) {
@@ -175,6 +181,7 @@ function progressDetail(progress, noun) {
 
 function renderProgress() {
   const progress = activityState.activitySummary?.progress;
+  const antiAbuseNote = activityState.activitySummary?.anti_abuse?.note || "";
   if (!progress) {
     activityEls.activityProgressBadge.textContent = "unavailable";
     activityEls.activityWalletProgress.textContent = "-";
@@ -193,8 +200,8 @@ function renderProgress() {
   activityEls.activitySwapProgress.textContent = formatProgressLine(swaps);
   activityEls.activitySwapProgressDetail.textContent = progressDetail(swaps, "outside swap");
   activityEls.activityProgressNote.textContent = progress.traction_ready
-    ? "The canonical traction gate is met. Experimental and incentivized routes can open without pretending demand."
-    : "Experimental and incentivized routes stay locked until both outside-wallet and outside-swap goals are real.";
+    ? `The canonical traction gate is met. Experimental and incentivized routes can open without pretending demand.${antiAbuseNote ? ` ${antiAbuseNote}` : ""}`
+    : `Experimental and incentivized routes stay locked until both outside-wallet and outside-swap goals are real.${antiAbuseNote ? ` ${antiAbuseNote}` : ""}`;
 }
 
 function formatRewardAmount(rule, reward) {

@@ -46,8 +46,12 @@ function bindCommunityPanel() {
   const stats = share.stats || {};
   const links = share.links || {};
   const messages = share.messages || {};
+  const antiAbuse = share.anti_abuse || {};
   const networkName = homeState.marketConfig?.network?.name || "Darwin lane";
   const structure = homeState.marketStructure;
+  const eligibleWallets = Number(stats.eligible_wallets ?? stats.external_wallets ?? 0);
+  const eligibleSwaps = Number(stats.eligible_swaps ?? stats.external_swaps ?? 0);
+  const eligibilityNote = messages.eligibility_note || antiAbuse.note || "";
 
   if (window.DarwinLane && homeState.laneSelection) {
     window.DarwinLane.renderSwitcher(homeEls.homeLaneSwitcher, homeState.laneSelection);
@@ -59,14 +63,18 @@ function bindCommunityPanel() {
   homeEls.homePrimaryLaneBadge.textContent = networkName;
   homeEls.homeHeroStatusLine.innerHTML =
     `Public host: <code>usedarwin.xyz</code>. Current lane: <code>${networkName}</code>.`;
-  homeEls.homeExternalWallets.textContent = String(stats.external_wallets ?? 0);
-  homeEls.homeExternalSwaps.textContent = String(stats.external_swaps ?? 0);
+  homeEls.homeExternalWallets.textContent = String(eligibleWallets);
+  homeEls.homeExternalSwaps.textContent = String(eligibleSwaps);
   homeEls.homeTotalEvents.textContent = String(stats.total_events ?? 0);
   homeEls.homeCommunityStatus.textContent =
-    stats.external_events > 0 ? "outside activity live" : "waiting for first outside wallet";
+    eligibleWallets > 0
+      ? "swap-active wallets live"
+      : Number(stats.external_events || 0) > 0
+        ? "claims seen, waiting for first swap"
+        : "waiting for first outside wallet";
   homeEls.homeCommunityUpdatedAt.textContent = share.generated_at
-    ? `Updated ${new Date(share.generated_at).toLocaleString()}. ${messages.progress_line || ""}`
-    : (messages.progress_line || "Waiting for a live community snapshot.");
+    ? `Updated ${new Date(share.generated_at).toLocaleString()}. ${messages.progress_line || ""} ${eligibilityNote}`.trim()
+    : `${messages.progress_line || "Waiting for a live community snapshot."} ${eligibilityNote}`.trim();
   const epochHref = window.DarwinLane && homeState.laneSelection
     ? window.DarwinLane.laneRelativeHref("/epoch/", homeState.laneSelection)
     : (links.epoch || "/epoch/");

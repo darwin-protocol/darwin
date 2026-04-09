@@ -126,6 +126,8 @@ Those lane summaries now carry:
 
 - outside-vs-project counts
 - epoch traction progress toward unlock gates
+- swap-active eligibility counts for traction and leaderboard rewards
+- claim-only wallet exclusions so public claims stay visible without inflating traction
 - a public-safe outside-wallet leaderboard for the current window
 
 It also exports public-safe outreach bundles:

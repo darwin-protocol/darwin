@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const tradeScriptVersion = "20260408-portal12";
+const tradeScriptVersion = "20260409-portal13";
 
 export default function TradePage() {
   return (
@@ -290,9 +290,9 @@ export default function TradePage() {
             </p>
             <div className="stat-grid">
               <article className="metric">
-                <span className="label">Outside wallets</span>
+                <span className="label">Eligible wallets</span>
                 <strong id="tradeExternalWalletCount">-</strong>
-                <small>recent non-project participants</small>
+                <small>swap-active outside participants</small>
               </article>
               <article className="metric">
                 <span className="label">Outside swaps</span>

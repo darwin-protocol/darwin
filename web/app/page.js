@@ -44,7 +44,7 @@ export const metadata = {
   },
 };
 
-const homeScriptVersion = "20260408-home5";
+const homeScriptVersion = "20260409-home6";
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -188,9 +188,9 @@ export default function HomePage() {
             </p>
             <div className="stat-grid">
               <div className="metric">
-                <span className="label">Outside wallets</span>
+                <span className="label">Eligible wallets</span>
                 <strong id="homeExternalWallets">-</strong>
-                <small>recent non-project participants</small>
+                <small>swap-active outside participants</small>
               </div>
               <div className="metric">
                 <span className="label">Outside swaps</span>

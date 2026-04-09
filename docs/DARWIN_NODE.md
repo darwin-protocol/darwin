@@ -50,6 +50,27 @@ export DARWIN_ADMIN_TOKEN=darwin-devnet-admin-token
 docker compose -f ops/docker-compose.devnet.yml up
 ```
 
+## Smoke An Intent Path
+
+After the node is up, run one signed intent through gateway admission and router
+selection:
+
+```bash
+cd /path/to/darwin
+./ops/smoke_intent_path.sh
+```
+
+That script:
+
+- creates or reuses a local demo wallet
+- signs a fresh intent with a unique nonce
+- submits it to `gateway`
+- routes it through `router`
+- writes JSON artifacts under `ops/state/<network>/reports/`
+
+If `DARWIN_ADMIN_TOKEN` is exported, the script forwards it automatically for
+the router POST.
+
 ## Preflight Only
 
 ```bash

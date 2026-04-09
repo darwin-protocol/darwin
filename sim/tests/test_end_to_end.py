@@ -3075,6 +3075,7 @@ class TestEndToEnd(unittest.TestCase):
             self.assertEqual(intent_payload["pq_leg"]["acct_id"], public_account["acct_id"])
             self.assertEqual(intent_payload["evm_leg"]["evm_addr"], public_account["evm_addr"])
             self.assertEqual(intent_payload["account"]["acct_id"], public_account["acct_id"])
+            self.assertGreater(int(intent_payload["intent"]["nonce"]), 1)
             print("  CLI: intent-create signs from a saved wallet and preserves the same account identity")
 
     def test_30_init_demo_wallet_script(self):
@@ -5715,6 +5716,7 @@ exit 0
             faucet = "0x0000000000000000000000000000000000000055"
             distributor = "0x0000000000000000000000000000000000000066"
             external = "0x00000000000000000000000000000000000000aa"
+            claim_only = "0x00000000000000000000000000000000000000ac"
             project = "0x00000000000000000000000000000000000000bb"
 
             deployment.write_text(json.dumps({
@@ -5815,6 +5817,17 @@ exit 0
                         ],
                         "data": "0x" + word(100 * 10**18) + word(10**13) + word(0),
                     },
+                    {
+                        "address": faucet,
+                        "blockNumber": hex(92),
+                        "transactionHash": "0x" + "5" * 64,
+                        "topics": [
+                            faucet_topic,
+                            topic_address(claim_only),
+                            topic_address(claim_only),
+                        ],
+                        "data": "0x" + word(100 * 10**18) + word(10**13) + word(0),
+                    },
                 ],
                 (distributor.lower(), distributor_topic): [
                     {
@@ -5834,6 +5847,7 @@ exit 0
                 65: 1_710_000_000,
                 70: 1_710_003_600,
                 90: 1_710_007_200,
+                92: 1_710_010_800,
                 95: 1_710_093_600,
             }
 
@@ -5915,20 +5929,26 @@ exit 0
 
             self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
             report = json.loads(public_out.read_text())
-            self.assertEqual(report["summary"]["total_events"], 4)
-            self.assertEqual(report["summary"]["external_events"], 3)
-            self.assertEqual(report["summary"]["external_wallets"], 1)
+            self.assertEqual(report["summary"]["total_events"], 5)
+            self.assertEqual(report["summary"]["external_events"], 4)
+            self.assertEqual(report["summary"]["external_wallets"], 2)
             self.assertEqual(report["summary"]["external_swaps"], 2)
-            self.assertEqual(report["summary"]["external_claims"], 1)
+            self.assertEqual(report["summary"]["external_claims"], 2)
+            self.assertEqual(report["summary"]["eligible_wallets"], 1)
+            self.assertEqual(report["summary"]["eligible_swaps"], 2)
+            self.assertEqual(report["summary"]["claim_only_wallets"], 1)
             self.assertEqual(report["progress"]["wallets"]["current"], 1)
             self.assertEqual(report["progress"]["wallets"]["target"], 2)
             self.assertEqual(report["progress"]["swaps"]["current"], 2)
             self.assertEqual(report["progress"]["swaps"]["target"], 3)
             self.assertFalse(report["progress"]["traction_ready"])
+            self.assertEqual(report["anti_abuse"]["wallet_progress_rule"], "swap_active_wallets_only")
+            self.assertEqual(report["anti_abuse"]["claim_only_wallets_excluded"], 1)
             self.assertEqual(len(report["leaderboard"]["entries"]), 1)
             self.assertEqual(report["leaderboard"]["entries"][0]["actor"], external)
             self.assertEqual(report["leaderboard"]["entries"][0]["points"], 9)
             self.assertTrue(report["leaderboard"]["entries"][0]["return_swap_qualified"])
+            self.assertEqual(report["leaderboard"]["excluded"]["claim_only_wallets"], 1)
             print("  Ops: external activity export emits public progress gates and leaderboard rows")
 
     def test_66_report_external_activity_prefers_matching_lane_rpc_over_mismatched_generic(self):
@@ -6092,9 +6112,15 @@ exit 0
             }))
             activity_summary.write_text(json.dumps({
                 "summary": {
-                    "external_wallets": 2,
-                    "external_swaps": 3,
+                    "external_wallets": 3,
+                    "external_swaps": 4,
+                    "eligible_wallets": 2,
+                    "eligible_swaps": 3,
+                    "claim_only_wallets": 1,
                     "total_events": 6,
+                },
+                "anti_abuse": {
+                    "note": "Claim-only wallets stay visible but do not unlock traction until they swap.",
                 },
                 "progress": {
                     "wallets": {"current": 2, "target": 25},
@@ -6129,6 +6155,9 @@ exit 0
             payload = json.loads(out.read_text())
             self.assertIn("Starter claim 100 DRW", payload["messages"]["reward_line"])
             self.assertIn("Top outside wallet this window", payload["messages"]["invite_long"])
+            self.assertIn("2/25 swap-active wallets", payload["messages"]["progress_line"])
+            self.assertIn("swap-active outside wallets", payload["messages"]["invite_short"])
+            self.assertIn("do not unlock traction until they swap", payload["messages"]["eligibility_note"])
             self.assertEqual(payload["leaderboard"]["entries"][0]["points"], 9)
             print("  Ops: community share bundle carries reward copy and top-leader context")
 

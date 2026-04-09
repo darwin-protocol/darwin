@@ -76,6 +76,7 @@ def main() -> int:
     activity_summary = load_json(Path(args.activity_summary).expanduser().resolve())
     epoch = ((market_config.get("community") or {}).get("epoch")) or {}
     summary = activity_summary.get("summary") or {}
+    anti_abuse = activity_summary.get("anti_abuse") or {}
     network_name = ((market_config.get("network") or {}).get("name")) or "the current Darwin lane"
     lane_slug = ((market_config.get("network") or {}).get("slug")) or ""
 
@@ -92,33 +93,51 @@ def main() -> int:
 
     external_wallets = int(summary.get("external_wallets", 0) or 0)
     external_swaps = int(summary.get("external_swaps", 0) or 0)
+    eligible_wallets = int(summary.get("eligible_wallets", external_wallets) or 0)
+    eligible_swaps = int(summary.get("eligible_swaps", external_swaps) or 0)
+    claim_only_wallets = int(summary.get("claim_only_wallets", max(external_wallets - eligible_wallets, 0)) or 0)
     total_events = int(summary.get("total_events", 0) or 0)
     wallet_target = int(((epoch.get("milestones") or {}).get("external_wallets_target")) or 0)
     swap_target = int(((epoch.get("milestones") or {}).get("external_swaps_target")) or 0)
     reward_policy_line = reward_line(epoch)
     leaderboard = activity_summary.get("leaderboard") or {}
     leader = ((leaderboard.get("entries") or [])[:1] or [None])[0]
+    eligibility_note = str(
+        anti_abuse.get("note")
+        or leaderboard.get("eligibility_note")
+        or "Claim-only wallets stay visible in the raw outside-activity summary but do not unlock traction until they swap."
+    )
 
-    if external_wallets > 0:
+    if eligible_wallets > 0:
         status_line = (
-            f"{external_wallets} outside wallets and {external_swaps} outside swaps have appeared in the current Darwin window."
+            f"{eligible_wallets} swap-active outside wallets and {eligible_swaps} outside swaps have appeared in the current Darwin window."
         )
         invite_short = (
-            f"Join {external_wallets} outside wallets using Darwin on {network_name}. Start here: {tiny_swap_url}"
+            f"Join {eligible_wallets} swap-active outside wallets using Darwin on {network_name}. Start here: {tiny_swap_url}"
         )
+    elif external_wallets > 0:
+        status_line = "Outside wallets have claimed DRW, but no swap-active wallets have appeared in the current Darwin window yet."
+        invite_short = f"Be the first swap-active wallet to try Darwin on {network_name}: {tiny_swap_url}"
     else:
         status_line = "No outside wallets have appeared in the current Darwin window yet."
         invite_short = f"Be one of the first outside wallets to try Darwin on {network_name}: {tiny_swap_url}"
 
     progress_line = (
-        f"Epoch progress: {external_wallets}/{wallet_target or '?'} outside wallets, "
-        f"{external_swaps}/{swap_target or '?'} outside swaps, {total_events} total Darwin events."
+        f"Epoch progress: {eligible_wallets}/{wallet_target or '?'} swap-active wallets, "
+        f"{eligible_swaps}/{swap_target or '?'} outside swaps, {total_events} total Darwin events."
+    )
+    raw_visibility_line = (
+        f"Raw outside activity still shows {external_wallets} wallets, including {claim_only_wallets} claim-only wallets."
+        if claim_only_wallets > 0
+        else ""
     )
     message_parts = [
         epoch.get("summary", "Claim DRW, make one tiny swap, and share the public proof surface."),
         reward_policy_line,
         status_line,
         progress_line,
+        eligibility_note,
+        raw_visibility_line,
     ]
     if leader:
         message_parts.append(
@@ -139,6 +158,7 @@ def main() -> int:
         "epoch": epoch,
         "stats": summary,
         "progress": activity_summary.get("progress") or {},
+        "anti_abuse": anti_abuse,
         "leaderboard": leaderboard,
         "links": {
             "site": site_url,
@@ -151,6 +171,7 @@ def main() -> int:
             "status_line": status_line,
             "progress_line": progress_line,
             "reward_line": reward_policy_line,
+            "eligibility_note": eligibility_note,
             "invite_short": invite_short,
             "invite_long": invite_long,
         },

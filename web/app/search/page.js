@@ -45,7 +45,7 @@ export const metadata = {
   },
 };
 
-const searchScriptVersion = "20260408-search1";
+const searchScriptVersion = "20260409-search2";
 
 export default function SearchPage() {
   return (

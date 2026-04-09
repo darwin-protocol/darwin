@@ -260,6 +260,7 @@ function renderTradeRewardRules() {
   if (!els.tradeRewardRules || !els.tradeEpochProgress) return;
   const reward = epochRewardPolicy();
   const progress = state.activitySummary?.progress;
+  const antiAbuseNote = state.activitySummary?.anti_abuse?.note || "";
   els.tradeRewardRules.innerHTML = "";
   if (!reward || !(reward.rules || []).length) {
     els.tradeEpochProgress.textContent = "No public reward pilot configured yet.";
@@ -268,13 +269,13 @@ function renderTradeRewardRules() {
   }
 
   const walletProgress = progress?.wallets?.target
-    ? `${progress.wallets.current}/${progress.wallets.target} wallets`
-    : `${progress?.wallets?.current ?? 0} wallets`;
+    ? `${progress.wallets.current}/${progress.wallets.target} swap-active wallets`
+    : `${progress?.wallets?.current ?? 0} swap-active wallets`;
   const swapProgress = progress?.swaps?.target
     ? `${progress.swaps.current}/${progress.swaps.target} swaps`
     : `${progress?.swaps?.current ?? 0} swaps`;
   els.tradeEpochProgress.textContent =
-    `${reward.window_label || "Current window"}: ${walletProgress}, ${swapProgress}. Incentivized routes stay locked until the canonical traction gate is real.`;
+    `${reward.window_label || "Current window"}: ${walletProgress}, ${swapProgress}. Incentivized routes stay locked until the canonical traction gate is real.${antiAbuseNote ? ` ${antiAbuseNote}` : ""}`;
 
   for (const rule of reward.rules || []) {
     const li = document.createElement("li");
@@ -622,8 +623,8 @@ function bindStaticConfig() {
 
   const summary = state.activitySummary?.summary;
   if (summary) {
-    els.tradeExternalWalletCount.textContent = String(summary.external_wallets ?? 0);
-    els.tradeExternalSwapCount.textContent = String(summary.external_swaps ?? 0);
+    els.tradeExternalWalletCount.textContent = String(summary.eligible_wallets ?? summary.external_wallets ?? 0);
+    els.tradeExternalSwapCount.textContent = String(summary.eligible_swaps ?? summary.external_swaps ?? 0);
   }
   renderTradeRewardRules();
 

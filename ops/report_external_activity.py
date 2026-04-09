@@ -347,15 +347,24 @@ def parse_distributor_claim(log: dict) -> dict:
 
 
 def render_markdown(report: dict) -> str:
+    summary = report.get("summary", {})
+    anti_abuse = report.get("anti_abuse", {})
     lines = [
         "# DARWIN External Activity",
         "",
         f"- Generated at: `{report['generated_at']}`",
         f"- Network: `{report['network']}`",
         f"- Lookback blocks: `{report['lookback_blocks']}`",
-        f"- Total events: `{report['summary']['total_events']}`",
-        f"- External events: `{report['summary']['external_events']}`",
-        f"- External wallets: `{report['summary']['external_wallets']}`",
+        f"- Total events: `{summary['total_events']}`",
+        f"- External events: `{summary['external_events']}`",
+        f"- External wallets seen: `{summary['external_wallets']}`",
+        f"- Eligible wallets: `{summary.get('eligible_wallets', summary['external_wallets'])}`",
+        f"- Eligible swaps: `{summary.get('eligible_swaps', summary.get('external_swaps', 0))}`",
+        "",
+        "## Anti-Abuse",
+        "",
+        f"- Claim-only wallets excluded from traction gates: `{summary.get('claim_only_wallets', 0)}`",
+        f"- Rule: `{anti_abuse.get('note', 'claim-only wallets stay visible but do not count toward traction until they swap')}`",
         "",
         "## Recent External Activity",
         "",
@@ -397,8 +406,10 @@ def progress_snapshot(current: int, target: int) -> dict:
 
 def build_progress(summary: dict, epoch: dict) -> dict:
     milestones = epoch.get("milestones") or {}
-    wallets = progress_snapshot(int(summary.get("external_wallets", 0) or 0), int(milestones.get("external_wallets_target", 0) or 0))
-    swaps = progress_snapshot(int(summary.get("external_swaps", 0) or 0), int(milestones.get("external_swaps_target", 0) or 0))
+    wallet_current = int(summary.get("eligible_wallets", summary.get("external_wallets", 0)) or 0)
+    swap_current = int(summary.get("eligible_swaps", summary.get("external_swaps", 0)) or 0)
+    wallets = progress_snapshot(wallet_current, int(milestones.get("external_wallets_target", 0) or 0))
+    swaps = progress_snapshot(swap_current, int(milestones.get("external_swaps_target", 0) or 0))
     traction_ready = bool(
         wallets["target"]
         and swaps["target"]
@@ -476,6 +487,8 @@ def build_leaderboard(events: list[dict], epoch: dict) -> dict:
         points = row["claims"] * scoring["claim_points"] + row["swaps"] * scoring["swap_points"]
         if return_swap_qualified:
             points += scoring["return_swap_bonus_points"]
+        claim_only = row["claims"] > 0 and row["swaps"] == 0
+        swap_active = row["swaps"] > 0
         leaderboard_rows.append(
             {
                 "actor": row["actor"],
@@ -484,6 +497,15 @@ def build_leaderboard(events: list[dict], epoch: dict) -> dict:
                 "swaps": row["swaps"],
                 "claims": row["claims"],
                 "return_swap_qualified": return_swap_qualified,
+                "claim_only": claim_only,
+                "eligible_for_progress": swap_active,
+                "eligible_for_leaderboard": swap_active,
+                "reward_eligibility": {
+                    "starter_claim": row["claims"] > 0,
+                    "first_swap": row["swaps"] > 0,
+                    "return_swap": return_swap_qualified,
+                },
+                "exclusion_reasons": ["claim_only"] if claim_only else [],
                 "first_block": row["first_block"],
                 "latest_block": row["latest_block"],
                 "first_seen_at": format_iso_timestamp(int(row["first_seen_at"] or 0)),
@@ -502,12 +524,24 @@ def build_leaderboard(events: list[dict], epoch: dict) -> dict:
     )
 
     for index, row in enumerate(leaderboard_rows, start=1):
+        row["rank_all"] = index
+
+    eligible_rows = [row for row in leaderboard_rows if row["eligible_for_leaderboard"]]
+    for index, row in enumerate(eligible_rows, start=1):
         row["rank"] = index
 
     return {
         "scoring_label": ((epoch.get("reward_policy") or {}).get("scoring_label")) or "Outside activity score",
         "return_after_hours": scoring["return_after_hours"],
-        "entries": leaderboard_rows[:10],
+        "eligibility_note": "Claim-only wallets stay visible in the raw outside-activity summary but do not unlock progress or leaderboard rewards until they swap.",
+        "entries": eligible_rows[:10],
+        "excluded": {
+            "claim_only_wallets": sum(1 for row in leaderboard_rows if row["claim_only"]),
+            "raw_wallets_seen": len(leaderboard_rows),
+            "eligible_wallets": len(eligible_rows),
+            "eligible_swaps": sum(int(row.get("swaps", 0) or 0) for row in eligible_rows),
+            "returning_wallets": sum(1 for row in eligible_rows if row.get("return_swap_qualified")),
+        },
     }
 
 
@@ -585,6 +619,7 @@ def main() -> int:
     project_wallets_seen = sorted({normalize_address(event["actor"]) for event in project_events})
     external_swaps = [event for event in external_events if event["type"] == "swap"]
     external_claims = [event for event in external_events if event["type"] in {"faucet", "distributor"}]
+    leaderboard = build_leaderboard(external_events, epoch)
     summary = {
         "total_events": len(events),
         "total_wallets": len(total_wallets),
@@ -592,11 +627,23 @@ def main() -> int:
         "external_wallets": len(external_wallets),
         "external_swaps": len(external_swaps),
         "external_claims": len(external_claims),
+        "eligible_wallets": int(leaderboard["excluded"]["eligible_wallets"]),
+        "eligible_swaps": int(leaderboard["excluded"]["eligible_swaps"]),
+        "claim_only_wallets": int(leaderboard["excluded"]["claim_only_wallets"]),
+        "returning_wallets": int(leaderboard["excluded"]["returning_wallets"]),
         "project_events": len(project_events),
         "project_wallets": len(project_wallets_seen),
     }
     progress = build_progress(summary, epoch)
-    leaderboard = build_leaderboard(external_events, epoch)
+    anti_abuse = {
+        "wallet_progress_rule": "swap_active_wallets_only",
+        "leaderboard_rule": "swap_active_wallets_only",
+        "claim_only_wallets_excluded": int(summary["claim_only_wallets"]),
+        "eligible_wallets": int(summary["eligible_wallets"]),
+        "eligible_swaps": int(summary["eligible_swaps"]),
+        "returning_wallets": int(summary["returning_wallets"]),
+        "note": leaderboard["eligibility_note"],
+    }
 
     report = {
         "generated_at": utc_now(),
@@ -612,6 +659,7 @@ def main() -> int:
         },
         "summary": summary,
         "progress": progress,
+        "anti_abuse": anti_abuse,
         "leaderboard": leaderboard,
         "recent_events": events[:50],
         "recent_external": external_events[:50],
@@ -632,6 +680,7 @@ def main() -> int:
             "epoch": report["epoch"],
             "summary": report["summary"],
             "progress": report["progress"],
+            "anti_abuse": report["anti_abuse"],
             "leaderboard": report["leaderboard"],
             "recent_external": [
                 {

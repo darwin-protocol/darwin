@@ -696,6 +696,7 @@ def cmd_intent_create(args):
             raise ValueError(f"wallet chain_id {account.chain_id} does not match requested chain_id {chain_id}")
     else:
         account = create_account(chain_id=chain_id)
+    nonce = args.nonce if args.nonce is not None else time.time_ns() // 1_000_000
     intent = create_intent(
         account=account,
         pair_id=args.pair,
@@ -705,7 +706,7 @@ def cmd_intent_create(args):
         max_slippage_bps=args.slippage,
         profile=args.profile.upper(),
         expiry_ts=int(time.time()) + 300,
-        nonce=1,
+        nonce=nonce,
         chain_id=chain_id,
         settlement_hub=settlement_hub,
     )
@@ -727,6 +728,7 @@ def cmd_intent_create(args):
     print(f"  qty:         {intent.qty_base}")
     print(f"  price:       {intent.limit_price}")
     print(f"  profile:     {intent.profile}")
+    print(f"  nonce:       {intent.nonce}")
     print(f"  chain_id:    {intent.chain_id}")
     print(f"  settle_hub:  {intent.settlement_hub}")
     print(f"  PQ sig OK:   {pq_ok}")
@@ -1692,6 +1694,7 @@ def main():
     p.add_argument("--price", type=float, default=3500.0)
     p.add_argument("--slippage", type=int, default=50)
     p.add_argument("--profile", default="BALANCED")
+    p.add_argument("--nonce", type=int)
     p.add_argument("--chain-id", type=int)
     p.add_argument("--settlement-hub")
     p.add_argument("--wallet-file", default="")
