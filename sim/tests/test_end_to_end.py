@@ -15,6 +15,8 @@ import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from threading import Thread
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
 SIM = ROOT / "sim"
@@ -1888,6 +1890,218 @@ class TestEndToEnd(unittest.TestCase):
             self.assertIn("Watcher readiness: `YES`", markdown_path.read_text())
             self.assertEqual(proc.returncode, 0)
             print("  Ops: external watcher runner primes replay and writes reports")
+
+    def test_20b_darwin_node_runner_enables_watcher_polling(self):
+        """Ops: the full node runner passes the watcher poll interval through to the watcher service."""
+        with tempfile.TemporaryDirectory() as state_dir, tempfile.TemporaryDirectory() as deploy_dir:
+            state_root = Path(state_dir)
+            deployment_path = Path(deploy_dir) / "base-sepolia.json"
+            deployment_path.write_text(json.dumps({
+                "network": "base-sepolia",
+                "chain_id": 84532,
+                "bond_asset_mode": "external",
+                "deployer": "0x0000000000000000000000000000000000000010",
+                "deployed_at": 1,
+                "contracts": {
+                    "bond_asset": "0x0000000000000000000000000000000000000001",
+                    "challenge_escrow": "0x0000000000000000000000000000000000000002",
+                    "bond_vault": "0x0000000000000000000000000000000000000003",
+                    "species_registry": "0x0000000000000000000000000000000000000004",
+                    "settlement_hub": "0x0000000000000000000000000000000000000005",
+                    "epoch_manager": "0x0000000000000000000000000000000000000006",
+                    "score_registry": "0x0000000000000000000000000000000000000007",
+                    "shared_pair_vault": "0x0000000000000000000000000000000000000008",
+                },
+                "roles": {
+                    "governance": "0x0000000000000000000000000000000000000009",
+                    "epoch_operator": "0x000000000000000000000000000000000000000a",
+                    "batch_operator": "0x000000000000000000000000000000000000000c",
+                    "safe_mode_authority": "0x000000000000000000000000000000000000000b",
+                },
+            }))
+
+            seeded_epoch = state_root / "archive" / "epoch_12"
+            seeded_epoch.mkdir(parents=True, exist_ok=True)
+            for artifact in Path("outputs/test_e2").iterdir():
+                if artifact.is_file():
+                    (seeded_epoch / artifact.name).write_bytes(artifact.read_bytes())
+
+            def reserve_port() -> int:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.bind(("127.0.0.1", 0))
+                    return sock.getsockname()[1]
+
+            ports = {
+                "gateway": reserve_port(),
+                "router": reserve_port(),
+                "scorer": reserve_port(),
+                "watcher": reserve_port(),
+                "archive": reserve_port(),
+                "finalizer": reserve_port(),
+                "sentinel": reserve_port(),
+            }
+
+            class RpcHandler(BaseHTTPRequestHandler):
+                def do_POST(self):
+                    content_len = int(self.headers.get("Content-Length", 0))
+                    body = json.loads(self.rfile.read(content_len)) if content_len else {}
+                    method = body.get("method")
+                    params = body.get("params", [])
+
+                    def encode_address(address: str) -> str:
+                        return "0x" + address.lower().replace("0x", "").rjust(64, "0")
+
+                    def encode_bool(value: bool) -> str:
+                        return "0x" + ("1" if value else "0").rjust(64, "0")
+
+                    if method == "eth_chainId":
+                        result = hex(84532)
+                    elif method == "eth_getCode":
+                        address = str(params[0]).lower()
+                        contracts = {
+                            "0x0000000000000000000000000000000000000001",
+                            "0x0000000000000000000000000000000000000002",
+                            "0x0000000000000000000000000000000000000003",
+                            "0x0000000000000000000000000000000000000004",
+                            "0x0000000000000000000000000000000000000005",
+                            "0x0000000000000000000000000000000000000006",
+                            "0x0000000000000000000000000000000000000007",
+                            "0x0000000000000000000000000000000000000008",
+                        }
+                        result = "0x60006000" if address in contracts else "0x"
+                    elif method == "eth_call":
+                        call = params[0]
+                        to = call["to"].lower()
+                        data = call.get("data", "").lower()
+
+                        if to == "0x0000000000000000000000000000000000000005":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x6900b3a3":
+                                result = encode_address("0x000000000000000000000000000000000000000b")
+                            elif data == "0xd220935c" + "0" * 24 + "000000000000000000000000000000000000000c":
+                                result = encode_bool(True)
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000002":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0xbabef33e":
+                                result = encode_address("0x0000000000000000000000000000000000000001")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000003":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x92433067":
+                                result = encode_address("0x0000000000000000000000000000000000000002")
+                            elif data == "0xbabef33e":
+                                result = encode_address("0x0000000000000000000000000000000000000001")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000004":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x1942c738":
+                                result = encode_address("0x000000000000000000000000000000000000000a")
+                            elif data == "0x92433067":
+                                result = encode_address("0x0000000000000000000000000000000000000002")
+                            else:
+                                result = "0x"
+                        elif to == "0x0000000000000000000000000000000000000007":
+                            if data == "0x5aa6e675":
+                                result = encode_address("0x0000000000000000000000000000000000000009")
+                            elif data == "0x1942c738":
+                                result = encode_address("0x000000000000000000000000000000000000000a")
+                            else:
+                                result = "0x"
+                        else:
+                            result = "0x"
+                    else:
+                        result = "0x0"
+
+                    payload = {"jsonrpc": "2.0", "id": body.get("id", 1), "result": result}
+                    raw = json.dumps(payload).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
+
+                def log_message(self, fmt, *args):
+                    pass
+
+            rpc_server = HTTPServer(("127.0.0.1", 0), RpcHandler)
+            rpc_thread = Thread(target=rpc_server.serve_forever, daemon=True)
+            rpc_thread.start()
+
+            env = {
+                **os.environ,
+                "DARWIN_DEPLOYMENT_FILE": str(deployment_path),
+                "DARWIN_RPC_URL": f"http://127.0.0.1:{rpc_server.server_port}",
+                "DARWIN_STATE_ROOT": str(state_root),
+                "DARWIN_GATEWAY_PORT": str(ports["gateway"]),
+                "DARWIN_ROUTER_PORT": str(ports["router"]),
+                "DARWIN_SCORER_PORT": str(ports["scorer"]),
+                "DARWIN_WATCHER_PORT": str(ports["watcher"]),
+                "DARWIN_ARCHIVE_PORT": str(ports["archive"]),
+                "DARWIN_FINALIZER_PORT": str(ports["finalizer"]),
+                "DARWIN_SENTINEL_PORT": str(ports["sentinel"]),
+                "DARWIN_WATCHER_POLL_SEC": "2",
+                "DARWIN_FINALIZER_POLL_SEC": "2",
+                "DARWIN_HEARTBEAT_SEC": "1",
+                "PYTHONPATH": str(ROOT) + os.pathsep + str(SIM),
+            }
+            proc = subprocess.Popen(
+                ["bash", str(ROOT / "ops" / "run_darwin_node.sh")],
+                cwd=str(ROOT),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+            watcher_health = None
+            watcher_status = None
+            try:
+                deadline = time.time() + 20
+                while time.time() < deadline:
+                    if proc.poll() is not None:
+                        stdout, stderr = proc.communicate(timeout=5)
+                        self.fail(stdout + stderr)
+                    try:
+                        with urlopen(f"http://127.0.0.1:{ports['watcher']}/readyz", timeout=2) as resp:
+                            watcher_health = json.loads(resp.read().decode())
+                        if watcher_health.get("ready"):
+                            break
+                    except HTTPError as exc:
+                        if exc.code != 503:
+                            raise
+                    except URLError:
+                        pass
+                    time.sleep(0.2)
+                else:
+                    self.fail("DARWIN node runner did not warm the watcher via polling")
+                with urlopen(f"http://127.0.0.1:{ports['watcher']}/v1/status", timeout=2) as resp:
+                    watcher_status = json.loads(resp.read().decode())
+            finally:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=10)
+                rpc_server.shutdown()
+                rpc_server.server_close()
+                rpc_thread.join(timeout=5)
+
+            self.assertTrue(watcher_health["ready"])
+            self.assertEqual(watcher_health["poll_interval_sec"], 2)
+            self.assertTrue(watcher_health["auto_sync"])
+            self.assertEqual(watcher_status["health"]["last_mirrored_epoch"], "12")
+            self.assertEqual(watcher_status["health"]["poll_interval_sec"], 2)
+            self.assertEqual(proc.returncode, 0)
+            print("  Ops: node runner propagates watcher polling and warms the watcher from archive state")
 
     def test_21_publish_canary_epoch_runner(self):
         """Ops: canary epoch publish ingests, replays, and refreshes readiness reports."""

@@ -261,7 +261,7 @@ start_service gateway "$PYTHON_BIN" "$ROOT/overlay/gateway/server.py" "$GATEWAY_
 start_service router "$PYTHON_BIN" "$ROOT/overlay/router/service.py" "$ROUTER_PORT" 1500 "$STATE_ROOT/router/state.json"
 start_service scorer "$PYTHON_BIN" "$ROOT/overlay/scorer/service.py" "$SCORER_PORT"
 start_service archive "$PYTHON_BIN" "$ROOT/overlay/archive/service.py" "$ARCHIVE_PORT" "$STATE_ROOT/archive"
-start_service watcher "$PYTHON_BIN" "$ROOT/overlay/watcher/service.py" "$WATCHER_PORT" "$STATE_ROOT/watcher" "$WATCHER_ARCHIVE_URL"
+start_service watcher "$PYTHON_BIN" "$ROOT/overlay/watcher/service.py" "$WATCHER_PORT" "$STATE_ROOT/watcher" "$WATCHER_ARCHIVE_URL" "$WATCHER_POLL_SEC"
 start_service finalizer "$PYTHON_BIN" "$ROOT/overlay/finalizer/service.py" "$FINALIZER_PORT" "$CHALLENGE_WINDOW_SEC" "$STATE_ROOT/finalizer/state.json" "$FINALIZER_POLL_SEC"
 start_service sentinel "$PYTHON_BIN" "$ROOT/overlay/sentinel/service.py" "$SENTINEL_PORT" "$STATE_ROOT/sentinel/state.json"
 
